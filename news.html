@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NaijaRate News Updates - Nigerian Governance Tracker</title>
+<meta name="description" content="Latest NaijaRate governance updates covering elections, policy moves, appointments, and accountability developments across Nigeria.">
+<meta name="keywords" content="Nigeria political news updates, governance tracker, election updates 2027, NaijaRate news">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="/news" id="canonical-link">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NaijaRate">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" content="NaijaRate News Updates - Nigerian Governance Tracker">
+<meta property="og:description" content="Follow fresh updates on elections, policy decisions, and public accountability stories in Nigeria.">
+<meta property="og:image" content="/images/naijarate-og.jpg">
+<meta property="og:url" content="/news" id="og-url">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="NaijaRate News Updates - Nigerian Governance Tracker">
+<meta name="twitter:description" content="Follow fresh updates on elections, policy decisions, and public accountability stories in Nigeria.">
+<meta name="twitter:image" content="/images/naijarate-og.jpg">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .news-list {
+    display: grid;
+    gap: .9rem;
+  }
+  .news-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+  }
+  .news-img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: .7rem;
+    background: #101310;
+  }
+  .news-time {
+    font-size: .72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: .4rem;
+  }
+  .news-title {
+    font-family: 'Syne', sans-serif;
+    margin-bottom: .35rem;
+  }
+  .news-copy {
+    color: var(--muted);
+    font-size: .86rem;
+  }
+</style>
+<script>
+  (function setCanonicalMeta() {
+    var origin = window.location.origin || '';
+    var url = origin + '/news';
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    if (canonical) canonical.href = url;
+    if (ogUrl) ogUrl.setAttribute('content', url);
+  })();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsMediaOrganization",
+  "name": "NaijaRate News Updates",
+  "url": "/news",
+  "description": "News timeline focused on Nigerian governance and accountability.",
+  "inLanguage": "en-NG"
+}
+</script>
+<script type="application/ld+json" id="ld-items"></script>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link show-mobile">Officials</a>
+    <a href="/leaderboard" class="nav-link">Rankings</a>
+    <a href="/polls" class="nav-link">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link active">News</a>
+  </div>
+</nav>
+
+<div class="section">
+  <div class="container" style="max-width:900px;">
+    <div class="page-header">
+      <h1 class="page-title">News Updates</h1>
+      <p class="page-sub">Recent governance and election-season updates relevant to citizen ratings and polls.</p>
+    </div>
+
+    <div class="news-list" id="news-list" aria-live="polite"></div>
+    <div id="news-empty" class="news-item" style="display:none;">
+      <h2 class="news-title">No updates yet</h2>
+      <p class="news-copy">Check back soon.</p>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <strong>NaijaRate</strong> — Follow the governance timeline<br>
+  <a href="/" style="color:var(--green-light);">Officials</a> ·
+  <a href="/polls" style="color:var(--green-light);">Polls</a> ·
+  <a href="/blog" style="color:var(--green-light);">Blog</a>
+</footer>
+<script type="module">
+  const listEl = document.getElementById('news-list');
+  const emptyEl = document.getElementById('news-empty');
+  const ldItemsEl = document.getElementById('ld-items');
+
+  function formatDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return iso || '';
+    }
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  async function loadPosts() {
+    const res = await fetch('/data/news-posts.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to load posts');
+    const data = await res.json();
+    return (data.posts || []).slice().sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
+  }
+
+  function render(posts) {
+    if (!posts.length) {
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+
+    listEl.innerHTML = posts.map((p) => {
+      const url = '/news/' + encodeURIComponent(p.slug);
+      const when = formatDate(p.published_at);
+      return `
+        <article class="news-item card-hover">
+          <a href="${url}" aria-label="${esc(p.title)}">
+            <img class="news-img" loading="lazy" src="${esc(p.featured_image)}" alt="${esc(p.featured_image_alt || p.title)}">
+          </a>
+          <div class="news-time">${esc(when)} · ${esc(p.category)}</div>
+          <h2 class="news-title"><a href="${url}">${esc(p.title)}</a></h2>
+          <p class="news-copy">${esc(p.excerpt)}</p>
+        </article>
+      `;
+    }).join('');
+
+    if (ldItemsEl) {
+      const origin = window.location.origin || '';
+      ldItemsEl.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": posts.map((p, idx) => ({
+          "@type": "ListItem",
+          "position": idx + 1,
+          "url": origin + "/news/" + p.slug,
+          "name": p.title
+        }))
+      });
+    }
+  }
+
+  (async function init() {
+    try {
+      const posts = await loadPosts();
+      render(posts);
+    } catch (e) {
+      if (emptyEl) emptyEl.style.display = '';
+    }
+  })();
+</script>
+</body>
+</html>

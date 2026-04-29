@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polls — NaijaRate Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Create Poll Modal -->
+<div class="modal-overlay" id="poll-modal" onclick="if(event.target===this)closePollModal()">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h2>Create New Poll</h2>
+      <button class="modal-close" onclick="closePollModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Poll Question *</label>
+        <textarea class="form-control" id="poll-question" rows="3" placeholder="e.g. How would you rate the performance of the current administration?"></textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Answer Options * <span style="font-weight:300;text-transform:none;letter-spacing:0;">(2–6 options)</span></div>
+        <div id="options-list">
+          <div class="option-row" style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+            <input type="text" class="form-control" placeholder="Option 1" style="flex:1;">
+            <button onclick="removeOption(this)" style="background:rgba(192,57,43,.15);border:none;color:#e57368;padding:.4rem .7rem;border-radius:6px;cursor:pointer;">✕</button>
+          </div>
+          <div class="option-row" style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+            <input type="text" class="form-control" placeholder="Option 2" style="flex:1;">
+            <button onclick="removeOption(this)" style="background:rgba(192,57,43,.15);border:none;color:#e57368;padding:.4rem .7rem;border-radius:6px;cursor:pointer;">✕</button>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addOption()" style="margin-top:.3rem;">+ Add Option</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Closing Date (optional)</label>
+        <input type="date" class="form-control" id="poll-closes">
+      </div>
+      <button class="submit-btn" onclick="createPoll()">Create Poll</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-main">
+  <div class="admin-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div class="admin-title">Polls</div>
+      <div class="admin-sub">Create and manage citizen governance polls</div>
+    </div>
+    <button class="btn btn-green" onclick="openPollModal()">+ Create Poll</button>
+  </div>
+
+  <div class="tabs" id="poll-tabs">
+    <button class="tab active" data-status="active">Active</button>
+    <button class="tab" data-status="closed">Closed</button>
+    <button class="tab" data-status="">All</button>
+  </div>
+
+  <div id="polls-list">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase, requireAuth, sidebarHTML, showToast, fmt, wireSignOut } from './js/admin-common.js';
+
+const session = await requireAuth();
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('polls', session.user.email);
+wireSignOut();
+
+let filterStatus = 'active';
+
+async function loadPolls() {
+  document.getElementById('polls-list').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  let q = supabase.from('polls').select('*').order('created_at',{ascending:false});
+  if (filterStatus) q = q.eq('status', filterStatus);
+  const { data, error } = await q;
+  if (error) {
+    document.getElementById('polls-list').innerHTML = '<div class="empty">Unable to load polls.</div>';
+    return;
+  }
+  const polls = data || [];
+  if (!polls.length) { document.getElementById('polls-list').innerHTML='<div class="empty">No polls found.</div>'; return; }
+
+  document.getElementById('polls-list').innerHTML = polls.map(p => {
+    const options = p.options || [];
+    const total = p.total_votes || 0;
+    const closing = p.closes_at ? new Date(p.closes_at).toLocaleDateString('en-NG') : 'No end date';
+    return `
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <div style="font-family:Syne,sans-serif;font-weight:700;font-size:1rem;margin-bottom:.3rem;">${p.question}</div>
+          <div style="font-size:.75rem;color:var(--muted);">
+            ${fmt(total)} votes · Closes: ${closing} · Created: ${new Date(p.created_at).toLocaleDateString('en-NG')}
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-shrink:0;">
+          <span class="status-badge s-${p.status}">${p.status}</span>
+        </div>
+      </div>
+
+      <!-- Options with vote bars -->
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;">
+        ${options.map((opt,i) => {
+          const pct = total > 0 ? Math.round((opt.votes/total)*100) : 0;
+          return `
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.25rem;">
+              <span>${opt.text}</span>
+              <span style="color:var(--green-light);font-weight:700;">${pct}% (${fmt(opt.votes)})</span>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),var(--green-light));border-radius:3px;transition:width .5s;"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        ${p.status==='active' ? `<button class="btn btn-ghost btn-sm" onclick="closePoll('${p.id}')">🔒 Close Poll</button>` : `<button class="btn btn-green btn-sm" onclick="reopenPoll('${p.id}')">🔓 Reopen</button>`}
+        <button class="btn btn-sm" style="background:rgba(192,57,43,.12);color:#e57368;border:1px solid rgba(192,57,43,.3);" onclick="deletePoll('${p.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.querySelectorAll('#poll-tabs .tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#poll-tabs .tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    filterStatus = btn.dataset.status;
+    loadPolls();
+  });
+});
+
+// ── MODAL ──
+window.openPollModal = () => {
+  document.getElementById('poll-question').value='';
+  document.getElementById('poll-closes').value='';
+  // Reset to 2 blank options
+  document.getElementById('options-list').innerHTML = `
+    <div class="option-row" style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+      <input type="text" class="form-control" placeholder="Option 1" style="flex:1;">
+      <button onclick="removeOption(this)" style="background:rgba(192,57,43,.15);border:none;color:#e57368;padding:.4rem .7rem;border-radius:6px;cursor:pointer;">✕</button>
+    </div>
+    <div class="option-row" style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+      <input type="text" class="form-control" placeholder="Option 2" style="flex:1;">
+      <button onclick="removeOption(this)" style="background:rgba(192,57,43,.15);border:none;color:#e57368;padding:.4rem .7rem;border-radius:6px;cursor:pointer;">✕</button>
+    </div>`;
+  document.getElementById('poll-modal').classList.add('open');
+};
+
+window.closePollModal = () => document.getElementById('poll-modal').classList.remove('open');
+
+window.addOption = () => {
+  const list = document.getElementById('options-list');
+  const count = list.querySelectorAll('.option-row').length;
+  if (count >= 6) { showToast('Maximum 6 options allowed.','error'); return; }
+  const div = document.createElement('div');
+  div.className='option-row';
+  div.style.cssText='display:flex;gap:.5rem;margin-bottom:.5rem;';
+  div.innerHTML=`<input type="text" class="form-control" placeholder="Option ${count+1}" style="flex:1;"><button onclick="removeOption(this)" style="background:rgba(192,57,43,.15);border:none;color:#e57368;padding:.4rem .7rem;border-radius:6px;cursor:pointer;">✕</button>`;
+  list.appendChild(div);
+};
+
+window.removeOption = (btn) => {
+  const rows = document.getElementById('options-list').querySelectorAll('.option-row');
+  if (rows.length <= 2) { showToast('Minimum 2 options required.','error'); return; }
+  btn.closest('.option-row').remove();
+};
+
+window.createPoll = async () => {
+  const question = document.getElementById('poll-question').value.trim();
+  const inputs = document.querySelectorAll('#options-list input');
+  const options = [...inputs].map(i=>i.value.trim()).filter(Boolean);
+  if (!question) { showToast('Please enter a question.','error'); return; }
+  if (options.length < 2) { showToast('Please enter at least 2 options.','error'); return; }
+  const closesAt = document.getElementById('poll-closes').value;
+  const payload = {
+    question,
+    options: options.map(text=>({text, votes:0})),
+    status: 'active',
+    total_votes: 0,
+    closes_at: closesAt || null,
+  };
+  const { error } = await supabase.from('polls').insert(payload);
+  if (error) { showToast('Error creating poll: '+error.message,'error'); return; }
+  showToast('Poll created ✓');
+  closePollModal();
+  filterStatus='active';
+  document.querySelectorAll('#poll-tabs .tab').forEach((t,i)=>{t.classList.toggle('active',i===0);});
+  loadPolls();
+};
+
+window.closePoll = async (id) => {
+  if (!confirm('Close this poll? Citizens will no longer be able to vote.')) return;
+  const { error } = await supabase.from('polls').update({status:'closed'}).eq('id',id);
+  if (error) { showToast('Error','error'); return; }
+  showToast('Poll closed ✓'); loadPolls();
+};
+
+window.reopenPoll = async (id) => {
+  const { error } = await supabase.from('polls').update({status:'active'}).eq('id',id);
+  if (error) { showToast('Error','error'); return; }
+  showToast('Poll reopened ✓'); loadPolls();
+};
+
+window.deletePoll = async (id) => {
+  if (!confirm('Delete this poll permanently? All votes will be lost.')) return;
+  const { error } = await supabase.from('polls').delete().eq('id',id);
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  showToast('Poll deleted ✓'); loadPolls();
+};
+
+loadPolls();
+</script>
+</body>
+</html>

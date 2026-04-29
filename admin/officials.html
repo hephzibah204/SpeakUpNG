@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Officials — NaijaRate Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="official-modal" onclick="if(event.target===this)closeOfficialModal()">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Official</h2>
+      <button class="modal-close" onclick="closeOfficialModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="span2">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-control" id="f-name" placeholder="e.g. Bola Ahmed Tinubu">
+        </div>
+        <div>
+          <label class="form-label">Common Name</label>
+          <input type="text" class="form-control" id="f-common" placeholder="e.g. Tinubu">
+        </div>
+        <div>
+          <label class="form-label">Party</label>
+          <input type="text" class="form-control" id="f-party" placeholder="e.g. APC, PDP, LP">
+        </div>
+        <div class="span2">
+          <label class="form-label">Role / Position *</label>
+          <input type="text" class="form-control" id="f-role" placeholder="e.g. Governor, Lagos State">
+        </div>
+        <div>
+          <label class="form-label">Tier *</label>
+          <select class="form-control" id="f-tier">
+            <option value="">Select tier</option>
+            <option value="federal_executive">Federal Executive</option>
+            <option value="federal_legislature">National Assembly</option>
+            <option value="federal_judiciary">Federal Judiciary</option>
+            <option value="state_executive">State Executive</option>
+            <option value="state_legislature">State Assembly</option>
+            <option value="local_government">Local Government</option>
+            <option value="federal_agency">Federal Agency</option>
+            <option value="state_agency">State Agency</option>
+            <option value="military_security">Military & Security</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">State</label>
+          <select class="form-control" id="f-state">
+            <option value="">Federal / All States</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Status</label>
+          <select class="form-control" id="f-status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Office Start Date</label>
+          <input type="date" class="form-control" id="f-start">
+        </div>
+        <div class="span2">
+          <label class="form-label">Photo / Logo URL</label>
+          <input type="url" class="form-control" id="f-photo" placeholder="https://...">
+        </div>
+        <div class="span2">
+          <label class="form-label">Bio</label>
+          <textarea class="form-control" id="f-bio" placeholder="Brief biography..."></textarea>
+        </div>
+        <div>
+          <label class="form-label">Twitter / X</label>
+          <input type="text" class="form-control" id="f-twitter" placeholder="@handle">
+        </div>
+        <div>
+          <label class="form-label">Official Website</label>
+          <input type="url" class="form-control" id="f-website" placeholder="https://...">
+        </div>
+      </div>
+      <button class="submit-btn" id="save-official-btn" onclick="saveOfficial()">Save Official</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-main">
+  <div class="admin-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div class="admin-title">Officials</div>
+      <div class="admin-sub">Manage all government officials in the database</div>
+    </div>
+    <button class="btn btn-green" onclick="openAddModal()">+ Add Official</button>
+  </div>
+
+  <div class="admin-search">
+    <input type="text" id="search" placeholder="Search name or role..." oninput="applyFilter()">
+    <select id="tier-filter" onchange="applyFilter()">
+      <option value="">All Tiers</option>
+      <option value="federal_executive">Federal Executive</option>
+      <option value="federal_legislature">National Assembly</option>
+      <option value="federal_judiciary">Judiciary</option>
+      <option value="state_executive">State Executive</option>
+      <option value="local_government">Local Govt</option>
+      <option value="federal_agency">Agencies</option>
+      <option value="military_security">Military</option>
+    </select>
+    <select id="status-filter" onchange="applyFilter()">
+      <option value="">All Status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="suspended">Suspended</option>
+    </select>
+    <span id="count-label" style="color:var(--muted);font-size:.82rem;margin-left:auto;"></span>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Official</th>
+          <th>Role</th>
+          <th>Tier</th>
+          <th>State</th>
+          <th>Rating</th>
+          <th>Reports</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="officials-body">
+        <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="pagination" style="display:flex;gap:.5rem;margin-top:1.2rem;flex-wrap:wrap;"></div>
+</div>
+
+<script type="module">
+import { supabase, requireAuth, sidebarHTML, showToast, fmt, TIER_LABELS, TIER_COLORS, scoreColor, wireSignOut } from './js/admin-common.js';
+
+const session = await requireAuth();
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('officials', session.user.email);
+wireSignOut();
+
+let allData = [], filtered = [], states = [], editingId = null;
+let page = 1; const perPage = 20;
+
+function avatarImgStyle(tier) {
+  return String(tier || '').includes('agency')
+    ? 'width:100%;height:100%;border-radius:50%;object-fit:contain;background:#fff;padding:4px;'
+    : 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+}
+
+// Load states into selects
+async function loadStates() {
+  const { data, error } = await supabase.from('states').select('id,name').order('name');
+  if (error) { showToast('Unable to load states.','error'); return; }
+  states = data || [];
+  const sel = document.getElementById('f-state');
+  states.forEach(s => { const o = document.createElement('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o); });
+}
+
+async function loadOfficials() {
+  const { data, error } = await supabase.from('officials')
+    .select('id,full_name,common_name,role,tier,party,status,rating_avg,rating_count,report_count,office_start,photo_url,bio,social_twitter,website,states(id,name),state_id')
+    .order('full_name');
+  if (error) {
+    document.getElementById('officials-body').innerHTML = '<tr><td colspan="8"><div class="empty">Unable to load officials.</div></td></tr>';
+    document.getElementById('count-label').textContent = 'Unable to load officials';
+    return;
+  }
+  allData = data || [];
+  applyFilter();
+}
+
+window.applyFilter = () => {
+  const q = document.getElementById('search').value.toLowerCase();
+  const tier = document.getElementById('tier-filter').value;
+  const status = document.getElementById('status-filter').value;
+  filtered = allData.filter(o => {
+    const matchQ = !q || o.full_name.toLowerCase().includes(q) || o.role.toLowerCase().includes(q);
+    const matchT = !tier || o.tier === tier;
+    const matchS = !status || o.status === status;
+    return matchQ && matchT && matchS;
+  });
+  page = 1;
+  render();
+};
+
+function render() {
+  const total = filtered.length;
+  document.getElementById('count-label').textContent = `${fmt(total)} official${total!==1?'s':''}`;
+  const slice = filtered.slice((page-1)*perPage, page*perPage);
+  if (!slice.length) { document.getElementById('officials-body').innerHTML='<tr><td colspan="8"><div class="empty">No officials found.</div></td></tr>'; renderPag(0); return; }
+  document.getElementById('officials-body').innerHTML = slice.map(o=>{
+    const color = TIER_COLORS[o.tier]||'#888';
+    const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const rating = parseFloat(o.rating_avg)||0;
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:.6rem;">
+          <div class="avatar" style="width:32px;height:32px;font-size:.72rem;background:${color}22;color:${color};">
+            ${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}
+          </div>
+          <div>
+            <div style="font-weight:500;font-size:.85rem;">${o.full_name}</div>
+            ${o.party?`<div style="font-size:.7rem;color:var(--muted);">${o.party}</div>`:''}
+          </div>
+        </div>
+      </td>
+      <td style="font-size:.8rem;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${o.role}</td>
+      <td><span class="tier-badge" style="color:${color};border-color:${color}44;background:${color}11;font-size:.58rem;">${TIER_LABELS[o.tier]||o.tier}</span></td>
+      <td style="font-size:.8rem;color:var(--muted);">${o.states?.name||'Federal'}</td>
+      <td><span style="color:${rating?scoreColor(rating):'var(--muted)'};font-weight:700;">${rating?'★ '+rating.toFixed(1):'—'}</span> <span style="color:var(--muted);font-size:.72rem;">(${fmt(o.rating_count)})</span></td>
+      <td>${o.report_count>0?`<span style="color:#e57368;">⚠ ${o.report_count}</span>`:'<span style="color:var(--border);">—</span>'}</td>
+      <td><span class="status-badge s-${o.status}">${o.status}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="action-btn action-edit" onclick="openEditModal('${o.id}')">Edit</button>
+          <button class="action-btn action-delete" onclick="deleteOfficial('${o.id}','${o.full_name.replace(/'/g,"\\'")}')">Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPag(total);
+}
+
+function renderPag(total) {
+  const pages = Math.ceil(total/perPage);
+  const el = document.getElementById('pagination');
+  if (pages<=1){el.innerHTML='';return;}
+  el.innerHTML = Array.from({length:pages},(_,i)=>i+1).map(p=>`<button class="tab ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`).join('');
+}
+window.goPage=(p)=>{page=p;render();};
+
+// ── MODAL ──
+window.openAddModal = () => {
+  editingId = null;
+  document.getElementById('modal-title').textContent='Add Official';
+  ['name','common','party','role','tier','status','start','photo','bio','twitter','website'].forEach(f=>{
+    const el=document.getElementById('f-'+f); if(el) el.value = f==='status'?'active':'';
+  });
+  document.getElementById('f-state').value='';
+  document.getElementById('official-modal').classList.add('open');
+};
+
+window.openEditModal = (id) => {
+  editingId = id;
+  const o = allData.find(x=>x.id===id);
+  if (!o) return;
+  document.getElementById('modal-title').textContent='Edit Official';
+  document.getElementById('f-name').value = o.full_name||'';
+  document.getElementById('f-common').value = o.common_name||'';
+  document.getElementById('f-party').value = o.party||'';
+  document.getElementById('f-role').value = o.role||'';
+  document.getElementById('f-tier').value = o.tier||'';
+  document.getElementById('f-state').value = o.state_id||'';
+  document.getElementById('f-status').value = o.status||'active';
+  document.getElementById('f-start').value = o.office_start||'';
+  document.getElementById('f-photo').value = o.photo_url||'';
+  document.getElementById('f-bio').value = o.bio||'';
+  document.getElementById('f-twitter').value = o.social_twitter||'';
+  document.getElementById('f-website').value = o.website||'';
+  document.getElementById('official-modal').classList.add('open');
+};
+
+window.closeOfficialModal = () => document.getElementById('official-modal').classList.remove('open');
+
+window.saveOfficial = async () => {
+  const name = document.getElementById('f-name').value.trim();
+  const role = document.getElementById('f-role').value.trim();
+  const tier = document.getElementById('f-tier').value;
+  if (!name||!role||!tier) { showToast('Name, role and tier are required.','error'); return; }
+  const btn = document.getElementById('save-official-btn');
+  btn.disabled=true; btn.textContent='Saving...';
+  const payload = {
+    full_name: name,
+    common_name: document.getElementById('f-common').value.trim()||null,
+    party: document.getElementById('f-party').value.trim()||null,
+    role, tier,
+    state_id: document.getElementById('f-state').value||null,
+    status: document.getElementById('f-status').value||'active',
+    office_start: document.getElementById('f-start').value||null,
+    photo_url: document.getElementById('f-photo').value.trim()||null,
+    bio: document.getElementById('f-bio').value.trim()||null,
+    social_twitter: document.getElementById('f-twitter').value.trim()||null,
+    website: document.getElementById('f-website').value.trim()||null,
+  };
+  let error;
+  if (editingId) { ({error} = await supabase.from('officials').update(payload).eq('id',editingId)); }
+  else { ({error} = await supabase.from('officials').insert(payload)); }
+  btn.disabled=false; btn.textContent='Save Official';
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  showToast(editingId?'Official updated ✓':'Official added ✓');
+  closeOfficialModal(); loadOfficials();
+};
+
+window.deleteOfficial = async (id, name) => {
+  if (!confirm(`Delete "${name}"? This will also remove all their ratings and reports. This cannot be undone.`)) return;
+  const { error } = await supabase.from('officials').delete().eq('id',id);
+  if (error) { showToast('Error deleting: '+error.message,'error'); return; }
+  showToast(`${name} removed ✓`);
+  loadOfficials();
+};
+
+await loadStates();
+loadOfficials();
+</script>
+</body>
+</html>

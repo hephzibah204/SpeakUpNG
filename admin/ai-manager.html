@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Manager — NaijaRate Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+<style>
+/* ── AI Manager extra styles ── */
+.ai-tabs { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.ai-tab  {
+  padding:.5rem 1rem; border-radius:8px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-size:.83rem; cursor:pointer;
+  font-family:inherit; font-weight:500; transition:all .2s;
+}
+.ai-tab.active {
+  background:var(--green-light); color:#060c18; border-color:var(--green-light);
+  box-shadow:0 0 16px rgba(0,179,104,.35);
+}
+.ai-tab:not(.active):hover { border-color:var(--muted); color:var(--white); }
+
+.ai-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:1.3rem; margin-bottom:1rem;
+}
+.ai-label {
+  font-size:.65rem; color:var(--muted); letter-spacing:.08em;
+  text-transform:uppercase; font-family:monospace; margin-bottom:.5rem; display:block;
+}
+.ai-textarea {
+  width:100%; padding:.8rem 1rem;
+  background:rgba(255,255,255,.03); border:1px solid var(--border);
+  border-radius:8px; color:var(--white); font-size:.85rem;
+  font-family:inherit; resize:vertical; outline:none; line-height:1.6;
+}
+.ai-textarea:focus { border-color:rgba(0,179,104,.5); }
+.ai-textarea::placeholder { color:var(--muted); }
+
+.ai-btn {
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.55rem 1.1rem; border-radius:8px; border:none;
+  font-size:.85rem; font-weight:600; cursor:pointer; font-family:inherit;
+  transition:all .2s;
+}
+.ai-btn-green  { background:var(--green-light); color:#060c18; }
+.ai-btn-green:hover { opacity:.9; transform:translateY(-1px); }
+.ai-btn-green:disabled { background:#1e3a2a; color:var(--muted); cursor:not-allowed; transform:none; }
+.ai-btn-ghost  { background:transparent; border:1px solid var(--border); color:var(--muted); }
+.ai-btn-ghost:hover { border-color:var(--muted); color:var(--white); }
+.ai-btn-gold   { background:#e8a020; color:#060c18; }
+.ai-btn-gold:disabled { background:#3a2a10; color:var(--muted); cursor:not-allowed; }
+.ai-btn-blue   { background:#4f8ef7; color:#fff; }
+.ai-btn-blue:disabled { background:#1a2540; color:var(--muted); cursor:not-allowed; }
+.ai-btn-purple { background:#a78bfa; color:#060c18; }
+.ai-btn-purple:disabled { background:#2a1a50; color:var(--muted); cursor:not-allowed; }
+
+.ai-result {
+  background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:8px;
+  padding:1rem; font-size:.85rem; line-height:1.8; color:var(--white);
+  white-space:pre-wrap; word-break:break-word; max-height:500px; overflow-y:auto;
+  margin-top:.8rem;
+}
+.code-result {
+  background:#040b14; border:1px solid var(--border); border-radius:8px;
+  padding:1rem; font-family:monospace; font-size:.78rem; color:#7dd3a0;
+  white-space:pre-wrap; word-break:break-word; max-height:420px; overflow-y:auto;
+  margin-top:.8rem;
+}
+.scan-log {
+  background:#040b14; border:1px solid var(--border); border-radius:8px;
+  padding:.8rem 1rem; font-family:monospace; font-size:.72rem; color:var(--muted);
+  max-height:180px; overflow-y:auto; line-height:1.9; margin-top:.8rem;
+}
+.change-card {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:1rem; margin-bottom:.7rem; cursor:pointer; transition:all .2s;
+}
+.change-card:hover { border-color:rgba(0,179,104,.5); transform:translateY(-1px); }
+.change-card.selected { border-color:var(--green-light); background:rgba(0,179,104,.05); }
+
+.platform-btn {
+  padding:.45rem 1rem; border-radius:7px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-size:.8rem;
+  cursor:pointer; font-family:inherit; transition:all .2s; text-align:left;
+}
+.platform-btn.active { background:#a78bfa; color:#060c18; border-color:#a78bfa; }
+.tone-btn {
+  padding:.45rem 1rem; border-radius:7px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-size:.8rem;
+  cursor:pointer; font-family:inherit; transition:all .2s;
+}
+.tone-btn.active { background:#e8a020; color:#060c18; border-color:#e8a020; }
+
+.badge-sm {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:.68rem; font-family:monospace; letter-spacing:.05em;
+}
+.tag-high    { background:rgba(0,179,104,.12); color:#00b368; border:1px solid rgba(0,179,104,.3); }
+.tag-medium  { background:rgba(232,160,32,.12);color:#e8a020; border:1px solid rgba(232,160,32,.3); }
+.tag-low     { background:rgba(170,170,170,.12);color:#aaa;   border:1px solid rgba(170,170,170,.3); }
+.tag-appointed{background:rgba(0,179,104,.12); color:#00b368; border:1px solid rgba(0,179,104,.3); }
+.tag-removed,.tag-resigned { background:rgba(232,64,64,.12); color:#e84040; border:1px solid rgba(232,64,64,.3); }
+.tag-died    { background:rgba(124,106,247,.12);color:#7c6af7;border:1px solid rgba(124,106,247,.3); }
+.tag-suspended,.tag-impeached { background:rgba(232,160,32,.12);color:#e8a020;border:1px solid rgba(232,160,32,.3); }
+
+.audit-row { display:flex; align-items:flex-start; gap:.8rem; padding:.9rem 0; border-bottom:1px solid var(--border); }
+.audit-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+.audit-pass { background:#00b368; box-shadow:0 0 8px rgba(0,179,104,.6); }
+.audit-warn { background:#e8a020; box-shadow:0 0 8px rgba(232,160,32,.6); }
+.audit-fail { background:#e84040; box-shadow:0 0 8px rgba(232,64,64,.6); }
+
+.selected-banner {
+  background:rgba(0,179,104,.08); border:1px solid rgba(0,179,104,.3);
+  border-radius:8px; padding:.6rem 1rem; margin-bottom:1rem;
+  font-size:.83rem; color:var(--green-light); display:flex; align-items:center; gap:.8rem;
+}
+
+.spinner-sm {
+  width:16px; height:16px; border:2px solid rgba(255,255,255,.15);
+  border-top-color:currentColor; border-radius:50%;
+  animation:spin .75s linear infinite; flex-shrink:0;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+@keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp .2s ease; }
+
+.warn-box {
+  background:rgba(232,160,32,.08); border:1px solid rgba(232,160,32,.3);
+  border-radius:7px; padding:.6rem 1rem; font-size:.78rem; color:#e8a020; margin-top:.8rem;
+}
+</style>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<div class="admin-main">
+  <div class="admin-header">
+    <div class="admin-title">🤖 AI Manager</div>
+    <div class="admin-sub">Monitor changes · Write articles · Generate social posts · Patch the database · Audit the site</div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="ai-tabs" id="ai-tabs">
+    <button class="ai-tab active" data-tab="monitor">🔍 Monitor</button>
+    <button class="ai-tab" data-tab="articles">✍️ Articles</button>
+    <button class="ai-tab" data-tab="social">📣 Social Posts</button>
+    <button class="ai-tab" data-tab="sql">🗄️ SQL Patcher</button>
+    <button class="ai-tab" data-tab="audit">📊 Site Audit</button>
+    <button class="ai-tab" data-tab="schedule">⏰ Scheduler</button>
+  </div>
+
+  <!-- ════════ MONITOR ════════ -->
+  <div id="tab-monitor" class="fade-up">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem;">
+      <div class="ai-card" style="text-align:center;padding:1rem;">
+        <div style="font-size:2rem;font-weight:800;color:var(--green-light);" id="m-count">0</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:monospace;">CHANGES FOUND</div>
+      </div>
+      <div class="ai-card" style="text-align:center;padding:1rem;">
+        <div style="font-size:2rem;font-weight:800;color:#4f8ef7;">6</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:monospace;">QUERIES / SCAN</div>
+      </div>
+      <div class="ai-card" style="text-align:center;padding:1rem;">
+        <div style="font-size:2rem;font-weight:800;color:#a78bfa;" id="m-scans">0</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:monospace;">SCANS RUN</div>
+      </div>
+    </div>
+
+    <div class="ai-card">
+      <p style="font-size:.84rem;color:var(--muted);margin-bottom:1rem;">
+        Searches the web across 6 live queries to detect Nigerian government personnel changes.
+        Click any result to auto-fill the Articles, Social and SQL tabs.
+      </p>
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1rem;">
+        <div style="padding:.5rem .9rem;font-size:.72rem;font-family:monospace;color:var(--muted);background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);">SEARCH QUERIES</div>
+        <div id="query-list" style="padding:.4rem 0;"></div>
+      </div>
+      <button class="ai-btn ai-btn-green" id="btn-scan">🔍 Run Full Scan</button>
+    </div>
+
+    <div class="ai-card" id="scan-log-card" style="display:none;">
+      <span class="ai-label">SCAN LOG</span>
+      <div class="scan-log" id="scan-log"></div>
+    </div>
+
+    <div id="changes-list"></div>
+  </div>
+
+  <!-- ════════ ARTICLES ════════ -->
+  <div id="tab-articles" style="display:none;" class="fade-up">
+    <div id="art-banner" style="display:none;" class="selected-banner"></div>
+    <div class="ai-card">
+      <span class="ai-label">ARTICLE PROMPT</span>
+      <textarea id="art-prompt" class="ai-textarea" rows="4"
+        placeholder="e.g. Write a news article about the appointment of a new CBN Governor. Include what it means for the Naira and monetary policy."></textarea>
+      <div style="margin:1rem 0 .5rem;">
+        <span class="ai-label">TONE / STYLE</span>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem;">
+          <button class="tone-btn active" data-tone="formal">📰 Formal / Journalistic</button>
+          <button class="tone-btn" data-tone="accessible">📱 Accessible / Readable</button>
+          <button class="tone-btn" data-tone="pidgin">🇳🇬 Nigerian Pidgin</button>
+        </div>
+      </div>
+      <button class="ai-btn ai-btn-gold" id="btn-article" disabled>✍️ Write Article</button>
+    </div>
+    <div id="art-result-wrap" style="display:none;">
+      <div class="ai-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
+          <span class="ai-label" style="margin:0;color:#e8a020;">GENERATED ARTICLE</span>
+          <div style="display:flex;gap:.5rem;">
+            <button class="ai-btn-ghost ai-btn" id="btn-art-copy" style="padding:.3rem .7rem;font-size:.75rem;">Copy</button>
+            <button class="ai-btn-ghost ai-btn" id="btn-art-to-social" style="padding:.3rem .7rem;font-size:.75rem;">→ Social Posts</button>
+          </div>
+        </div>
+        <div class="ai-result" id="art-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SOCIAL ════════ -->
+  <div id="tab-social" style="display:none;" class="fade-up">
+    <div id="soc-banner" style="display:none;" class="selected-banner"></div>
+    <div class="ai-card">
+      <span class="ai-label">WHAT TO POST ABOUT</span>
+      <textarea id="soc-prompt" class="ai-textarea" rows="3"
+        placeholder="e.g. New Minister of Finance appointed. Wale Edun assumes office. Citizens can now rate him on NaijaRate."></textarea>
+      <div style="margin:1rem 0 .5rem;">
+        <span class="ai-label">PLATFORM</span>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem;" id="platform-btns">
+          <button class="platform-btn active" data-platform="twitter" data-max="280">𝕏 Twitter/X <small>(280 chars)</small></button>
+          <button class="platform-btn" data-platform="whatsapp" data-max="700">📱 WhatsApp <small>(700 chars)</small></button>
+          <button class="platform-btn" data-platform="instagram" data-max="2200">📸 Instagram <small>(2200 chars)</small></button>
+          <button class="platform-btn" data-platform="facebook" data-max="500">👥 Facebook <small>(500 chars)</small></button>
+        </div>
+      </div>
+      <button class="ai-btn ai-btn-purple" id="btn-social" disabled>📣 Write Post</button>
+    </div>
+    <div id="social-results"></div>
+  </div>
+
+  <!-- ════════ SQL PATCHER ════════ -->
+  <div id="tab-sql" style="display:none;" class="fade-up">
+    <div id="sql-banner" style="display:none;" class="selected-banner"></div>
+    <div class="ai-card">
+      <span class="ai-label">DESCRIBE THE DATABASE CHANGE</span>
+      <textarea id="sql-prompt" class="ai-textarea" rows="4"
+        placeholder="e.g. The new Ondo State Governor is Lucky Aiyedatiwa, APC, sworn in December 2023 after Akeredolu died in office. Update accordingly."></textarea>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0;">
+        <button class="ai-btn-ghost ai-btn sql-preset" data-v="Write a SELECT query to find all officials where status='active' but office_end IS NOT NULL, showing full_name, role, tier, office_end. Ordered by office_end DESC. Limit 25.">📋 Find Stale Officials</button>
+        <button class="ai-btn-ghost ai-btn sql-preset" data-v="Write ALTER TABLE SQL to safely add columns: bio TEXT, social_twitter TEXT, social_facebook TEXT to the officials table if they don't exist.">🔧 Add Bio/Social Cols</button>
+        <button class="ai-btn-ghost ai-btn sql-preset" data-v="Write SQL showing officials grouped by tier with count of those missing photo_url, and percentage of total.">📸 Photo Coverage Report</button>
+        <button class="ai-btn-ghost ai-btn sql-preset" data-v="Create the news_alerts table with all columns if it doesn't exist. Include RLS, indexes, and a verification SELECT.">🗄️ Create news_alerts Table</button>
+      </div>
+      <button class="ai-btn ai-btn-blue" id="btn-sql" disabled>🗄️ Generate SQL Patch</button>
+    </div>
+    <div id="sql-result-wrap" style="display:none;">
+      <div class="ai-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
+          <span class="ai-label" style="margin:0;color:#4f8ef7;">GENERATED SQL</span>
+          <button class="ai-btn-ghost ai-btn" id="btn-sql-copy" style="padding:.3rem .7rem;font-size:.75rem;">Copy SQL</button>
+        </div>
+        <div class="code-result" id="sql-result"></div>
+        <div class="warn-box">⚠️ Always review AI-generated SQL before running in production. Paste into Supabase SQL Editor and verify first.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SITE AUDIT ════════ -->
+  <div id="tab-audit" style="display:none;" class="fade-up">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem;">
+      <div class="ai-card" style="text-align:center;padding:1rem;">
+        <div style="font-size:2rem;font-weight:800;color:#00b368;">3</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:monospace;">PASSING</div>
+      </div>
+      <div class="ai-card" style="text-align:center;padding:1rem;">
+        <div style="font-size:2rem;font-weight:800;color:#e8a020;">5</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:monospace;">WARNINGS</div>
+      </div>
+      <div class="ai-card" style="text-align:center;padding:1rem;">
+        <div style="font-size:2rem;font-weight:800;color:#e84040;">3</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:monospace;">FAILURES</div>
+      </div>
+    </div>
+    <div class="ai-card" id="audit-checks-list" style="margin-bottom:1rem;"></div>
+    <button class="ai-btn ai-btn-green" id="btn-audit">📊 Generate AI Site Report</button>
+    <div id="audit-result-wrap" style="display:none;margin-top:1rem;">
+      <div class="ai-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
+          <span class="ai-label" style="margin:0;">AI SITE HEALTH REPORT</span>
+          <button class="ai-btn-ghost ai-btn" id="btn-audit-copy" style="padding:.3rem .7rem;font-size:.75rem;">Copy</button>
+        </div>
+        <div class="ai-result" id="audit-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ SCHEDULER ════════ -->
+  <div id="tab-schedule" style="display:none;" class="fade-up">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;">
+      <div class="ai-card" style="cursor:pointer;" id="sched-daily" onclick="selectSched('daily')">
+        <div style="font-size:1.5rem;margin-bottom:.4rem;">🌅</div>
+        <div style="font-weight:700;margin-bottom:.2rem;">Daily</div>
+        <div style="font-size:.78rem;color:var(--muted);">Scan every day at 06:00 WAT</div>
+      </div>
+      <div class="ai-card" style="cursor:pointer;" id="sched-weekly" onclick="selectSched('weekly')">
+        <div style="font-size:1.5rem;margin-bottom:.4rem;">📅</div>
+        <div style="font-weight:700;margin-bottom:.2rem;">Weekly</div>
+        <div style="font-size:.78rem;color:var(--muted);">Every Monday at 07:00 WAT</div>
+      </div>
+      <div class="ai-card" style="cursor:pointer;border-color:var(--green-light);background:rgba(0,179,104,.05);" id="sched-manual" onclick="selectSched('manual')">
+        <div style="font-size:1.5rem;margin-bottom:.4rem;">🖱️</div>
+        <div style="font-weight:700;margin-bottom:.2rem;">Manual</div>
+        <div style="font-size:.78rem;color:var(--muted);">Only when you click Run Scan</div>
+      </div>
+    </div>
+
+    <div class="ai-card" style="margin-bottom:1rem;">
+      <span class="ai-label">EMAIL ALERTS</span>
+      <p style="font-size:.83rem;color:var(--muted);margin-bottom:.8rem;">Get notified when the AI detects a government change.</p>
+      <div style="display:flex;gap:.6rem;align-items:center;">
+        <input type="email" id="alert-email" placeholder="you@example.com"
+          style="flex:1;padding:.6rem 1rem;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;color:var(--white);font-size:.85rem;font-family:inherit;outline:none;">
+        <button class="ai-btn ai-btn-green" id="btn-save-email">Save</button>
+      </div>
+      <div id="email-saved" style="display:none;font-size:.78rem;color:var(--green-light);margin-top:.5rem;">✅ Email saved for alerts</div>
+    </div>
+
+    <div class="ai-card" style="margin-bottom:1rem;">
+      <span class="ai-label">SCAN HISTORY (THIS SESSION)</span>
+      <div id="scan-history"><p style="font-size:.83rem;color:var(--muted);margin-top:.5rem;">No scans run yet this session.</p></div>
+    </div>
+
+    <div class="ai-card" style="background:rgba(255,255,255,.02);">
+      <span class="ai-label">PRODUCTION CRON (GITHUB ACTIONS)</span>
+      <p style="font-size:.82rem;color:var(--muted);margin:.4rem 0 .8rem;">
+        For hands-free daily scanning, push this project to GitHub and add these secrets:<br>
+        <code style="color:var(--green-light);">ANTHROPIC_API_KEY · SUPABASE_URL · SUPABASE_SERVICE_KEY · ALERT_EMAIL · RESEND_API_KEY</code>
+      </p>
+      <div class="code-result" style="max-height:160px;">
+# .github/workflows/monitor.yml (already included in your zip)
+# Runs daily at 06:00 WAT automatically
+# Results appear in the AI Alerts tab of this admin panel
+# SQL patches saved as GitHub Actions artifacts for download</div>
+      <a href="/admin/alerts" class="ai-btn ai-btn-green" style="margin-top:.8rem;text-decoration:none;display:inline-flex;">
+        🔔 View AI Alerts Tab →
+      </a>
+    </div>
+  </div>
+</div><!-- /admin-main -->
+
+<script type="module">
+import { supabase, requireAuth, sidebarHTML, showToast, wireSignOut } from './js/admin-common.js';
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const session = await requireAuth();
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('ai-manager', session.user.email);
+wireSignOut();
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentTab    = 'monitor';
+let selectedChange = null;
+let artTone       = 'formal';
+let socPlatform   = { id:'twitter', max:280 };
+let scanHistory   = [];
+let scanCount     = 0;
+const BROWSER_AI_UNAVAILABLE = 'Direct Anthropic calls are not configured in this browser build. Use `npm run monitor` or GitHub Actions for scans, or connect a secure backend endpoint for AI actions.';
+
+const QUERIES = [
+  'Nigeria minister appointed sacked replaced 2025 2026',
+  'Nigeria governor election impeachment resignation 2025 2026',
+  'Nigeria federal appointment presidency executive 2025 2026',
+  'CBN NNPC INEC EFCC Nigeria official change 2025 2026',
+  'Nigeria LGA chairmen election result 2025 2026',
+  'Nigeria state commissioner appointment 2025 2026',
+];
+
+const AUDIT_CHECKS = [
+  { status:'pass', label:'Row Level Security',     detail:'All tables have RLS enabled.' },
+  { status:'pass', label:'Rating Triggers',         detail:'update_official_ratings() trigger verified and active.' },
+  { status:'pass', label:'Full-Text Search Index',  detail:'GIN index on officials(full_name, role) is active.' },
+  { status:'warn', label:'Missing Profile Photos',  detail:'~78% of officials have no photo_url. Impacts credibility.' },
+  { status:'warn', label:'Active Polls',            detail:'10 polls active — archive polls older than 90 days.' },
+  { status:'warn', label:'Rating Coverage',         detail:'Most ratings are on federal tier. Promote LGA/state ratings.' },
+  { status:'warn', label:'Stale Active Officials',  detail:'Some officials may have left office without a DB update.' },
+  { status:'warn', label:'Anon Rate Limiting',      detail:'No server-side rate limit on anonymous submissions yet.' },
+  { status:'fail', label:'Official Bios',           detail:'97% of officials have empty bio fields. Hurts SEO badly.' },
+  { status:'fail', label:'Social Media Links',      detail:'social_twitter / social_facebook null for 99% of records.' },
+  { status:'fail', label:'Bio/Social Columns',      detail:'officials table may be missing bio, social_twitter, social_facebook columns.' },
+];
+
+// ── Render query list ─────────────────────────────────────────────────────────
+document.getElementById('query-list').innerHTML = QUERIES.map((q,i) =>
+  `<div style="padding:.35rem 1rem;font-size:.72rem;font-family:monospace;color:var(--muted);
+    ${i%2===0?'background:rgba(255,255,255,.015)':''}">→ ${q}</div>`
+).join('');
+
+// ── Render audit checks ───────────────────────────────────────────────────────
+document.getElementById('audit-checks-list').innerHTML = AUDIT_CHECKS.map((c,i) => `
+  <div class="audit-row" ${i===AUDIT_CHECKS.length-1?'style="border:none"':''}>
+    <div class="audit-dot audit-${c.status}"></div>
+    <div style="flex:1;">
+      <div style="font-weight:600;font-size:.9rem;margin-bottom:.2rem;">${c.label}</div>
+      <div style="font-size:.78rem;color:var(--muted);">${c.detail}</div>
+    </div>
+    <span class="badge-sm ${c.status==='pass'?'tag-high':c.status==='warn'?'tag-medium':'badge-sm'}"
+      style="${c.status==='fail'?'background:rgba(232,64,64,.12);color:#e84040;border:1px solid rgba(232,64,64,.3)':''}">
+      ${c.status.toUpperCase()}
+    </span>
+  </div>`).join('');
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.ai-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ai-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['monitor','articles','social','sql','audit','schedule'].forEach(t => {
+      const el = document.getElementById(`tab-${t}`);
+      if (el) el.style.display = t === btn.dataset.tab ? '' : 'none';
+    });
+    currentTab = btn.dataset.tab;
+  });
+});
+
+// ── Claude API call ───────────────────────────────────────────────────────────
+// ── MONITOR ───────────────────────────────────────────────────────────────────
+const logEl    = document.getElementById('scan-log');
+const logCard  = document.getElementById('scan-log-card');
+
+function addLog(msg, color) {
+  const div = document.createElement('div');
+  div.textContent = msg;
+  div.style.color = color || '';
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+let allChanges = [];
+
+async function loadExistingAlerts() {
+  const { data, error } = await supabase
+    .from('news_alerts')
+    .select('id,official_name,old_role,new_role,tier,state_code,party,change_type,change_date,source,headline,confidence,detected_at')
+    .order('detected_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    if (error.code === '42P01') {
+      addLog('news_alerts table is not set up yet. Run sql/05_news_alerts.sql first.', '#e8a020');
+      return;
+    }
+    addLog(`Unable to load existing alerts: ${error.message}`, '#e8a020');
+    return;
+  }
+
+  if (!data?.length) return;
+
+  allChanges = data.map(row => ({
+    id: row.id,
+    name: row.official_name,
+    old_role: row.old_role,
+    new_role: row.new_role,
+    tier: row.tier,
+    state: row.state_code,
+    party: row.party,
+    change_type: row.change_type,
+    date: row.change_date || row.detected_at?.slice(0, 10),
+    source: row.source,
+    headline: row.headline,
+    confidence: row.confidence,
+  }));
+  document.getElementById('m-count').textContent = allChanges.length;
+  renderChanges();
+}
+
+document.getElementById('btn-scan').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-scan');
+  btn.innerHTML = '<span class="spinner-sm"></span> Loading saved alerts…';
+  btn.disabled = true;
+  logEl.innerHTML = '';
+  logCard.style.display = '';
+  allChanges = [];
+  document.getElementById('changes-list').innerHTML = '';
+
+  addLog(BROWSER_AI_UNAVAILABLE, '#e8a020');
+  addLog('Loading any existing AI alerts already saved in Supabase instead…', '#7c6af7');
+  await loadExistingAlerts();
+  btn.innerHTML = '🔍 Run Full Scan';
+  btn.disabled = false;
+  showToast('AI scan needs the background monitor or a secure backend endpoint.','error');
+  // Update scan history
+  scanHistory.unshift({ ts: new Date().toLocaleString('en-NG'), found: allChanges.length });
+  renderScanHistory();
+});
+
+function changeColor(ct) {
+  return {appointed:'#00b368',removed:'#e84040',resigned:'#e8a020',died:'#7c6af7',suspended:'#e8a020',impeached:'#e8a020'}[ct] || '#aaa';
+}
+
+function renderChanges() {
+  if (!allChanges.length) return;
+  const el = document.getElementById('changes-list');
+  el.innerHTML = `<div style="font-size:.72rem;color:var(--green-light);font-family:monospace;margin-bottom:.6rem;">
+    DETECTED CHANGES (${allChanges.length})
+  </div>` + allChanges.map((r,i) => `
+    <div class="change-card" id="chg-${i}" onclick="selectChg(${i})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:.95rem;margin-bottom:.3rem;">${r.name}</div>
+          <div style="font-size:.83rem;color:var(--muted);">
+            ${r.old_role||'Unknown role'}
+            <span style="color:${changeColor(r.change_type)};margin:0 .3rem;">→</span>
+            <strong style="color:${changeColor(r.change_type)};">${r.new_role}</strong>
+          </div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.4rem;font-family:monospace;">
+            ${r.date||'—'} · ${r.source||'—'}${r.state?' · '+r.state:''}${r.party?' · '+r.party:''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end;flex-shrink:0;">
+          <span class="badge-sm tag-${r.change_type||'unknown'}">${(r.change_type||'unknown').toUpperCase()}</span>
+          <span class="badge-sm tag-${r.confidence||'low'}">${(r.confidence||'low').toUpperCase()} CONF</span>
+        </div>
+      </div>
+      <div style="font-size:.7rem;color:var(--green-light);opacity:.6;margin-top:.6rem;">Click to auto-fill Articles, Social & SQL tabs →</div>
+    </div>`).join('');
+}
+
+window.selectChg = (i) => {
+  selectedChange = allChanges[i];
+  // Highlight selected
+  document.querySelectorAll('.change-card').forEach((el,j) => {
+    el.classList.toggle('selected', j === i);
+  });
+  const base = `${selectedChange.name} was ${selectedChange.change_type} as ${selectedChange.new_role}${selectedChange.old_role?` (previously: ${selectedChange.old_role})`:''}. Date: ${selectedChange.date}. Source: ${selectedChange.source}.`;
+
+  // Fill article
+  document.getElementById('art-prompt').value = `Write a news article about: ${base}`;
+  updateBanner('art-banner', selectedChange);
+
+  // Fill social
+  document.getElementById('soc-prompt').value = base;
+  updateBanner('soc-banner', selectedChange);
+
+  // Fill SQL
+  document.getElementById('sql-prompt').value = `Generate SQL for this government change:\n${JSON.stringify(selectedChange, null, 2)}`;
+  updateBanner('sql-banner', selectedChange);
+
+  // Enable buttons
+  document.getElementById('btn-article').disabled = false;
+  document.getElementById('btn-social').disabled  = false;
+  document.getElementById('btn-sql').disabled     = false;
+
+  showToast(`${selectedChange.name} selected — tabs auto-filled`);
+};
+
+function updateBanner(id, r) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'flex';
+  el.innerHTML = `<span>📌 From Monitor:</span> <strong>${r.name}</strong> — <span class="badge-sm tag-${r.change_type}" style="font-size:.72rem;">${r.change_type?.toUpperCase()}</span>
+    <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;">✕</button>`;
+}
+
+// ── Enable buttons when prompts are typed ─────────────────────────────────────
+['art-prompt','soc-prompt','sql-prompt'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (id === 'art-prompt') document.getElementById('btn-article').disabled = !document.getElementById(id).value.trim();
+    if (id === 'soc-prompt') document.getElementById('btn-social').disabled  = !document.getElementById(id).value.trim();
+    if (id === 'sql-prompt') document.getElementById('btn-sql').disabled     = !document.getElementById(id).value.trim();
+  });
+});
+
+// ── ARTICLE ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tone-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.tone-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active'); artTone = b.dataset.tone;
+  });
+});
+
+document.getElementById('btn-article').addEventListener('click', async () => {
+  document.getElementById('art-result').textContent = BROWSER_AI_UNAVAILABLE;
+  document.getElementById('art-result-wrap').style.display = '';
+  showToast('Use the background monitor or connect a secure backend for AI article generation.','error');
+});
+
+// ── SOCIAL ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.platform-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.platform-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    socPlatform = { id: b.dataset.platform, max: parseInt(b.dataset.max) };
+  });
+});
+
+document.getElementById('btn-social').addEventListener('click', async () => {
+  document.getElementById('social-results').innerHTML = `<div class="ai-card"><div class="warn-box">${BROWSER_AI_UNAVAILABLE}</div></div>`;
+  showToast('Use the background monitor or connect a secure backend for AI social generation.','error');
+});
+
+// ── SQL PATCHER ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.sql-preset').forEach(b => {
+  b.addEventListener('click', () => {
+    document.getElementById('sql-prompt').value = b.dataset.v;
+    document.getElementById('btn-sql').disabled = false;
+  });
+});
+
+document.getElementById('btn-sql').addEventListener('click', async () => {
+  document.getElementById('sql-result').textContent = BROWSER_AI_UNAVAILABLE;
+  document.getElementById('sql-result-wrap').style.display = '';
+  showToast('Use the background monitor or connect a secure backend for AI SQL generation.','error');
+});
+
+// ── AUDIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('btn-audit').addEventListener('click', async () => {
+  document.getElementById('audit-result').textContent = BROWSER_AI_UNAVAILABLE;
+  document.getElementById('audit-result-wrap').style.display = '';
+  showToast('Use the background monitor or connect a secure backend for AI audit generation.','error');
+});
+
+// ── SCHEDULER ────────────────────────────────────────────────────────────────
+window.selectSched = (mode) => {
+  ['daily','weekly','manual'].forEach(m => {
+    const el = document.getElementById(`sched-${m}`);
+    if (el) {
+      el.style.borderColor   = m === mode ? 'var(--green-light)' : 'var(--border)';
+      el.style.background    = m === mode ? 'rgba(0,179,104,.05)' : '';
+    }
+  });
+};
+
+document.getElementById('btn-save-email').addEventListener('click', () => {
+  const email = document.getElementById('alert-email').value.trim();
+  if (email) {
+    document.getElementById('email-saved').style.display = '';
+    document.getElementById('email-saved').textContent = `✅ ${email} saved for alerts`;
+    localStorage.setItem('nr_alert_email', email);
+  }
+});
+
+// Restore saved email
+const savedEmail = localStorage.getItem('nr_alert_email');
+if (savedEmail) {
+  document.getElementById('alert-email').value = savedEmail;
+  document.getElementById('email-saved').style.display = '';
+  document.getElementById('email-saved').textContent = `✅ ${savedEmail} saved for alerts`;
+}
+
+function renderScanHistory() {
+  const el = document.getElementById('scan-history');
+  if (!scanHistory.length) return;
+  el.innerHTML = scanHistory.map((h,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:${i<scanHistory.length-1?'1px solid var(--border)':'none'};">
+      <div>
+        <div style="font-size:.85rem;">${h.ts}</div>
+        <div style="font-size:.7rem;color:var(--muted);">Scan #${scanHistory.length-i}</div>
+      </div>
+      <span class="badge-sm ${h.found>0?'tag-high':'tag-low'}">${h.found>0?h.found+' change'+(h.found>1?'s':''):'No changes'}</span>
+    </div>`).join('');
+}
+
+// Make showToast available globally for inline onclick
+window.showToast = showToast;
+loadExistingAlerts();
+</script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NaijaRate News</title>
+  <meta name="description" content="" id="meta-description">
+  <meta name="keywords" content="" id="meta-keywords">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="/news" id="canonical-link">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="NaijaRate">
+  <meta property="og:locale" content="en_NG">
+  <meta property="og:title" content="" id="og-title">
+  <meta property="og:description" content="" id="og-description">
+  <meta property="og:image" content="/images/naijarate-og.jpg" id="og-image">
+  <meta property="og:url" content="/news" id="og-url">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="" id="twitter-title">
+  <meta name="twitter:description" content="" id="twitter-description">
+  <meta name="twitter:image" content="/images/naijarate-og.jpg" id="twitter-image">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .post-wrap { max-width: 920px; }
+    .post-title { font-size: 1.85rem; margin-bottom: .6rem; }
+    .post-meta { color: var(--muted); font-size: .84rem; margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: .6rem; text-transform: uppercase; letter-spacing: .05em; }
+    .post-img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); background: #101310; }
+    .post-body { margin-top: 1.2rem; display: grid; gap: .9rem; }
+    .post-body p { color: var(--off); font-size: 1rem; }
+    .post-body h2 { margin-top: .7rem; font-size: 1.2rem; }
+    .post-body ul { padding-left: 1.1rem; display: grid; gap: .35rem; }
+    .post-body li { color: var(--off); }
+    .post-cta { margin-top: 1.4rem; display: flex; gap: .7rem; flex-wrap: wrap; }
+  </style>
+  <script type="application/ld+json" id="ld-json"></script>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link show-mobile">Officials</a>
+      <a href="/leaderboard" class="nav-link">Rankings</a>
+      <a href="/polls" class="nav-link">Polls</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/news" class="nav-link active">News</a>
+    </div>
+  </nav>
+
+  <div class="section">
+    <div class="container post-wrap">
+      <div class="page-header">
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <a href="/news" class="btn btn-ghost btn-sm">Back to News</a>
+          <a href="/" class="btn btn-green btn-sm">Rate an Official</a>
+        </div>
+        <p class="page-sub" style="margin-top:.8rem;">Curated updates with context, so you know wetin matter.</p>
+      </div>
+
+      <article class="card">
+        <h1 class="post-title" id="post-title">Loading…</h1>
+        <div class="post-meta" id="post-meta"></div>
+        <div style="margin-bottom:1rem;">
+          <img class="post-img" id="post-image" alt="" src="/images/naijarate-og.jpg">
+        </div>
+        <div class="post-body" id="post-body"></div>
+        <div class="post-cta">
+          <a href="/news" class="btn btn-ghost">More Updates</a>
+          <a href="/polls" class="btn btn-green">Answer Polls</a>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <strong>NaijaRate</strong> — Follow the governance timeline<br>
+    <a href="/" style="color:var(--green-light);">Officials</a> ·
+    <a href="/polls" style="color:var(--green-light);">Polls</a> ·
+    <a href="/blog" style="color:var(--green-light);">Blog</a>
+  </footer>
+
+  <script type="module">
+    const titleEl = document.getElementById('post-title');
+    const metaEl = document.getElementById('post-meta');
+    const imgEl = document.getElementById('post-image');
+    const bodyEl = document.getElementById('post-body');
+
+    const metaDescEl = document.getElementById('meta-description');
+    const metaKeywordsEl = document.getElementById('meta-keywords');
+    const canonicalEl = document.getElementById('canonical-link');
+    const ogTitleEl = document.getElementById('og-title');
+    const ogDescEl = document.getElementById('og-description');
+    const ogImgEl = document.getElementById('og-image');
+    const ogUrlEl = document.getElementById('og-url');
+    const twTitleEl = document.getElementById('twitter-title');
+    const twDescEl = document.getElementById('twitter-description');
+    const twImgEl = document.getElementById('twitter-image');
+    const ldEl = document.getElementById('ld-json');
+
+    function formatDate(iso) {
+      try {
+        return new Date(iso).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch {
+        return iso || '';
+      }
+    }
+
+    function getSlug() {
+      const url = new URL(window.location.href);
+      const q = url.searchParams.get('slug');
+      if (q) return q;
+      const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
+      const i = parts.indexOf('news');
+      if (i >= 0 && parts[i + 1]) return parts[i + 1];
+      return null;
+    }
+
+    async function loadPost(slug) {
+      const base = window.location.pathname.startsWith('/public/') ? '/public/data/' : '/data/';
+      const res = await fetch(base + 'news-posts.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load posts');
+      const data = await res.json();
+      return (data.posts || []).find((p) => p.slug === slug) || null;
+    }
+
+    function setMeta(post, canonicalUrl) {
+      document.title = post.title + ' | NaijaRate News';
+      if (metaDescEl) metaDescEl.setAttribute('content', post.meta_description || post.excerpt || '');
+      if (metaKeywordsEl) metaKeywordsEl.setAttribute('content', post.meta_keywords || (post.tags || []).join(', '));
+      if (canonicalEl) canonicalEl.href = canonicalUrl;
+
+      if (ogTitleEl) ogTitleEl.setAttribute('content', post.title || '');
+      if (ogDescEl) ogDescEl.setAttribute('content', post.meta_description || post.excerpt || '');
+      if (ogImgEl) ogImgEl.setAttribute('content', post.featured_image || '/images/naijarate-og.jpg');
+      if (ogUrlEl) ogUrlEl.setAttribute('content', canonicalUrl);
+
+      if (twTitleEl) twTitleEl.setAttribute('content', post.title || '');
+      if (twDescEl) twDescEl.setAttribute('content', post.meta_description || post.excerpt || '');
+      if (twImgEl) twImgEl.setAttribute('content', post.featured_image || '/images/naijarate-og.jpg');
+    }
+
+    function setLd(post, canonicalUrl) {
+      const origin = window.location.origin || '';
+      if (!ldEl) return;
+      ldEl.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "headline": post.title,
+        "description": post.meta_description || post.excerpt,
+        "image": [origin + (post.featured_image || '/images/naijarate-og.jpg')],
+        "datePublished": post.published_at,
+        "dateModified": post.updated_at || post.published_at,
+        "author": { "@type": "Organization", "name": "NaijaRate" },
+        "publisher": { "@type": "Organization", "name": "NaijaRate" },
+        "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl }
+      });
+    }
+
+    function render(post) {
+      titleEl.textContent = post.title;
+      const when = formatDate(post.published_at);
+      metaEl.textContent = [when, post.category].filter(Boolean).join(' · ');
+
+      imgEl.src = post.featured_image || '/images/naijarate-og.jpg';
+      imgEl.alt = post.featured_image_alt || post.title;
+
+      bodyEl.innerHTML = post.body_html || '';
+    }
+
+    (async function init() {
+      const slug = getSlug();
+      const origin = window.location.origin || '';
+      const canonicalUrl = slug ? (origin + '/news/' + slug) : (origin + '/news');
+
+      if (!slug) {
+        document.title = 'News | NaijaRate';
+        if (titleEl) titleEl.textContent = 'Update not found';
+        if (metaEl) metaEl.textContent = '';
+        if (bodyEl) bodyEl.innerHTML = '<p class="muted">This news link looks incomplete. Go back to the news page and pick an update.</p>';
+        if (canonicalEl) canonicalEl.href = origin + '/news';
+        if (ogUrlEl) ogUrlEl.setAttribute('content', origin + '/news');
+        return;
+      }
+
+      try {
+        const post = await loadPost(slug);
+        if (!post) throw new Error('Not found');
+        setMeta(post, canonicalUrl);
+        setLd(post, canonicalUrl);
+        render(post);
+      } catch (e) {
+        document.title = 'Update not found | NaijaRate News';
+        if (titleEl) titleEl.textContent = 'Update not found';
+        if (metaEl) metaEl.textContent = '';
+        if (bodyEl) bodyEl.innerHTML = '<p class="muted">We no see this update. Use the news page to pick another one.</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

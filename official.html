@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Official Profile - NaijaRate</title>
+<meta name="description" id="meta-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
+<meta name="keywords" content="official profile Nigeria, public servant ratings, NaijaRate profile, governance review">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="/official" id="canonical-link">
+<meta property="og:type" content="profile">
+<meta property="og:site_name" content="NaijaRate">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" id="og-title" content="Official Profile - NaijaRate">
+<meta property="og:description" id="og-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
+<meta property="og:image" id="og-image" content="/images/naijarate-og.jpg">
+<meta property="og:url" id="og-url" content="/official">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" id="twitter-title" content="Official Profile - NaijaRate">
+<meta name="twitter:description" id="twitter-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
+<meta name="twitter:image" id="twitter-image" content="/images/naijarate-og.jpg">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* ── PROFILE HERO ── */
+  .profile-hero {
+    background: linear-gradient(180deg, rgba(0,135,81,.08) 0%, transparent 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 2.5rem 0 2rem;
+  }
+  .profile-top {
+    display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;
+  }
+  .profile-avatar {
+    width: 110px; height: 110px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2.2rem;
+    color: #fff; overflow: hidden; border: 3px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  .profile-avatar img { width:100%; height:100%; object-fit:cover; }
+  .profile-info { flex: 1; min-width: 220px; }
+  .profile-name {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem); line-height: 1.15; margin-bottom: .4rem;
+  }
+  .profile-role { color: var(--muted); font-size: 1rem; margin-bottom: .7rem; }
+  .profile-meta { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .profile-actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.2rem; }
+
+  /* ── SCORE CARD ── */
+  .score-hero {
+    display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;
+  }
+  .score-big {
+    text-align: center; flex-shrink: 0;
+  }
+  .score-number {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 3.5rem;
+    line-height: 1;
+  }
+  .score-stars { display: flex; gap: 3px; justify-content: center; margin: .3rem 0; }
+  .score-star { font-size: 1.3rem; }
+  .score-count { font-size: .78rem; color: var(--muted); }
+  .score-divider { width: 1px; height: 80px; background: var(--border); flex-shrink: 0; }
+
+  /* Category breakdown */
+  .cat-breakdown { flex: 1; min-width: 220px; }
+  .cat-row {
+    display: flex; align-items: center; gap: .8rem; margin-bottom: .6rem;
+  }
+  .cat-name { font-size: .8rem; width: 110px; flex-shrink: 0; color: var(--muted); }
+  .cat-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,.07); border-radius: 4px; overflow: hidden; }
+  .cat-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--green), var(--green-light));
+    transition: width 1s cubic-bezier(.4,0,.2,1);
+  }
+  .cat-score { font-family: 'Syne', sans-serif; font-weight: 700; font-size: .82rem; width: 28px; text-align: right; }
+
+  /* Report count pill */
+  .report-pill {
+    display: flex; align-items: center; gap: .5rem; flex-shrink: 0;
+    background: rgba(192,57,43,.1); border: 1px solid rgba(192,57,43,.25);
+    color: #e57368; padding: .8rem 1.2rem; border-radius: var(--radius);
+    text-align: center;
+  }
+  .report-pill-n { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; }
+  .report-pill-l { font-size: .72rem; }
+
+  /* ── TABS ── */
+  .profile-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  .profile-tab {
+    padding: .75rem 1.4rem; font-size: .88rem; font-weight: 500;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all .2s; background: none; border-top: none; border-left: none; border-right: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .profile-tab.active { color: var(--green-light); border-bottom-color: var(--green-light); }
+  .profile-tab:hover:not(.active) { color: var(--white); }
+
+  /* ── RATING MODAL TRIGGER ── */
+  .rate-cta {
+    position: sticky; bottom: 1.5rem; z-index: 50;
+    display: flex; justify-content: center; pointer-events: none;
+  }
+  .rate-cta-btn {
+    pointer-events: all;
+    background: var(--green); color: #fff; border: none;
+    padding: .85rem 2.5rem; border-radius: 100px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem;
+    box-shadow: 0 8px 32px rgba(0,135,81,.4);
+    cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: .5rem;
+  }
+  .rate-cta-btn:hover { background: var(--green-light); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,135,81,.5); }
+
+  /* ── REVIEWS ── */
+  .review-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1rem;
+  }
+  .review-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .7rem; flex-wrap: wrap; gap: .5rem; }
+  .review-stars { display: flex; gap: 2px; }
+  .review-star { font-size: .9rem; }
+  .review-meta { font-size: .74rem; color: var(--muted); }
+  .review-text { font-size: .9rem; line-height: 1.7; color: var(--white); }
+  .review-state { font-size: .72rem; color: var(--muted); margin-top: .5rem; }
+
+  /* ── TREND CHART ── */
+  .trend-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1.5rem;
+  }
+  .trend-title { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; margin-bottom: 1rem; }
+  .trend-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; }
+  .trend-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .trend-bar {
+    width: 100%; border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, var(--green-light), var(--green));
+    transition: height .6s ease; min-height: 2px;
+  }
+  .trend-label { font-size: .6rem; color: var(--muted); white-space: nowrap; }
+
+  /* ── INFO GRID ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .info-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
+  .info-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .3rem; }
+  .info-value { font-size: .92rem; font-weight: 500; }
+
+  /* ── SKELETON ── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px;
+  }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  @media (max-width: 640px) {
+    .profile-top { gap: 1.2rem; }
+    .profile-avatar { width: 80px; height: 80px; font-size: 1.6rem; }
+    .score-divider { display: none; }
+    .info-grid { grid-template-columns: 1fr; }
+    .profile-tab { padding: .65rem .9rem; font-size: .8rem; }
+  }
+</style>
+<script>
+  (function setCanonicalMeta() {
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    var current = window.location.origin + window.location.pathname;
+    if (canonical) canonical.href = current;
+    if (ogUrl) ogUrl.setAttribute('content', current);
+  })();
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link show-mobile">Officials</a>
+    <a href="/leaderboard" class="nav-link">Rankings</a>
+    <a href="/polls" class="nav-link">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link">News</a>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- PROFILE HERO -->
+<div class="profile-hero" id="profile-hero">
+  <div class="container">
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">
+      <a href="/" style="color:var(--muted);">Officials</a> <span style="margin:0 .4rem;">›</span>
+      <span id="breadcrumb-name">Loading...</span>
+    </div>
+    <div class="profile-top">
+      <div class="profile-avatar" id="profile-avatar">
+        <div class="skeleton" style="width:110px;height:110px;border-radius:50%;"></div>
+      </div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-name"><div class="skeleton" style="height:2rem;width:280px;"></div></div>
+        <div class="profile-role" id="profile-role"><div class="skeleton" style="height:1rem;width:200px;margin-top:.5rem;"></div></div>
+        <div class="profile-meta" id="profile-meta"></div>
+        <div class="profile-actions" id="profile-actions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="section">
+  <div class="container">
+
+    <!-- Score Card -->
+    <div class="score-hero" id="score-card">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Profile Tabs -->
+    <div class="profile-tabs">
+      <button class="profile-tab active" onclick="showTab('reviews', this)">Reviews</button>
+      <button class="profile-tab" onclick="showTab('trend', this)">Trend</button>
+      <button class="profile-tab" onclick="showTab('about', this)">About</button>
+      <button class="profile-tab" onclick="showTab('reports', this)">Reports <span id="reports-count" style="background:rgba(192,57,43,.2);color:#e57368;border-radius:4px;padding:1px 5px;font-size:.7rem;margin-left:.3rem;"></span></button>
+    </div>
+
+    <!-- REVIEWS TAB -->
+    <div id="tab-reviews">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem;">
+        <div style="font-size:.9rem;color:var(--muted);" id="reviews-summary"></div>
+        <select id="review-sort" onchange="loadReviews()" style="background:var(--card);border:1px solid var(--border);color:var(--white);padding:.4rem .8rem;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;">
+          <option value="newest">Newest First</option>
+          <option value="highest">Highest Rated</option>
+          <option value="lowest">Lowest Rated</option>
+        </select>
+      </div>
+
+      <!-- Score distribution -->
+      <div class="card" style="margin-bottom:1.5rem;" id="score-dist"></div>
+
+      <div id="reviews-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+      <div id="reviews-pagination" style="display:flex;gap:.5rem;margin-top:1.2rem;flex-wrap:wrap;"></div>
+    </div>
+
+    <!-- TREND TAB -->
+    <div id="tab-trend" style="display:none;">
+      <div class="trend-wrap">
+        <div class="trend-title">Rating Trend — Last 30 Days</div>
+        <div class="trend-chart" id="trend-chart">
+          <div class="loading" style="width:100%;"><div class="spinner"></div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:.5rem;">
+          <span style="font-size:.68rem;color:var(--muted);">30 days ago</span>
+          <span style="font-size:.68rem;color:var(--muted);">Today</span>
+        </div>
+      </div>
+
+      <!-- Monthly averages table -->
+      <div class="admin-table-wrap" style="margin-top:1.5rem;">
+        <table class="lb-table">
+          <thead><tr><th>Period</th><th>Avg Rating</th><th>No. of Ratings</th><th>Trend</th></tr></thead>
+          <tbody id="trend-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ABOUT TAB -->
+    <div id="tab-about" style="display:none;">
+      <div class="info-grid" id="about-grid"></div>
+      <div id="bio-section" style="margin-top:1.2rem;display:none;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem;">Biography</div>
+          <div id="bio-text" style="font-size:.9rem;line-height:1.8;color:var(--white);"></div>
+        </div>
+      </div>
+      <div id="social-section" style="margin-top:1.2rem;display:none;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.8rem;">Links</div>
+          <div id="social-links" style="display:flex;gap:.8rem;flex-wrap:wrap;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div id="tab-reports" style="display:none;">
+      <div id="reports-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STICKY RATE CTA -->
+<div class="rate-cta" id="rate-cta" style="display:none;">
+  <button class="rate-cta-btn" onclick="openRateModal()">⭐ Rate This Official</button>
+</div>
+
+<!-- ══════════ RATING MODAL ══════════ -->
+<div class="modal-overlay" id="rate-modal" onclick="if(event.target===this)closeModal('rate-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⭐ Rate Official</h2>
+      <button class="modal-close" onclick="closeModal('rate-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-official" id="modal-info"></div>
+
+      <div class="form-group" style="text-align:center;">
+        <div class="form-label" style="text-align:center;">Overall Performance</div>
+        <div class="star-picker" id="main-stars">
+          <span class="star-pick" data-v="1">★</span>
+          <span class="star-pick" data-v="2">★</span>
+          <span class="star-pick" data-v="3">★</span>
+          <span class="star-pick" data-v="4">★</span>
+          <span class="star-pick" data-v="5">★</span>
+        </div>
+        <div class="star-label" id="star-label"></div>
+      </div>
+
+      <div class="form-label">Rate by Category <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--muted);">(optional)</span></div>
+      <div class="cat-grid">
+        <div><div class="cat-label">Accountability</div><div class="cat-stars" data-cat="accountability"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Service Delivery</div><div class="cat-stars" data-cat="service"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Transparency</div><div class="cat-stars" data-cat="transparency"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Responsiveness</div><div class="cat-stars" data-cat="responsiveness"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Power</div><div class="cat-stars" data-cat="power"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Security</div><div class="cat-stars" data-cat="security"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Economic Stability</div><div class="cat-stars" data-cat="economic_stability"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Education</div><div class="cat-stars" data-cat="education"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Healthcare</div><div class="cat-stars" data-cat="healthcare"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Your Review <span style="font-weight:300;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <textarea class="form-control" id="review-text" placeholder="Share your honest experience or observation..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Your State</label>
+        <select class="form-control" id="reviewer-state">
+          <option value="">Select your state</option>
+          <option>Abia</option><option>Adamawa</option><option>Akwa Ibom</option>
+          <option>Anambra</option><option>Bauchi</option><option>Bayelsa</option>
+          <option>Benue</option><option>Borno</option><option>Cross River</option>
+          <option>Delta</option><option>Ebonyi</option><option>Edo</option>
+          <option>Ekiti</option><option>Enugu</option><option>FCT</option>
+          <option>Gombe</option><option>Imo</option><option>Jigawa</option>
+          <option>Kaduna</option><option>Kano</option><option>Katsina</option>
+          <option>Kebbi</option><option>Kogi</option><option>Kwara</option>
+          <option>Lagos</option><option>Nasarawa</option><option>Niger</option>
+          <option>Ogun</option><option>Ondo</option><option>Osun</option>
+          <option>Oyo</option><option>Plateau</option><option>Rivers</option>
+          <option>Sokoto</option><option>Taraba</option><option>Yobe</option>
+          <option>Zamfara</option>
+        </select>
+      </div>
+
+      <div class="toggle-row" onclick="toggleAnon()">
+        <div class="toggle on" id="anon-toggle"></div>
+        <div>
+          <div style="font-size:.87rem;font-weight:500;">Submit Anonymously</div>
+          <div style="font-size:.72rem;color:var(--muted);">Your identity will not be linked to this rating</div>
+        </div>
+      </div>
+
+      <div id="already-rated-msg" style="display:none;text-align:center;padding:.7rem;background:rgba(0,135,81,.1);border-radius:8px;color:var(--green-light);font-size:.82rem;margin-bottom:.8rem;">
+        ✓ This device has already rated this official.
+      </div>
+
+      <button class="submit-btn" id="submit-rate-btn" onclick="submitRating()" disabled>Select a rating to continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ REPORT MODAL ══════════ -->
+<div class="modal-overlay" id="report-modal" onclick="if(event.target===this)closeModal('report-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🚨 Report Misconduct</h2>
+      <button class="modal-close" onclick="closeModal('report-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-official" id="report-modal-info"></div>
+      <div class="form-group">
+        <div class="form-label">Category of Misconduct</div>
+        <div class="report-tags" id="report-tags">
+          <span class="report-tag">Corruption / Bribery</span>
+          <span class="report-tag">Abuse of Office</span>
+          <span class="report-tag">Embezzlement</span>
+          <span class="report-tag">Negligence of Duty</span>
+          <span class="report-tag">Harassment</span>
+          <span class="report-tag">Election Malpractice</span>
+          <span class="report-tag">Human Rights Abuse</span>
+          <span class="report-tag">Financial Misconduct</span>
+          <span class="report-tag">Other</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" id="report-desc" style="min-height:120px;" placeholder="Describe the misconduct. Be specific — dates, locations, amounts if known..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Evidence / Source Link <span style="font-weight:300;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input type="url" class="form-control" id="evidence-url" placeholder="https://...">
+      </div>
+      <div class="toggle-row" onclick="toggleReportAnon()">
+        <div class="toggle on" id="report-anon-toggle"></div>
+        <div>
+          <div style="font-size:.87rem;font-weight:500;">Submit Anonymously</div>
+          <div style="font-size:.72rem;color:var(--muted);">Enabled by default for your protection</div>
+        </div>
+      </div>
+      <button class="submit-btn danger-btn" onclick="submitReport()">Submit Misconduct Report</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <strong>NaijaRate</strong> — Nigerian Civic Accountability Platform<br>
+  All submissions are 100% anonymous · No personal data collected<br>
+  <a href="/blog" style="color:var(--green-light);">Blog</a> ·
+  <a href="/news" style="color:var(--green-light);">News</a> ·
+  <a href="/polls" style="color:var(--green-light);">Polls</a>
+</footer>
+
+<script type="module">
+import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt, scoreColor } from './js/supabase-client.js';
+
+// ── GET ROUTE PARAMS (id or slug) ──
+const params = new URLSearchParams(window.location.search);
+let officialId = params.get('id') || '';
+const pathParts = window.location.pathname.replace(/\/+$/,'').split('/').filter(Boolean);
+const slugFromPath = (pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'official')
+  ? decodeURIComponent(pathParts[pathParts.length - 1])
+  : '';
+const officialSlug = (params.get('slug') || slugFromPath || '').toLowerCase();
+if (!officialId && !officialSlug) { window.location.href = '/'; }
+
+const anonId = getAnonId();
+const STAR_LABELS = ['','Very Poor','Poor','Average','Good','Excellent'];
+const CATEGORY_KEYS = ['accountability','service','transparency','responsiveness','power','security','economic_stability','education','healthcare'];
+const CATEGORY_LABELS_DEFAULT = {
+  accountability: 'Accountability',
+  service: 'Service Delivery',
+  transparency: 'Transparency',
+  responsiveness: 'Responsiveness',
+  power: 'Power',
+  security: 'Security',
+  economic_stability: 'Economic Stability',
+  education: 'Education',
+  healthcare: 'Healthcare',
+};
+const CATEGORY_LABELS_POWER = {
+  accountability: 'Billing Fairness',
+  service: 'Fault Resolution',
+  transparency: 'Communication Transparency',
+  responsiveness: 'Outage Response',
+  power: 'Supply Reliability',
+  security: 'Grid Security',
+  economic_stability: 'Tariff Affordability',
+  education: 'Customer Communication',
+  healthcare: 'Safety Compliance',
+};
+const CATEGORY_PROFILES = {
+  general: { labels: CATEGORY_LABELS_DEFAULT, visible: CATEGORY_KEYS },
+  president: {
+    labels: {
+      ...CATEGORY_LABELS_DEFAULT,
+      economic_stability: 'Economy / Inflation',
+      service: 'Jobs / Employment',
+      security: 'Security',
+      power: 'Power',
+      responsiveness: 'Foreign Policy',
+      accountability: 'Governance Delivery',
+    },
+    visible: ['accountability','transparency','economic_stability','service','security','power','responsiveness'],
+  },
+  governor: {
+    labels: {
+      ...CATEGORY_LABELS_DEFAULT,
+      power: 'Roads',
+      education: 'Education',
+      healthcare: 'Health',
+      security: 'Security',
+      service: 'Waste Management',
+      responsiveness: 'Transport',
+    },
+    visible: ['accountability','transparency','power','education','healthcare','security','service','responsiveness'],
+  },
+  local: {
+    labels: {
+      ...CATEGORY_LABELS_DEFAULT,
+      service: 'Sanitation',
+      power: 'Roads',
+      economic_stability: 'Markets',
+      healthcare: 'Primary Health',
+      responsiveness: 'Water',
+    },
+    visible: ['accountability','transparency','service','power','economic_stability','healthcare','responsiveness'],
+  },
+  dept_generic: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Mandate Delivery', responsiveness:'Stakeholder Responsiveness', economic_stability:'Budget Efficiency' },
+    visible: ['accountability','service','transparency','responsiveness','economic_stability'],
+  },
+  power: { labels: CATEGORY_LABELS_POWER, visible: ['accountability','service','transparency','responsiveness','power','security','economic_stability'] },
+  education_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Learning Delivery', education:'Learning Outcomes', economic_stability:'Funding Sustainability', responsiveness:'Stakeholder Engagement' },
+    visible: ['accountability','service','transparency','responsiveness','education','economic_stability'],
+  },
+  health_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Care Quality', healthcare:'Public Health Outcomes', responsiveness:'Emergency Response' },
+    visible: ['accountability','service','transparency','responsiveness','healthcare','security'],
+  },
+  economy_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Policy Execution', economic_stability:'Macro Stability', power:'Business Climate' },
+    visible: ['accountability','service','transparency','responsiveness','economic_stability','power'],
+  },
+  security_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Operational Delivery', security:'Public Safety Outcomes', responsiveness:'Incident Response' },
+    visible: ['accountability','service','transparency','responsiveness','security'],
+  },
+  infrastructure_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Project Delivery', power:'Infrastructure Quality', economic_stability:'Value for Money' },
+    visible: ['accountability','service','transparency','responsiveness','power','economic_stability'],
+  },
+  agriculture_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Farmer Support', economic_stability:'Food Price Stability', security:'Food Security' },
+    visible: ['accountability','service','transparency','responsiveness','economic_stability','security'],
+  },
+  transport_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Transport Service Reliability', power:'Network Quality', security:'Travel Safety' },
+    visible: ['accountability','service','transparency','responsiveness','power','security'],
+  },
+};
+let official = null;
+let anonOn = true, reportAnonOn = true, mainStar = 0, catStars = {}, alreadyRated = false;
+let reviewPage = 1; const reviewsPerPage = 10;
+let allReviews = [];
+
+function avatarImgStyle(tier) {
+  return String(tier || '').includes('agency')
+    ? 'width:100%;height:100%;border-radius:50%;object-fit:contain;background:#fff;padding:8px;'
+    : 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+}
+
+function slugifyOfficialName(name) {
+  return String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function isPowerSectorOfficial(o) {
+  const hay = `${o?.full_name || ''} ${o?.common_name || ''} ${o?.role || ''} ${o?.website || ''}`.toLowerCase();
+  return /electricity|disco|distribution company|transmission company of nigeria|nerc|nbet|rea|nemsa|niso|ikeja electric|eko electricity|ibedc|aedc|phed|kaedco|kedco|yedc|eedc|jos electric|benin electricity/.test(hay);
+}
+
+function detectDepartmentSector(role) {
+  if (/education|school|university|polytechnic|teaching/.test(role)) return 'education';
+  if (/health|medical|hospital|phc|nphcda|nafdac|aids/.test(role)) return 'health';
+  if (/finance|budget|econom|revenue|tax|customs|trade|industry|investment|fiscal|cbn|firs|sec/.test(role)) return 'economy';
+  if (/interior|defen[cs]e|police|security|intelligence|immigration|nscdc|ndlea|military/.test(role)) return 'security';
+  if (/works|housing|infrastructure|urban|water resources|environment/.test(role)) return 'infrastructure';
+  if (/agric|livestock|food/.test(role)) return 'agriculture';
+  if (/transport|aviation|marine|maritime|rail|ports|waterways/.test(role)) return 'transport';
+  return '';
+}
+
+function detectCategoryProfile(o) {
+  const role = `${o?.role || ''}`.toLowerCase();
+  const tier = `${o?.tier || ''}`.toLowerCase();
+
+  if (isPowerSectorOfficial(o)) return 'power';
+  if (/president|vice president/.test(role)) return 'president';
+  if (tier === 'state_executive' && /governor|deputy governor/.test(role)) return 'governor';
+  if (tier === 'local_government') return 'local';
+
+  const isDepartmentOffice = /minister|commissioner|director general|\bdg\b|managing director|\bmd\b|ceo|executive secretary|chairman|comptroller-general|inspector general|administrator/.test(role)
+    || tier.includes('agency');
+  if (isDepartmentOffice) {
+    const sector = detectDepartmentSector(role);
+    if (sector) return `${sector}_dept`;
+    return 'dept_generic';
+  }
+
+  return 'general';
+}
+
+function getCategoryLabelsForOfficial(o) {
+  const key = detectCategoryProfile(o);
+  return (CATEGORY_PROFILES[key] || CATEGORY_PROFILES.general).labels;
+}
+
+function getCategoryProfileForOfficial(o) {
+  const key = detectCategoryProfile(o);
+  return CATEGORY_PROFILES[key] || CATEGORY_PROFILES.general;
+}
+
+function applyCategoryLabelsForOfficial(o) {
+  const profile = getCategoryProfileForOfficial(o);
+  const labels = profile.labels || CATEGORY_LABELS_DEFAULT;
+  const visible = profile.visible || CATEGORY_KEYS;
+  document.querySelectorAll('.cat-stars').forEach((row) => {
+    const wrap = row.parentElement;
+    const labelEl = row.previousElementSibling;
+    if (labelEl && labelEl.classList.contains('cat-label')) {
+      labelEl.textContent = labels[row.dataset.cat] || CATEGORY_LABELS_DEFAULT[row.dataset.cat] || row.dataset.cat;
+    }
+    const active = visible.includes(row.dataset.cat);
+    if (wrap) wrap.style.display = active ? '' : 'none';
+    if (!active) {
+      row.querySelectorAll('.cat-star').forEach((cs) => cs.classList.remove('on'));
+      delete catStars[row.dataset.cat];
+    }
+  });
+}
+
+function getStoredRatings() {
+  try {
+    return JSON.parse(localStorage.getItem('nr_rated_officials') || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function getStoredRating(id) {
+  return getStoredRatings()[id] || null;
+}
+
+function saveStoredRating(id, payload) {
+  const ratings = getStoredRatings();
+  ratings[id] = payload;
+  localStorage.setItem('nr_rated_officials', JSON.stringify(ratings));
+}
+
+function updateSeoForOfficial(o) {
+  const profileUrl = window.location.origin + window.location.pathname;
+  const title = `${o.full_name} - ${o.role} | NaijaRate`;
+  const description = `${o.full_name} (${o.role}) on NaijaRate: ratings, citizen reviews, reports, and accountability insights${o.states?.name ? ` in ${o.states.name}` : ''}.`;
+  const image = o.photo_url || '/images/naijarate-og.jpg';
+  document.title = title;
+  const descMeta = document.getElementById('meta-description');
+  const canonical = document.getElementById('canonical-link');
+  const ogTitle = document.getElementById('og-title');
+  const ogDesc = document.getElementById('og-description');
+  const ogImage = document.getElementById('og-image');
+  const ogUrl = document.getElementById('og-url');
+  const twTitle = document.getElementById('twitter-title');
+  const twDesc = document.getElementById('twitter-description');
+  const twImage = document.getElementById('twitter-image');
+  if (descMeta) descMeta.setAttribute('content', description);
+  if (canonical) canonical.href = profileUrl;
+  if (ogTitle) ogTitle.setAttribute('content', title);
+  if (ogDesc) ogDesc.setAttribute('content', description);
+  if (ogImage) ogImage.setAttribute('content', image);
+  if (ogUrl) ogUrl.setAttribute('content', profileUrl);
+  if (twTitle) twTitle.setAttribute('content', title);
+  if (twDesc) twDesc.setAttribute('content', description);
+  if (twImage) twImage.setAttribute('content', image);
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: o.full_name,
+    jobTitle: o.role,
+    image: image,
+    description: description,
+    url: profileUrl,
+    worksFor: {
+      '@type': 'GovernmentOrganization',
+      name: 'Government of Nigeria'
+    }
+  };
+  const oldSchema = document.getElementById('official-jsonld');
+  if (oldSchema) oldSchema.remove();
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.id = 'official-jsonld';
+  script.textContent = JSON.stringify(jsonLd);
+  document.head.appendChild(script);
+}
+
+// ── LOAD OFFICIAL ──
+async function loadOfficial() {
+  let data = null;
+  let error = null;
+
+  if (officialId) {
+    ({ data, error } = await supabase
+      .from('officials')
+      .select('*,states(name)')
+      .eq('id', officialId)
+      .eq('status', 'active')
+      .single());
+  } else {
+    const res = await supabase
+      .from('officials')
+      .select('*,states(name)')
+      .eq('status', 'active')
+      .limit(3000);
+    error = res.error;
+    if (!error) {
+      const rows = res.data || [];
+      const match = rows.find((o) =>
+        slugifyOfficialName(o.full_name) === officialSlug ||
+        slugifyOfficialName(o.common_name) === officialSlug
+      );
+      data = match || null;
+    }
+  }
+
+  if (error || !data) { window.location.href = '/'; return; }
+  officialId = data.id;
+  official = data;
+  const canonicalSlug = slugifyOfficialName(data.full_name || data.common_name || 'official');
+  if (canonicalSlug && window.location.pathname !== `/official/${canonicalSlug}`) {
+    window.history.replaceState({}, '', `/official/${canonicalSlug}`);
+  }
+  renderHero();
+  renderScoreCard();
+  loadReviews();
+  loadTrend();
+  renderAbout();
+  loadReports();
+  document.getElementById('rate-cta').style.display = 'flex';
+  updateSeoForOfficial(data);
+}
+
+// ── HERO ──
+function renderHero() {
+  const o = official;
+  const color = TIER_COLORS[o.tier] || '#888';
+  const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+
+  document.getElementById('breadcrumb-name').textContent = o.full_name;
+
+  const avatarEl = document.getElementById('profile-avatar');
+  avatarEl.style.background = color + '22';
+  avatarEl.style.color = color;
+  avatarEl.innerHTML = o.photo_url
+    ? `<img src="${o.photo_url}" alt="${o.full_name}" style="${avatarImgStyle(o.tier)}" onerror="this.parentElement.textContent='${initials}'">`
+    : initials;
+
+  document.getElementById('profile-name').textContent = o.full_name;
+  document.getElementById('profile-role').textContent = o.role;
+
+  const metaEl = document.getElementById('profile-meta');
+  const tier = TIER_LABELS[o.tier] || o.tier;
+  metaEl.innerHTML = `
+    <span class="tier-badge" style="color:${color};border-color:${color}44;background:${color}11;">${tier}</span>
+    ${o.states?.name ? `<span class="tier-badge" style="color:var(--muted);border-color:var(--border);">📍 ${o.states.name}</span>` : ''}
+    ${o.party ? `<span class="tier-badge" style="color:var(--muted);border-color:var(--border);">🏛 ${o.party}</span>` : ''}
+    ${o.office_start ? `<span class="tier-badge" style="color:var(--muted);border-color:var(--border);">📅 Since ${new Date(o.office_start).getFullYear()}</span>` : ''}
+  `;
+
+  document.getElementById('profile-actions').innerHTML = `
+    <button class="btn btn-green" onclick="openRateModal()">⭐ Rate This Official</button>
+    <button class="btn btn-danger" onclick="openReportModal()">🚨 Report Misconduct</button>
+    <button class="btn btn-ghost" onclick="shareWhatsApp()">🟢 WhatsApp</button>
+    <button class="btn btn-ghost" onclick="shareProfile()">↗ Share</button>
+  `;
+}
+
+// ── SCORE CARD ──
+function renderScoreCard() {
+  const o = official;
+  const rating = parseFloat(o.rating_avg) || 0;
+  const count = o.rating_count || 0;
+  const color = rating ? scoreColor(rating) : 'var(--muted)';
+  const profile = getCategoryProfileForOfficial(o);
+  const labels = profile.labels || CATEGORY_LABELS_DEFAULT;
+  const values = {
+    accountability: parseFloat(o.accountability_avg)||0,
+    service: parseFloat(o.service_avg)||0,
+    transparency: parseFloat(o.transparency_avg)||0,
+    responsiveness: parseFloat(o.responsiveness_avg)||0,
+    power: parseFloat(o.power_avg)||0,
+    security: parseFloat(o.security_avg)||0,
+    economic_stability: parseFloat(o.economic_stability_avg)||0,
+    education: parseFloat(o.education_avg)||0,
+    healthcare: parseFloat(o.healthcare_avg)||0,
+  };
+  const cats = (profile.visible || CATEGORY_KEYS).map((key) => ({
+    label: labels[key] || CATEGORY_LABELS_DEFAULT[key] || key,
+    val: values[key] || 0,
+  }));
+
+  document.getElementById('score-card').innerHTML = `
+    <div class="score-big">
+      <div class="score-number" style="color:${color};">${rating ? rating.toFixed(1) : '—'}</div>
+      <div class="score-stars">${[1,2,3,4,5].map(i=>`<span class="score-star" style="color:${rating>=i?'#e8a020':rating>=i-.5?'#e8a02099':'#3a3f36'};">★</span>`).join('')}</div>
+      <div class="score-count">${fmt(count)} rating${count!==1?'s':''}</div>
+    </div>
+    <div class="score-divider"></div>
+    <div class="cat-breakdown">
+      ${cats.map(c => {
+        const pct = Math.round((c.val / 5) * 100);
+        return `
+        <div class="cat-row">
+          <span class="cat-name">${c.label}</span>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
+          <span class="cat-score" style="color:${c.val?scoreColor(c.val):'var(--muted)'};">${c.val?c.val.toFixed(1):'—'}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    ${o.report_count > 0 ? `
+    <div class="report-pill">
+      <div>
+        <div class="report-pill-n">${o.report_count}</div>
+        <div class="report-pill-l">Misconduct<br>Report${o.report_count!==1?'s':''}</div>
+      </div>
+    </div>` : ''}
+  `;
+
+  // Update reports tab count badge
+  if (o.report_count > 0) {
+    document.getElementById('reports-count').textContent = o.report_count;
+  }
+}
+
+// ── REVIEWS ──
+window.loadReviews = async () => {
+  const sort = document.getElementById('review-sort').value;
+  let q = supabase.from('public_ratings')
+    .select('*')
+    .eq('official_id', officialId);
+
+  if (sort === 'highest') q = q.order('overall', {ascending:false});
+  else if (sort === 'lowest') q = q.order('overall', {ascending:true});
+  else q = q.order('created_at', {ascending:false});
+
+  const { data, error } = await q;
+  if (error) {
+    document.getElementById('reviews-summary').textContent = 'Unable to load reviews right now.';
+    document.getElementById('score-dist').innerHTML = '<div class="empty">Unable to load rating distribution.</div>';
+    document.getElementById('reviews-list').innerHTML = '<div class="empty">Unable to load reviews right now.</div>';
+    document.getElementById('reviews-pagination').innerHTML = '';
+    return;
+  }
+  allReviews = (data || []);
+  reviewPage = 1;
+
+  // Score distribution
+  const dist = [1,2,3,4,5].map(s => ({score:s, count: allReviews.filter(r=>r.overall===s).length}));
+  const maxCount = Math.max(...dist.map(d=>d.count), 1);
+  const total = allReviews.length;
+  document.getElementById('score-dist').innerHTML = `
+    <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.8rem;text-transform:uppercase;letter-spacing:.05em;">Rating Distribution</div>
+    ${dist.reverse().map(d => `
+      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.4rem;">
+        <span style="font-size:.8rem;color:var(--gold);width:16px;text-align:right;">${d.score}★</span>
+        <div style="flex:1;height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${total?(d.count/maxCount*100):0}%;background:linear-gradient(90deg,var(--green),var(--green-light));border-radius:4px;transition:width .8s;"></div>
+        </div>
+        <span style="font-size:.75rem;color:var(--muted);width:40px;">${d.count} <span style="font-size:.65rem;">(${total?Math.round(d.count/total*100):0}%)</span></span>
+      </div>`).join('')}
+  `;
+
+  renderReviews();
+};
+
+function renderReviews() {
+  const withText = allReviews.filter(r => r.review_text);
+  const total = allReviews.length;
+  document.getElementById('reviews-summary').textContent =
+    `${fmt(total)} rating${total!==1?'s':''} · ${fmt(withText.length)} with written review${withText.length!==1?'s':''}`;
+
+  const slice = withText.slice((reviewPage-1)*reviewsPerPage, reviewPage*reviewsPerPage);
+
+  if (!slice.length) {
+    document.getElementById('reviews-list').innerHTML = `
+      <div class="empty">
+        ${withText.length === 0 ? 'No written reviews yet. Be the first to leave one.' : 'No more reviews.'}
+      </div>`;
+    renderReviewPag(withText.length);
+    return;
+  }
+
+  document.getElementById('reviews-list').innerHTML = slice.map(r => {
+    const color = scoreColor(r.overall);
+    const profile = getCategoryProfileForOfficial(official);
+    const labels = profile.labels || CATEGORY_LABELS_DEFAULT;
+    const cats = (profile.visible || CATEGORY_KEYS)
+      .filter((key) => r[key])
+      .map((key) => `${labels[key] || key}: ${r[key]}`)
+      .join(' · ');
+
+    return `
+    <div class="review-card fade-up">
+      <div class="review-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;">
+            <div class="review-stars">${[1,2,3,4,5].map(i=>`<span class="review-star" style="color:${r.overall>=i?'#e8a020':'#3a3f36'};">★</span>`).join('')}</div>
+            <span style="font-family:Syne,sans-serif;font-weight:700;font-size:.9rem;color:${color};">${r.overall}/5</span>
+          </div>
+          ${cats ? `<div style="font-size:.7rem;color:var(--muted);">${cats}</div>` : ''}
+        </div>
+        <div class="review-meta">
+          ${r.reviewer_state ? `📍 ${r.reviewer_state} · ` : ''}${timeAgo(r.created_at)}
+        </div>
+      </div>
+      <div class="review-text">${r.review_text}</div>
+    </div>`;
+  }).join('');
+
+  renderReviewPag(withText.length);
+}
+
+function renderReviewPag(total) {
+  const pages = Math.ceil(total / reviewsPerPage);
+  const el = document.getElementById('reviews-pagination');
+  if (pages <= 1) { el.innerHTML=''; return; }
+  el.innerHTML = Array.from({length:pages},(_,i)=>i+1)
+    .map(p=>`<button class="tab ${p===reviewPage?'active':''}" onclick="goReviewPage(${p})">${p}</button>`).join('');
+}
+window.goReviewPage = (p) => { reviewPage=p; renderReviews(); document.getElementById('tab-reviews').scrollIntoView({behavior:'smooth'}); };
+
+// ── TREND ──
+async function loadTrend() {
+  const { data, error } = await supabase.from('public_ratings')
+    .select('overall,created_at')
+    .eq('official_id', officialId)
+    .order('created_at', {ascending:true});
+
+  if (error) {
+    document.getElementById('trend-chart').innerHTML = '<div class="empty" style="width:100%;">Unable to load trend data.</div>';
+    document.getElementById('trend-table').innerHTML = '<tr><td colspan="4"><div class="empty">Unable to load data.</div></td></tr>';
+    return;
+  }
+
+  if (!data || !data.length) {
+    document.getElementById('trend-chart').innerHTML = '<div class="empty" style="width:100%;">No rating data yet.</div>';
+    document.getElementById('trend-table').innerHTML = '<tr><td colspan="4"><div class="empty">No data.</div></td></tr>';
+    return;
+  }
+
+  // Daily buckets for last 30 days
+  const now = new Date();
+  const days = [];
+  for (let i=29; i>=0; i--) {
+    const d = new Date(now); d.setDate(now.getDate()-i);
+    const key = d.toISOString().slice(0,10);
+    days.push({ key, label: i===0?'Today':i===1?'Yesterday':d.toLocaleDateString('en-NG',{month:'short',day:'numeric'}), ratings:[] });
+  }
+  data.forEach(r => {
+    const key = r.created_at.slice(0,10);
+    const bucket = days.find(d=>d.key===key);
+    if (bucket) bucket.ratings.push(r.overall);
+  });
+
+  const maxAvg = Math.max(...days.map(d=>d.ratings.length?d.ratings.reduce((a,b)=>a+b,0)/d.ratings.length:0), 1);
+  document.getElementById('trend-chart').innerHTML = days.map(d => {
+    const avg = d.ratings.length ? d.ratings.reduce((a,b)=>a+b,0)/d.ratings.length : 0;
+    const heightPct = avg ? (avg/5)*100 : 0;
+    return `
+    <div class="trend-bar-wrap" title="${d.label}: ${avg?avg.toFixed(1):'No data'}">
+      <div class="trend-bar" style="height:${heightPct}%;background:${avg?`linear-gradient(180deg,${scoreColor(avg)},${scoreColor(avg)}88)`:'rgba(255,255,255,.08)'};"></div>
+    </div>`;
+  }).join('');
+
+  // Monthly table
+  const months = {};
+  data.forEach(r => {
+    const key = r.created_at.slice(0,7);
+    if (!months[key]) months[key] = [];
+    months[key].push(r.overall);
+  });
+
+  const monthKeys = Object.keys(months).sort().reverse();
+  document.getElementById('trend-table').innerHTML = monthKeys.map((k,i) => {
+    const ratings = months[k];
+    const avg = ratings.reduce((a,b)=>a+b,0)/ratings.length;
+    const prevKey = monthKeys[i+1];
+    const prevAvg = prevKey ? months[prevKey].reduce((a,b)=>a+b,0)/months[prevKey].length : null;
+    const trend = prevAvg !== null ? (avg > prevAvg ? '↑' : avg < prevAvg ? '↓' : '→') : '—';
+    const trendColor = trend==='↑'?'#00b368':trend==='↓'?'#e84040':'var(--muted)';
+    const [y,m] = k.split('-');
+    const label = new Date(y,m-1,1).toLocaleDateString('en-NG',{year:'numeric',month:'long'});
+    return `<tr>
+      <td>${label}</td>
+      <td style="color:${scoreColor(avg)};font-weight:700;">★ ${avg.toFixed(2)}</td>
+      <td style="color:var(--muted);">${fmt(ratings.length)}</td>
+      <td style="color:${trendColor};font-weight:700;">${trend}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ABOUT ──
+function renderAbout() {
+  const o = official;
+  const items = [
+    { label:'Full Name', value: o.full_name },
+    { label:'Current Role', value: o.role },
+    { label:'Tier', value: TIER_LABELS[o.tier]||o.tier },
+    { label:'State', value: o.states?.name||'Federal' },
+    { label:'Political Party', value: o.party||'—' },
+    { label:'Office Start', value: o.office_start ? new Date(o.office_start).toLocaleDateString('en-NG',{year:'numeric',month:'long',day:'numeric'}) : '—' },
+    { label:'Total Ratings', value: fmt(o.rating_count) },
+    { label:'Average Score', value: o.rating_avg ? `${parseFloat(o.rating_avg).toFixed(2)} / 5.00` : 'Not yet rated' },
+  ];
+  document.getElementById('about-grid').innerHTML = items.map(item=>`
+    <div class="info-item">
+      <div class="info-label">${item.label}</div>
+      <div class="info-value">${item.value}</div>
+    </div>`).join('');
+
+  if (o.bio) {
+    document.getElementById('bio-section').style.display='block';
+    document.getElementById('bio-text').textContent = o.bio;
+  }
+
+  const links = [];
+  if (o.social_twitter) links.push(`<a href="https://twitter.com/${o.social_twitter.replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">🐦 Twitter / X</a>`);
+  if (o.website) links.push(`<a href="${o.website}" target="_blank" class="btn btn-ghost btn-sm">🌐 Official Website</a>`);
+  if (links.length) {
+    document.getElementById('social-section').style.display='block';
+    document.getElementById('social-links').innerHTML = links.join('');
+  }
+}
+
+// ── REPORTS ──
+async function loadReports() {
+  const { data, error } = await supabase.from('reports')
+    .select('categories,description,evidence_url,status,created_at')
+    .eq('official_id', officialId)
+    .in('status', ['verified','escalated'])
+    .order('created_at', {ascending:false});
+
+  if (error) {
+    document.getElementById('reports-list').innerHTML = '<div class="empty">Unable to load reports right now.</div>';
+    return;
+  }
+
+  const reports = data || [];
+  if (!reports.length) {
+    document.getElementById('reports-list').innerHTML = '<div class="empty" style="color:var(--green-light);">✓ No misconduct reports found for this official.</div>';
+    return;
+  }
+  document.getElementById('reports-list').innerHTML = reports.map(r=>`
+    <div class="review-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;">
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+          ${(r.categories||[]).map(c=>`<span class="report-tag on" style="font-size:.72rem;">${c}</span>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem;">
+          <span class="status-badge ${r.status==='verified'?'s-verified':r.status==='escalated'?'s-escalated':'s-pending'}">${r.status}</span>
+          <span style="font-size:.72rem;color:var(--muted);">${timeAgo(r.created_at)}</span>
+        </div>
+      </div>
+      <div style="font-size:.88rem;line-height:1.7;">${r.description}</div>
+      ${r.evidence_url?`<div style="margin-top:.6rem;"><a href="${r.evidence_url}" target="_blank" style="color:var(--green-light);font-size:.78rem;">View Evidence →</a></div>`:''}
+    </div>`).join('');
+}
+
+// ── TABS ──
+window.showTab = (tab, btn) => {
+  ['reviews','trend','about','reports'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t===tab?'block':'none';
+  });
+  document.querySelectorAll('.profile-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
+
+// ── RATE MODAL ──
+window.openRateModal = async () => {
+  mainStar=0; catStars={}; anonOn=true;
+  const o = official;
+  applyCategoryLabelsForOfficial(o);
+  const color = TIER_COLORS[o.tier]||'#888';
+  const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+  document.getElementById('modal-info').innerHTML=`
+    <div class="avatar" style="background:${color}22;color:${color};">${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}</div>
+    <div><div style="font-weight:700;font-family:Syne,sans-serif;">${o.full_name}</div><div style="font-size:.8rem;color:var(--muted);">${o.role}</div></div>`;
+  document.querySelectorAll('.star-pick').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.cat-star').forEach(s=>s.classList.remove('on'));
+  document.getElementById('star-label').textContent='';
+  document.getElementById('review-text').value='';
+  document.getElementById('reviewer-state').value='';
+  document.getElementById('anon-toggle').className='toggle on';
+  const btn=document.getElementById('submit-rate-btn');
+  btn.disabled=true; btn.textContent='Select a rating to continue';
+
+  const existingRating = getStoredRating(officialId);
+  alreadyRated = !!existingRating;
+  document.getElementById('already-rated-msg').style.display = existingRating ? 'block' : 'none';
+  if (existingRating) { mainStar = existingRating.overall; updateStars(); }
+  document.getElementById('rate-modal').classList.add('open');
+};
+
+document.querySelectorAll('.star-pick').forEach(s=>s.addEventListener('click',()=>{ mainStar=parseInt(s.dataset.v); updateStars(); }));
+function updateStars(){
+  document.querySelectorAll('.star-pick').forEach(s=>s.classList.toggle('on',parseInt(s.dataset.v)<=mainStar));
+  document.getElementById('star-label').textContent=STAR_LABELS[mainStar]||'';
+  const btn=document.getElementById('submit-rate-btn');
+  btn.disabled=alreadyRated; btn.textContent=alreadyRated?'Already rated on this device':'Submit Rating';
+}
+document.querySelectorAll('.cat-stars').forEach(row=>{
+  row.querySelectorAll('.cat-star').forEach((s,i)=>s.addEventListener('click',()=>{
+    catStars[row.dataset.cat]=i+1;
+    row.querySelectorAll('.cat-star').forEach((cs,ci)=>cs.classList.toggle('on',ci<=i));
+  }));
+});
+window.toggleAnon=()=>{ anonOn=!anonOn; document.getElementById('anon-toggle').className='toggle'+(anonOn?' on':''); };
+
+window.submitRating = async () => {
+  if (!mainStar) return;
+  if (alreadyRated) { showToast('This device has already rated this official.','error'); return; }
+  const btn=document.getElementById('submit-rate-btn');
+  btn.disabled=true; btn.textContent='Submitting...';
+  const payload = {
+    official_id:officialId, anon_id:anonId, overall:mainStar,
+    accountability:catStars.accountability||null, service:catStars.service||null,
+    transparency:catStars.transparency||null, responsiveness:catStars.responsiveness||null,
+    power:catStars.power||null, security:catStars.security||null,
+    economic_stability:catStars.economic_stability||null, education:catStars.education||null,
+    healthcare:catStars.healthcare||null,
+    review_text:document.getElementById('review-text').value.trim()||null,
+    reviewer_state:document.getElementById('reviewer-state').value||null,
+    is_anonymous:anonOn,
+  };
+  let { error } = await supabase.from('ratings').insert(payload);
+  if (error && String(error.message||'').toLowerCase().includes('column')) {
+    const fallback = { ...payload };
+    delete fallback.power;
+    delete fallback.security;
+    delete fallback.economic_stability;
+    delete fallback.education;
+    delete fallback.healthcare;
+    ({ error } = await supabase.from('ratings').insert(fallback));
+  }
+  if(error){ showToast('This device has already rated this official or an error occurred.','error'); btn.disabled=false; btn.textContent='Submit Rating'; return; }
+  saveStoredRating(officialId, { overall: mainStar, created_at: new Date().toISOString() });
+  alreadyRated = true;
+  closeModal('rate-modal');
+  showToast(`Rating submitted ${anonOn?'anonymously ':''}✓`);
+  loadOfficial();
+};
+
+// ── REPORT MODAL ──
+window.openReportModal = () => {
+  const o = official;
+  const color = TIER_COLORS[o.tier]||'#888';
+  const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+  document.getElementById('report-modal-info').innerHTML=`
+    <div class="avatar" style="background:${color}22;color:${color};">${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}</div>
+    <div><div style="font-weight:700;font-family:Syne,sans-serif;">${o.full_name}</div><div style="font-size:.8rem;color:var(--muted);">${o.role}</div></div>`;
+  document.querySelectorAll('.report-tag').forEach(t=>t.classList.remove('on'));
+  document.getElementById('report-desc').value='';
+  document.getElementById('evidence-url').value='';
+  document.getElementById('report-anon-toggle').className='toggle on';
+  document.getElementById('report-modal').classList.add('open');
+};
+document.querySelectorAll('.report-tag').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+window.toggleReportAnon=()=>{ reportAnonOn=!reportAnonOn; document.getElementById('report-anon-toggle').className='toggle'+(reportAnonOn?' on':''); };
+
+window.submitReport = async () => {
+  const cats=[...document.querySelectorAll('.report-tag.on')].map(t=>t.textContent);
+  const desc=document.getElementById('report-desc').value.trim();
+  if(!cats.length||!desc){ showToast('Please select a category and add a description.','error'); return; }
+  const { error } = await supabase.from('reports').insert({
+    official_id:officialId, anon_id:anonId, categories:cats, description:desc,
+    evidence_url:document.getElementById('evidence-url').value.trim()||null,
+    is_anonymous:reportAnonOn,
+  });
+  if(error){ showToast('Error: '+error.message,'error'); return; }
+  closeModal('report-modal');
+  showToast('Misconduct report submitted ✓');
+  loadReports();
+};
+
+// ── SHARE ──
+window.shareWhatsApp = () => {
+  const url = window.location.href;
+  const text = official?.full_name ? `Rate ${official.full_name} on NaijaRate:` : 'Rate this official on NaijaRate:';
+  window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank', 'noopener,noreferrer');
+};
+window.shareProfile = () => {
+  const url = window.location.href;
+  if (navigator.share) {
+    navigator.share({ title:`Rate ${official.full_name} on NaijaRate`, url });
+  } else {
+    navigator.clipboard.writeText(url);
+    showToast('Link copied to clipboard ✓');
+  }
+};
+
+// ── UTILS ──
+window.closeModal = (id) => document.getElementById(id).classList.remove('open');
+function timeAgo(ts){
+  const d=(Date.now()-new Date(ts))/1000;
+  if(d<60) return 'Just now';
+  if(d<3600) return Math.floor(d/60)+'m ago';
+  if(d<86400) return Math.floor(d/3600)+'h ago';
+  if(d<2592000) return Math.floor(d/86400)+'d ago';
+  return new Date(ts).toLocaleDateString('en-NG',{month:'short',day:'numeric',year:'numeric'});
+}
+
+// ── INIT ──
+loadOfficial();
+</script>
+</body>
+</html>

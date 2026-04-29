@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Alerts — NaijaRate Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+<style>
+.alert-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  transition: border-color .2s;
+}
+.alert-card.pending  { border-left: 3px solid #e8a020; }
+.alert-card.approved { border-left: 3px solid #00b368; }
+.alert-card.rejected { border-left: 3px solid #e84040; opacity:.6; }
+.alert-card.applied  { border-left: 3px solid #7c6af7; opacity:.7; }
+
+.alert-name   { font-weight:700; font-size:1rem; margin-bottom:.3rem; }
+.alert-roles  { font-size:.85rem; color:var(--muted); margin-bottom:.6rem; }
+.alert-arrow  { color: var(--green-light); margin: 0 .4rem; }
+.alert-meta   { font-size:.72rem; color: var(--muted); font-family: monospace; margin-bottom:.8rem; display:flex; flex-wrap:wrap; gap:.5rem; }
+.alert-meta span { background:rgba(255,255,255,.05); padding:2px 7px; border-radius:4px; }
+
+.badge-change { display:inline-block; padding:2px 9px; border-radius:4px; font-size:.7rem; font-family:monospace; letter-spacing:.05em; }
+.badge-appointed { background:rgba(0,179,104,.12); color:#00b368; border:1px solid rgba(0,179,104,.3); }
+.badge-removed,.badge-resigned { background:rgba(232,64,64,.12); color:#e84040; border:1px solid rgba(232,64,64,.3); }
+.badge-died    { background:rgba(124,106,247,.12); color:#7c6af7; border:1px solid rgba(124,106,247,.3); }
+.badge-suspended,.badge-impeached { background:rgba(232,160,32,.12); color:#e8a020; border:1px solid rgba(232,160,32,.3); }
+
+.badge-high   { background:rgba(0,179,104,.1);  color:#00b368; border:1px solid rgba(0,179,104,.25); }
+.badge-medium { background:rgba(232,160,32,.1); color:#e8a020; border:1px solid rgba(232,160,32,.25); }
+.badge-low    { background:rgba(170,170,170,.1);color:#aaa;    border:1px solid rgba(170,170,170,.25); }
+
+.sql-block {
+  background:#0a0f18; border:1px solid var(--border); border-radius:6px;
+  padding:12px; font-family:monospace; font-size:.76rem; color:#7dd3a0;
+  white-space:pre-wrap; word-break:break-word; max-height:200px; overflow-y:auto;
+  margin:.8rem 0; display:none;
+}
+.sql-block.open { display:block; }
+
+.action-row { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; }
+.btn-approve { background:rgba(0,179,104,.15); border:1px solid rgba(0,179,104,.4); color:#00b368; }
+.btn-approve:hover { background:rgba(0,179,104,.3); }
+.btn-reject  { background:rgba(232,64,64,.12);  border:1px solid rgba(232,64,64,.35);  color:#e84040; }
+.btn-reject:hover  { background:rgba(232,64,64,.25); }
+.btn-sql     { background:rgba(124,106,247,.12); border:1px solid rgba(124,106,247,.35); color:#7c6af7; }
+.btn-sql:hover     { background:rgba(124,106,247,.25); }
+.btn-copy    { background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--muted); }
+.btn-copy:hover    { color:var(--white); }
+.action-btn  { padding:.4rem .9rem; border-radius:6px; font-size:.78rem; cursor:pointer; font-family:inherit; transition:all .2s; }
+
+.filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.5rem; align-items:center; }
+.filter-btn { padding:.35rem .9rem; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:.78rem; cursor:pointer; transition:all .2s; }
+.filter-btn.active, .filter-btn:hover { border-color:var(--green-light); color:var(--green-light); background:rgba(0,179,104,.07); }
+.empty-state { text-align:center; color:var(--muted); padding:3rem 1rem; font-size:.9rem; }
+</style>
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<div class="admin-main">
+  <div class="admin-header">
+    <div class="admin-title">🔔 AI Alerts</div>
+    <div class="admin-sub">Government change detections from the AI Monitor — review, approve, and apply SQL patches</div>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="stat-cards" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-bottom:1.5rem;" id="alert-stats">
+    <div class="stat-card"><div class="stat-card-n" id="st-pending">—</div><div class="stat-card-l">Pending Review</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="st-approved">—</div><div class="stat-card-l">Approved</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="st-applied">—</div><div class="stat-card-l">Applied to DB</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="st-rejected">—</div><div class="stat-card-l">Rejected</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="st-total">—</div><div class="stat-card-l">Total Detected</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <span style="font-size:.75rem;color:var(--muted);margin-right:.3rem;">Filter:</span>
+    <button class="filter-btn active" data-status="all">All</button>
+    <button class="filter-btn" data-status="pending_review">🟡 Pending</button>
+    <button class="filter-btn" data-status="approved">🟢 Approved</button>
+    <button class="filter-btn" data-status="applied">🟣 Applied</button>
+    <button class="filter-btn" data-status="rejected">🔴 Rejected</button>
+    <div style="margin-left:auto;">
+      <a href="/admin/ai-manager" style="font-size:.78rem;color:var(--green-light);">→ Open AI Manager to run a new scan</a>
+    </div>
+  </div>
+
+  <div id="alerts-list">
+    <div class="empty-state">Loading alerts…</div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase, requireAuth, sidebarHTML, showToast, fmt, wireSignOut } from './js/admin-common.js';
+
+const session = await requireAuth();
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('alerts', session.user.email);
+wireSignOut();
+
+let allAlerts = [];
+let currentFilter = 'all';
+
+async function loadAlerts() {
+  const { data, error } = await supabase
+    .from('news_alerts')
+    .select('*')
+    .order('detected_at', { ascending: false });
+
+  if (error) {
+    // Table doesn't exist yet — show setup instructions
+    if (error.code === '42P01') {
+      document.getElementById('alerts-list').innerHTML = `
+        <div class="alert-card" style="border-left:3px solid #e8a020;">
+          <div class="alert-name">⚠️ Setup Required</div>
+          <p style="color:var(--muted);font-size:.88rem;margin:.5rem 0 1rem;">
+            The <code>news_alerts</code> table does not exist yet.<br>
+            Run <strong>sql/05_news_alerts.sql</strong> in your Supabase SQL Editor to create it,
+            then deploy <strong>scripts/monitor.js</strong> or use the AI Manager to run your first scan.
+          </p>
+          <a href="/admin/ai-manager" class="btn action-btn btn-approve">→ Go to AI Manager</a>
+        </div>`;
+      return;
+    }
+    document.getElementById('alerts-list').innerHTML = `
+      <div class="empty-state">
+        Unable to load AI alerts right now.<br>
+        <span style="font-size:.8rem;">${escHtml(error.message)}</span>
+      </div>`;
+    showToast('Error loading alerts: ' + error.message, 'error');
+    return;
+  }
+
+  allAlerts = data || [];
+  updateStats();
+  renderAlerts();
+}
+
+function updateStats() {
+  const count = (s) => allAlerts.filter(a => a.status === s).length;
+  document.getElementById('st-pending').textContent  = count('pending_review');
+  document.getElementById('st-approved').textContent = count('approved');
+  document.getElementById('st-applied').textContent  = count('applied');
+  document.getElementById('st-rejected').textContent = count('rejected');
+  document.getElementById('st-total').textContent    = allAlerts.length;
+}
+
+function renderAlerts() {
+  const filtered = currentFilter === 'all'
+    ? allAlerts
+    : allAlerts.filter(a => a.status === currentFilter);
+
+  if (!filtered.length) {
+    document.getElementById('alerts-list').innerHTML =
+      `<div class="empty-state">No ${currentFilter === 'all' ? '' : currentFilter.replace('_',' ')} alerts found.<br>
+       <a href="/admin/ai-manager" style="color:var(--green-light);">Run a scan in the AI Manager →</a></div>`;
+    return;
+  }
+
+  document.getElementById('alerts-list').innerHTML = filtered.map(a => {
+    const ct = a.change_type || 'unknown';
+    const conf = a.confidence || 'low';
+    const sqlId = `sql-${a.id}`;
+    return `
+    <div class="alert-card ${a.status?.replace('_review','') || 'pending'}" id="card-${a.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div class="alert-name">${a.official_name || '—'}</div>
+          <div class="alert-roles">
+            <span style="color:var(--muted);">${a.old_role || 'Unknown role'}</span>
+            <span class="alert-arrow">→</span>
+            <strong style="color:var(--white);">${a.new_role || '—'}</strong>
+          </div>
+          ${a.headline ? `<div style="font-size:.83rem;color:var(--muted);margin-bottom:.5rem;">${a.headline}</div>` : ''}
+          <div class="alert-meta">
+            <span>${a.change_date || a.detected_at?.slice(0,10) || '—'}</span>
+            ${a.source ? `<span>📰 ${a.source}</span>` : ''}
+            ${a.state_code ? `<span>📍 ${a.state_code}</span>` : ''}
+            ${a.party ? `<span>🏛 ${a.party}</span>` : ''}
+            ${a.tier ? `<span>${a.tier.replace(/_/g,' ')}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end;flex-shrink:0;">
+          <span class="badge-change badge-${ct}">${ct.toUpperCase()}</span>
+          <span class="badge-change badge-${conf}">${conf.toUpperCase()} CONF</span>
+          <span style="font-size:.68rem;color:var(--muted);font-family:monospace;">
+            Detected ${new Date(a.detected_at).toLocaleDateString('en-NG')}
+          </span>
+        </div>
+      </div>
+
+      ${a.sql_patch ? `
+      <div class="sql-block" id="${sqlId}">${escHtml(a.sql_patch)}</div>` : ''}
+
+      <div class="action-row">
+        ${a.status === 'pending_review' ? `
+          <button class="action-btn btn-approve" onclick="updateStatus('${a.id}','approved')">✅ Approve</button>
+          <button class="action-btn btn-reject"  onclick="updateStatus('${a.id}','rejected')">✕ Reject</button>
+        ` : `<span class="badge-change" style="background:rgba(255,255,255,.05);color:var(--muted);">
+          Status: ${a.status?.replace('_',' ')}
+        </span>`}
+        ${a.sql_patch ? `
+          <button class="action-btn btn-sql" onclick="toggleSQL('${sqlId}')">🗄️ View SQL</button>
+          <button class="action-btn btn-copy" onclick="copySQL('${a.id}')">Copy SQL</button>
+        ` : ''}
+        ${a.status === 'approved' ? `
+          <button class="action-btn btn-approve" onclick="markApplied('${a.id}')">✔ Mark as Applied</button>
+        ` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+window.toggleSQL = (id) => {
+  document.getElementById(id)?.classList.toggle('open');
+};
+
+window.copySQL = (alertId) => {
+  const a = allAlerts.find(x => x.id === alertId);
+  if (a?.sql_patch) {
+    navigator.clipboard.writeText(a.sql_patch)
+      .then(() => showToast('SQL patch copied to clipboard'))
+      .catch(() => showToast('Unable to copy SQL from this browser.','error'));
+  }
+};
+
+window.updateStatus = async (id, status) => {
+  const { error } = await supabase.from('news_alerts')
+    .update({ status, reviewed_at: new Date().toISOString(), reviewed_by: session.user.email })
+    .eq('id', id);
+  if (error) { showToast('Update failed: ' + error.message, 'error'); return; }
+  showToast(`Alert ${status}`);
+  await loadAlerts();
+};
+
+window.markApplied = async (id) => {
+  const { error } = await supabase.from('news_alerts')
+    .update({ status: 'applied', applied_at: new Date().toISOString(), applied_by: session.user.email })
+    .eq('id', id);
+  if (error) { showToast('Update failed: ' + error.message, 'error'); return; }
+  showToast('Marked as applied to database ✓');
+  await loadAlerts();
+};
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.status;
+    renderAlerts();
+  });
+});
+
+loadAlerts();
+</script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nigerian Citizen Polls - NaijaRate</title>
+<meta name="description" content="Vote in anonymous Nigerian civic polls on elections, governance priorities, and party performance trends.">
+<meta name="keywords" content="Nigeria polls, civic voting, election sentiment Nigeria, APC vs PDP poll, NaijaRate polls">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="/polls" id="canonical-link">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NaijaRate">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" content="NaijaRate Polls - Anonymous Civic Voting in Nigeria">
+<meta property="og:description" content="Cast anonymous votes on major governance and election-season questions in Nigeria.">
+<meta property="og:image" content="/images/naijarate-og.jpg">
+<meta property="og:url" content="/polls" id="og-url">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="NaijaRate Polls - Anonymous Civic Voting in Nigeria">
+<meta name="twitter:description" content="Cast anonymous votes on major governance and election-season questions in Nigeria.">
+<meta name="twitter:image" content="/images/naijarate-og.jpg">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function setCanonicalMeta() {
+    var origin = window.location.origin || '';
+    var path = '/polls';
+    var url = origin + path;
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    if (canonical) canonical.href = url;
+    if (ogUrl) ogUrl.setAttribute('content', url);
+  })();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "NaijaRate Citizen Polls",
+  "url": "/polls",
+  "description": "Ongoing Nigerian civic polls focused on governance and elections.",
+  "inLanguage": "en-NG"
+}
+</script>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link show-mobile">Officials</a>
+    <a href="/leaderboard" class="nav-link">Rankings</a>
+    <a href="/polls" class="nav-link active">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link">News</a>
+  </div>
+</nav>
+<div class="toast" id="toast"></div>
+
+<div class="section">
+  <div class="container" style="max-width:720px;">
+    <div class="page-header">
+      <h1 class="page-title">📊 Citizen Polls</h1>
+      <p class="page-sub">Anonymous votes on key governance questions. Your voice, no login required.</p>
+    </div>
+    <div id="polls-list">
+      <div class="loading"><div class="spinner"></div><br>Loading polls...</div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <strong>NaijaRate</strong> — All votes are 100% anonymous · One vote per question per device<br>
+  <a href="/blog" style="color:var(--green-light);">Blog</a> ·
+  <a href="/news" style="color:var(--green-light);">News</a> ·
+  <a href="/leaderboard" style="color:var(--green-light);">Rankings</a>
+</footer>
+
+<script type="module">
+import { supabase, getAnonId, showToast, fmt } from './js/supabase-client.js';
+const anonId = getAnonId();
+let polls = [];
+let myVotes = {};
+
+function loadMyVotes() {
+  try {
+    myVotes = JSON.parse(localStorage.getItem('nr_poll_votes') || '{}') || {};
+  } catch {
+    myVotes = {};
+  }
+}
+
+function saveMyVotes() {
+  localStorage.setItem('nr_poll_votes', JSON.stringify(myVotes));
+}
+
+async function loadPolls() {
+  loadMyVotes();
+  const { data: pollData, error } = await supabase
+    .from('polls')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  if (error) {
+    document.getElementById('polls-list').innerHTML = '<div class="empty">Error loading polls.</div>';
+    return;
+  }
+  polls = pollData || [];
+  renderPolls();
+}
+
+function renderPolls() {
+  if (!polls.length) { document.getElementById('polls-list').innerHTML='<div class="empty">No active polls at the moment.</div>'; return; }
+  document.getElementById('polls-list').innerHTML = polls.map(p => {
+    const options = p.options || [];
+    const total = p.total_votes || 0;
+    const voted = myVotes[p.id] !== undefined;
+    const myOpt = myVotes[p.id];
+    const closing = p.closes_at ? new Date(p.closes_at) : null;
+    const daysLeft = closing ? Math.ceil((closing - Date.now()) / 86400000) : null;
+    return `
+    <div class="poll-card fade-up">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.8rem;">
+        <div class="poll-q" style="margin:0;">${p.question}</div>
+        ${daysLeft!==null ? `<span style="font-size:.7rem;color:var(--muted);flex-shrink:0;margin-left:.8rem;padding-top:.1rem;">${daysLeft}d left</span>` : ''}
+      </div>
+      <div class="poll-options">
+        ${options.map((opt, i) => {
+          const pct = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+          const isMe = myOpt === i;
+          return `
+          <div class="poll-opt ${voted?'voted':''}" onclick="vote('${p.id}', ${i})">
+            <div class="poll-fill" style="width:${voted ? pct : 0}%"></div>
+            <div class="poll-inner">
+              <span class="poll-opt-text">${isMe ? '✓ ' : ''}${opt.text}</span>
+              ${voted ? `<span class="poll-pct">${pct}%</span>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="poll-footer">
+        <span>${fmt(total)} vote${total!==1?'s':''}</span>
+        <span style="color:var(--green-light);">🔒 Anonymous</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.vote = async (pollId, optIndex) => {
+  if (myVotes[pollId] !== undefined) return;
+  const { error } = await supabase.from('poll_votes').insert({ poll_id:pollId, anon_id:anonId, option_index:optIndex });
+  if (error) { showToast('Already voted or error occurred.','error'); return; }
+  myVotes[pollId] = optIndex;
+  saveMyVotes();
+  // Update local count optimistically
+  const poll = polls.find(p=>p.id===pollId);
+  if (poll) { poll.options[optIndex].votes++; poll.total_votes++; }
+  renderPolls();
+  showToast('Vote submitted anonymously ✓');
+};
+
+loadPolls();
+</script>
+</body>
+</html>

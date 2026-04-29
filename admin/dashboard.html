@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — NaijaRate Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<div class="admin-main">
+  <div class="admin-header">
+    <div class="admin-title">Dashboard</div>
+    <div class="admin-sub" id="greeting">Good day, Admin</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-cards" id="stat-cards">
+    <div class="stat-card"><div class="stat-card-n" id="s-officials">—</div><div class="stat-card-l">Total Officials</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-ratings">—</div><div class="stat-card-l">Total Ratings</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-reports">—</div><div class="stat-card-l">Reports (Pending)</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-polls">—</div><div class="stat-card-l">Active Polls</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-avg">—</div><div class="stat-card-l">Avg Overall Rating</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-voters">—</div><div class="stat-card-l">Unique Voters</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;">
+    <!-- Recent Ratings -->
+    <div>
+      <h3 style="font-size:1rem;margin-bottom:1rem;">Recent Ratings</h3>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Official</th><th>Score</th><th>State</th><th>Time</th></tr></thead>
+          <tbody id="recent-ratings"><tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pending Reports -->
+    <div>
+      <h3 style="font-size:1rem;margin-bottom:1rem;">Pending Reports <a href="/admin/reports" style="font-size:.75rem;color:var(--green-light);font-weight:400;margin-left:.5rem;">View All →</a></h3>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Official</th><th>Categories</th><th>Time</th></tr></thead>
+          <tbody id="pending-reports"><tr><td colspan="3"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top + Bottom performers -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem;">
+    <div>
+      <h3 style="font-size:1rem;margin-bottom:1rem;">🟢 Top Rated Officials</h3>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Official</th><th>Score</th><th>Ratings</th></tr></thead><tbody id="top-officials"></tbody></table></div>
+    </div>
+    <div>
+      <h3 style="font-size:1rem;margin-bottom:1rem;">🔴 Lowest Rated Officials</h3>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Official</th><th>Score</th><th>Ratings</th></tr></thead><tbody id="bot-officials"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase, requireAuth, sidebarHTML, showToast, fmt, scoreColor, wireSignOut } from './js/admin-common.js';
+
+const session = await requireAuth();
+const email = session.user.email;
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('dashboard', email);
+wireSignOut();
+
+const h = new Date().getHours();
+document.getElementById('greeting').textContent = `${h<12?'Good morning':h<17?'Good afternoon':'Good evening'}, ${email}`;
+
+async function loadStats() {
+  const [
+    { count: oCount, error: officialsError },
+    { count: rCount, error: ratingsError },
+    { count: rpCount, error: reportsError },
+    { count: pCount, error: pollsError },
+    { data: avgData, error: avgError },
+    { count: vCount, error: votersError },
+  ] = await Promise.all([
+    supabase.from('officials').select('*',{count:'exact',head:true}).eq('status','active'),
+    supabase.from('ratings').select('*',{count:'exact',head:true}),
+    supabase.from('reports').select('*',{count:'exact',head:true}).eq('status','pending'),
+    supabase.from('polls').select('*',{count:'exact',head:true}).eq('status','active'),
+    supabase.from('ratings').select('overall'),
+    supabase.from('ratings').select('anon_id',{count:'exact',head:true}),
+  ]);
+  if (officialsError || ratingsError || reportsError || pollsError || avgError || votersError) {
+    showToast('Unable to load dashboard stats right now.','error');
+    return;
+  }
+  document.getElementById('s-officials').textContent = fmt(oCount);
+  document.getElementById('s-ratings').textContent = fmt(rCount);
+  document.getElementById('s-reports').textContent = fmt(rpCount);
+  document.getElementById('s-polls').textContent = fmt(pCount);
+  if (avgData?.length) {
+    const avg = avgData.reduce((s,r)=>s+r.overall,0)/avgData.length;
+    document.getElementById('s-avg').textContent = avg.toFixed(2);
+  }
+  document.getElementById('s-voters').textContent = fmt(vCount);
+}
+
+async function loadRecentRatings() {
+  const { data, error } = await supabase.from('ratings')
+    .select('overall,reviewer_state,created_at,officials(full_name)')
+    .order('created_at',{ascending:false}).limit(8);
+  if (error) { document.getElementById('recent-ratings').innerHTML='<tr><td colspan="4"><div class="empty">Unable to load recent ratings.</div></td></tr>'; return; }
+  if (!data?.length) { document.getElementById('recent-ratings').innerHTML='<tr><td colspan="4"><div class="empty">No ratings yet.</div></td></tr>'; return; }
+  document.getElementById('recent-ratings').innerHTML = data.map(r=>`
+    <tr>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.officials?.full_name||'—'}</td>
+      <td><span style="color:${scoreColor(r.overall)};font-weight:700;">★ ${r.overall}</span></td>
+      <td style="color:var(--muted);">${r.reviewer_state||'—'}</td>
+      <td style="color:var(--muted);font-size:.75rem;">${timeAgo(r.created_at)}</td>
+    </tr>`).join('');
+}
+
+async function loadPendingReports() {
+  const { data, error } = await supabase.from('reports')
+    .select('categories,created_at,officials(full_name)').eq('status','pending')
+    .order('created_at',{ascending:false}).limit(8);
+  if (error) { document.getElementById('pending-reports').innerHTML='<tr><td colspan="3"><div class="empty">Unable to load reports.</div></td></tr>'; return; }
+  if (!data?.length) { document.getElementById('pending-reports').innerHTML='<tr><td colspan="3"><div class="empty">No pending reports.</div></td></tr>'; return; }
+  document.getElementById('pending-reports').innerHTML = data.map(r=>`
+    <tr>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.officials?.full_name||'—'}</td>
+      <td style="font-size:.75rem;color:#e57368;">${(r.categories||[]).slice(0,1).join(', ')}</td>
+      <td style="color:var(--muted);font-size:.75rem;">${timeAgo(r.created_at)}</td>
+    </tr>`).join('');
+}
+
+async function loadTopBot() {
+  const { data, error } = await supabase.from('officials')
+    .select('full_name,rating_avg,rating_count').eq('status','active')
+    .gt('rating_count',0).order('rating_avg',{ascending:false}).limit(20);
+  if (error) {
+    document.getElementById('top-officials').innerHTML = '<tr><td colspan="3"><div class="empty">Unable to load data.</div></td></tr>';
+    document.getElementById('bot-officials').innerHTML = '<tr><td colspan="3"><div class="empty">Unable to load data.</div></td></tr>';
+    return;
+  }
+  if (!data) return;
+  const top = data.slice(0,5);
+  const bot = [...data].sort((a,b)=>a.rating_avg-b.rating_avg).slice(0,5);
+  const row = (o,color) => `<tr>
+    <td style="font-size:.83rem;">${o.full_name}</td>
+    <td><span style="color:${color};font-weight:700;">★ ${parseFloat(o.rating_avg).toFixed(1)}</span></td>
+    <td style="color:var(--muted);">${fmt(o.rating_count)}</td></tr>`;
+  document.getElementById('top-officials').innerHTML = top.map(o=>row(o,'#00b368')).join('') || '<tr><td colspan="3"><div class="empty">No data.</div></td></tr>';
+  document.getElementById('bot-officials').innerHTML = bot.map(o=>row(o,'#e84040')).join('') || '<tr><td colspan="3"><div class="empty">No data.</div></td></tr>';
+}
+
+function timeAgo(ts) {
+  const d = (Date.now() - new Date(ts)) / 1000;
+  if (d < 60) return 'Just now';
+  if (d < 3600) return Math.floor(d/60)+'m ago';
+  if (d < 86400) return Math.floor(d/3600)+'h ago';
+  return Math.floor(d/86400)+'d ago';
+}
+
+loadStats(); loadRecentRatings(); loadPendingReports(); loadTopBot();
+</script>
+</body>
+</html>

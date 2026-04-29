@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nigerian Official Rankings - NaijaRate Leaderboard</title>
+<meta name="description" content="View NaijaRate's live leaderboard of Nigerian public officials ranked by citizen ratings, participation volume, and accountability trends.">
+<meta name="keywords" content="Nigeria official rankings, governance scorecard, citizen ratings leaderboard, NaijaRate rankings">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="/leaderboard" id="canonical-link">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NaijaRate">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" content="NaijaRate Leaderboard - Nigerian Official Rankings">
+<meta property="og:description" content="Explore the best rated, most rated, and trending Nigerian public officials on NaijaRate.">
+<meta property="og:image" content="/images/naijarate-og.jpg">
+<meta property="og:url" content="/leaderboard" id="og-url">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="NaijaRate Leaderboard - Nigerian Official Rankings">
+<meta name="twitter:description" content="Explore the best rated, most rated, and trending Nigerian public officials on NaijaRate.">
+<meta name="twitter:image" content="/images/naijarate-og.jpg">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function setCanonicalMeta() {
+    var origin = window.location.origin || '';
+    var path = '/leaderboard';
+    var url = origin + path;
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    if (canonical) canonical.href = url;
+    if (ogUrl) ogUrl.setAttribute('content', url);
+  })();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "NaijaRate Leaderboard",
+  "url": "/leaderboard",
+  "description": "Rankings of Nigerian public officials by citizen ratings and engagement.",
+  "inLanguage": "en-NG"
+}
+</script>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link show-mobile">Officials</a>
+    <a href="/leaderboard" class="nav-link active">Rankings</a>
+    <a href="/polls" class="nav-link">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link">News</a>
+  </div>
+</nav>
+<div class="toast" id="toast"></div>
+
+<div class="section">
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">🏆 Performance Rankings</h1>
+      <p class="page-sub">Officials ranked by citizen ratings. Updated in real-time.</p>
+    </div>
+
+    <div class="tabs" id="lb-tabs">
+      <button class="tab active" data-mode="most_rated">Most Rated</button>
+      <button class="tab" data-mode="best">Best Rated</button>
+      <button class="tab" data-mode="worst">Worst Rated</button>
+      <button class="tab" data-mode="federal_executive">Federal Exec</button>
+      <button class="tab" data-mode="state_executive">Governors</button>
+      <button class="tab" data-mode="federal_legislature">Legislature</button>
+      <button class="tab" data-mode="federal_agency">Agencies</button>
+    </div>
+
+    <div style="overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th style="width:42px;">#</th>
+            <th>Official</th>
+            <th>Role</th>
+            <th>Score</th>
+            <th>Ratings</th>
+            <th>Reports</th>
+            <th>Tier</th>
+          </tr>
+        </thead>
+        <tbody id="lb-body">
+          <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Score legend -->
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:1.5rem;font-size:.78rem;color:var(--muted);">
+      <span>⬤ <span style="color:#00b368;">4.0–5.0</span> Excellent</span>
+      <span>⬤ <span style="color:#e8a020;">3.0–3.9</span> Average</span>
+      <span>⬤ <span style="color:#e87720;">2.0–2.9</span> Poor</span>
+      <span>⬤ <span style="color:#e84040;">1.0–1.9</span> Very Poor</span>
+      <span>⬤ <span style="color:var(--muted);">—</span> Not yet rated</span>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <strong>NaijaRate</strong> — All ratings are submitted anonymously by citizens<br>
+  <a href="/blog" style="color:var(--green-light);">Blog</a> ·
+  <a href="/news" style="color:var(--green-light);">News</a> ·
+  <a href="/polls" style="color:var(--green-light);">Polls</a>
+</footer>
+
+<script type="module">
+import { supabase, TIER_LABELS, TIER_COLORS, scoreColor, fmt } from './js/supabase-client.js';
+
+let mode = 'most_rated';
+
+function avatarImgStyle(tier) {
+  return String(tier || '').includes('agency')
+    ? 'width:100%;height:100%;border-radius:50%;object-fit:contain;background:#fff;padding:4px;'
+    : 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+}
+
+function slugifyOfficialName(name) {
+  return String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function officialPath(o) {
+  const slug = slugifyOfficialName(o.full_name || 'official');
+  return `/official/${slug}`;
+}
+
+async function loadLB() {
+  document.getElementById('lb-body').innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>';
+
+  let q = supabase.from('officials')
+    .select('id,full_name,role,tier,photo_url,party,rating_avg,rating_count,report_count,states(name)')
+    .eq('status','active');
+
+  const tierModes = ['federal_executive','state_executive','federal_legislature','federal_agency'];
+  if (tierModes.includes(mode)) q = q.eq('tier', mode);
+
+  if (mode === 'best') q = q.order('rating_avg', {ascending:false});
+  else if (mode === 'worst') q = q.gt('rating_count',0).order('rating_avg', {ascending:true});
+  else q = q.order('rating_count', {ascending:false});
+
+  q = q.limit(100);
+  const { data, error } = await q;
+  if (error || !data) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">Error loading data.</div></td></tr>'; return; }
+
+  if (!data.length) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">No officials found for this filter.</div></td></tr>'; return; }
+
+  document.getElementById('lb-body').innerHTML = data.map((o,i) => {
+    const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const color = TIER_COLORS[o.tier]||'#888';
+    const tier = TIER_LABELS[o.tier]||o.tier;
+    const rating = parseFloat(o.rating_avg)||0;
+    const sc = rating ? scoreColor(rating) : 'var(--muted)';
+    const rankCls = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    return `
+    <tr>
+      <td><span class="lb-rank ${rankCls}">#${i+1}</span></td>
+      <td>
+        <div class="lb-name-cell">
+          <div class="avatar" style="width:36px;height:36px;font-size:.8rem;background:${color}22;color:${color};">
+            ${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}
+          </div>
+          <div>
+            <a href="${officialPath(o)}" style="font-weight:500;font-size:.88rem;color:var(--white);text-decoration:none;" onmouseover="this.style.color='var(--green-light)'" onmouseout="this.style.color='var(--white)'">${o.full_name}</a>
+            <div style="font-size:.72rem;color:var(--muted);">${o.states?.name||'Federal'}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--muted);font-size:.8rem;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${o.role}</td>
+      <td><span class="score-pill" style="color:${sc};">${rating ? '★ '+rating.toFixed(1) : '—'}</span></td>
+      <td style="color:var(--muted);">${fmt(o.rating_count)}</td>
+      <td>${o.report_count > 0 ? `<span style="color:#e57368;font-size:.82rem;">⚠ ${o.report_count}</span>` : '<span style="color:var(--border);">—</span>'}</td>
+      <td><span class="tier-badge" style="color:${color};border-color:${color}44;background:${color}11;font-size:.6rem;">${tier}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+document.querySelectorAll('#lb-tabs .tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#lb-tabs .tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    loadLB();
+  });
+});
+
+loadLB();
+</script>
+</body>
+</html>

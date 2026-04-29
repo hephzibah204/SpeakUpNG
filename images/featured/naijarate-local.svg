@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00b368"/>
+      <stop offset="0.6" stop-color="#7c6af7"/>
+      <stop offset="1" stop-color="#e8a020"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="675" fill="#141714"/>
+  <rect x="0" y="0" width="1200" height="675" fill="url(#g)" opacity="0.12"/>
+  <g filter="url(#s)">
+    <rect x="96" y="98" width="1008" height="479" rx="22" fill="#1d211b" stroke="#2c312a"/>
+    <g transform="translate(140 150)">
+      <rect x="0" y="0" width="430" height="380" rx="18" fill="#232820" stroke="#2c312a"/>
+      <rect x="22" y="22" width="260" height="14" rx="7" fill="#f8f7f2" opacity="0.75"/>
+      <g transform="translate(22 70)">
+        <rect x="0" y="0" width="386" height="8" rx="4" fill="#2c312a"/>
+        <rect x="0" y="0" width="290" height="8" rx="4" fill="#00b368"/>
+        <rect x="0" y="26" width="386" height="8" rx="4" fill="#2c312a"/>
+        <rect x="0" y="26" width="240" height="8" rx="4" fill="#e8a020"/>
+        <rect x="0" y="52" width="386" height="8" rx="4" fill="#2c312a"/>
+        <rect x="0" y="52" width="210" height="8" rx="4" fill="#7c6af7" opacity="0.9"/>
+        <rect x="0" y="78" width="386" height="8" rx="4" fill="#2c312a"/>
+        <rect x="0" y="78" width="330" height="8" rx="4" fill="#00b368" opacity="0.85"/>
+      </g>
+      <g transform="translate(22 200)">
+        <rect x="0" y="0" width="120" height="80" rx="14" fill="#141714" stroke="#2c312a"/>
+        <path d="M18 56l24-24 24 24" fill="none" stroke="#00b368" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="160" y="0" width="120" height="80" rx="14" fill="#141714" stroke="#2c312a"/>
+        <path d="M180 56h80" stroke="#e8a020" stroke-width="6" stroke-linecap="round"/>
+        <path d="M200 24h40" stroke="#e8a020" stroke-width="6" stroke-linecap="round"/>
+        <rect x="300" y="0" width="108" height="80" rx="14" fill="#141714" stroke="#2c312a"/>
+        <circle cx="354" cy="40" r="20" fill="#7c6af7" opacity="0.9"/>
+      </g>
+    </g>
+    <g transform="translate(592 150)">
+      <rect x="0" y="0" width="468" height="380" rx="18" fill="#232820" stroke="#2c312a"/>
+      <g transform="translate(24 28)">
+        <path d="M20 250c60-110 120-170 180-180 90-16 156 46 196 126 22 44 32 86 34 112" fill="none" stroke="#00b368" stroke-width="7" opacity="0.9"/>
+        <path d="M44 250c56-88 108-132 162-144 78-18 138 38 176 110 20 38 30 72 34 102" fill="none" stroke="#e8a020" stroke-width="7" opacity="0.85"/>
+        <path d="M68 250c50-64 96-94 140-102 64-12 118 22 154 74 22 32 34 62 40 92" fill="none" stroke="#7c6af7" stroke-width="7" opacity="0.85"/>
+        <circle cx="420" cy="250" r="10" fill="#00b368"/>
+        <circle cx="404" cy="250" r="10" fill="#e8a020" opacity="0.85"/>
+        <circle cx="388" cy="250" r="10" fill="#7c6af7" opacity="0.85"/>
+        <rect x="0" y="0" width="420" height="14" rx="7" fill="#f8f7f2" opacity="0.75"/>
+        <rect x="0" y="24" width="300" height="10" rx="5" fill="#f8f7f2" opacity="0.55"/>
+      </g>
+    </g>
+  </g>
+  <g font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial" fill="#f8f7f2">
+    <text x="120" y="622" font-size="34" font-weight="700">NaijaRate</text>
+    <text x="285" y="622" font-size="34" font-weight="700" fill="#7c6af7">Local Governance</text>
+    <text x="120" y="650" font-size="18" opacity="0.85">Featured image</text>
+  </g>
+</svg>

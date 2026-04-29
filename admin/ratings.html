@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ratings — NaijaRate Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<div class="admin-main">
+  <div class="admin-header">
+    <div class="admin-title">Ratings & Reviews</div>
+    <div class="admin-sub">Monitor all citizen ratings. Flag suspicious entries or remove abuse.</div>
+  </div>
+
+  <div class="admin-search">
+    <input type="text" id="search" placeholder="Search official name or review text..." oninput="applyFilter()">
+    <select id="score-filter" onchange="applyFilter()">
+      <option value="">All Scores</option>
+      <option value="5">★★★★★ (5)</option>
+      <option value="4">★★★★ (4)</option>
+      <option value="3">★★★ (3)</option>
+      <option value="2">★★ (2)</option>
+      <option value="1">★ (1)</option>
+    </select>
+    <select id="flag-filter" onchange="applyFilter()">
+      <option value="">All</option>
+      <option value="flagged">Flagged Only</option>
+      <option value="clean">Not Flagged</option>
+    </select>
+    <span id="count-label" style="color:var(--muted);font-size:.82rem;margin-left:auto;"></span>
+  </div>
+
+  <div class="admin-table-wrap">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Official</th>
+          <th>Score</th>
+          <th>Categories</th>
+          <th>Review</th>
+          <th>State</th>
+          <th>Date</th>
+          <th>Flagged</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="ratings-body">
+        <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="pagination" style="display:flex;gap:.5rem;margin-top:1.2rem;flex-wrap:wrap;"></div>
+</div>
+
+<script type="module">
+import { supabase, requireAuth, sidebarHTML, showToast, fmt, scoreColor, wireSignOut } from './js/admin-common.js';
+
+const session = await requireAuth();
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('ratings', session.user.email);
+wireSignOut();
+
+let allRatings=[], filtered=[], page=1; const perPage=25;
+
+async function loadRatings() {
+  const { data, error } = await supabase.from('ratings')
+    .select('*,officials(full_name)')
+    .order('created_at',{ascending:false}).limit(2000);
+  if (error) {
+    document.getElementById('ratings-body').innerHTML = '<tr><td colspan="8"><div class="empty">Unable to load ratings.</div></td></tr>';
+    document.getElementById('count-label').textContent = 'Unable to load ratings';
+    return;
+  }
+  allRatings = data||[];
+  applyFilter();
+}
+
+window.applyFilter = () => {
+  const q = document.getElementById('search').value.toLowerCase();
+  const score = document.getElementById('score-filter').value;
+  const flag = document.getElementById('flag-filter').value;
+  filtered = allRatings.filter(r=>{
+    const matchQ = !q || (r.officials?.full_name||'').toLowerCase().includes(q) || (r.review_text||'').toLowerCase().includes(q);
+    const matchS = !score || r.overall===parseInt(score);
+    const matchF = !flag || (flag==='flagged'?r.is_flagged:!r.is_flagged);
+    return matchQ&&matchS&&matchF;
+  });
+  page=1; render();
+};
+
+function render() {
+  const total=filtered.length;
+  document.getElementById('count-label').textContent=`${fmt(total)} rating${total!==1?'s':''}`;
+  const slice=filtered.slice((page-1)*perPage,page*perPage);
+  if(!slice.length){document.getElementById('ratings-body').innerHTML='<tr><td colspan="8"><div class="empty">No ratings found.</div></td></tr>';renderPag(0);return;}
+  document.getElementById('ratings-body').innerHTML=slice.map(r=>`
+    <tr style="${r.is_flagged?'background:rgba(192,57,43,.05);':''}">
+      <td style="font-size:.83rem;font-weight:500;white-space:nowrap;">${r.officials?.full_name||'—'}</td>
+      <td><span style="color:${scoreColor(r.overall)};font-weight:700;font-size:1rem;">${'★'.repeat(r.overall)}${'☆'.repeat(5-r.overall)}</span></td>
+      <td style="font-size:.72rem;color:var(--muted);">
+        ${r.accountability?`A:${r.accountability} `:''} ${r.service?`S:${r.service} `:''} ${r.transparency?`T:${r.transparency} `:''} ${r.responsiveness?`R:${r.responsiveness} `:''}
+        ${r.power?`Pwr:${r.power} `:''} ${r.security?`Sec:${r.security} `:''} ${r.economic_stability?`Eco:${r.economic_stability} `:''} ${r.education?`Edu:${r.education} `:''} ${r.healthcare?`Hlt:${r.healthcare} `:''}
+      </td>
+      <td style="font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);">${r.review_text||'<em>No review</em>'}</td>
+      <td style="font-size:.78rem;color:var(--muted);">${r.reviewer_state||'—'}</td>
+      <td style="font-size:.74rem;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('en-NG')}</td>
+      <td>${r.is_flagged?`<span style="color:#e57368;">⚠ Flagged</span>`:'<span style="color:var(--border);">—</span>'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="action-btn ${r.is_flagged?'action-edit':'action-delete'}" onclick="toggleFlag('${r.id}',${r.is_flagged})">${r.is_flagged?'Unflag':'Flag'}</button>
+          <button class="action-btn action-delete" onclick="deleteRating('${r.id}')">Delete</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  renderPag(total);
+}
+
+function renderPag(total){
+  const pages=Math.ceil(total/perPage),el=document.getElementById('pagination');
+  if(pages<=1){el.innerHTML='';return;}
+  el.innerHTML=Array.from({length:pages},(_,i)=>i+1).map(p=>`<button class="tab ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`).join('');
+}
+window.goPage=(p)=>{page=p;render();};
+
+window.toggleFlag = async (id, isFlagged) => {
+  const { error } = await supabase.from('ratings').update({is_flagged:!isFlagged}).eq('id',id);
+  if (error) { showToast('Error','error'); return; }
+  const r = allRatings.find(x=>x.id===id); if(r) r.is_flagged=!isFlagged;
+  showToast(isFlagged?'Rating unflagged':'Rating flagged ⚠');
+  applyFilter();
+};
+
+window.deleteRating = async (id) => {
+  if (!confirm('Delete this rating permanently?')) return;
+  const { error } = await supabase.from('ratings').delete().eq('id',id);
+  if (error) { showToast('Error: '+error.message,'error'); return; }
+  allRatings = allRatings.filter(x=>x.id!==id);
+  showToast('Rating deleted ✓');
+  applyFilter();
+};
+
+loadRatings();
+</script>
+</body>
+</html>

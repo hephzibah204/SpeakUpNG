@@ -1,0 +1,67 @@
+# NaijaRate clean URL routing (Apache/cPanel)
+# Supports both layouts:
+# 1) files directly in web root (recommended)
+# 2) files under /public (legacy)
+
+RewriteEngine On
+
+# Redirect index.html to directory root
+RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.html[\s?] [NC]
+RewriteRule ^index\.html$ /%1 [R=301,L]
+
+# Redirect .html URLs to extensionless equivalents
+RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# Keep real files/directories untouched
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Root route
+RewriteCond %{DOCUMENT_ROOT}/index.html -f
+RewriteRule ^$ index.html [L]
+RewriteCond %{DOCUMENT_ROOT}/public/index.html -f
+RewriteRule ^$ public/index.html [L]
+
+# Pretty official profile route: /official/<slug>
+RewriteCond %{DOCUMENT_ROOT}/official.html -f
+RewriteRule ^official/([a-zA-Z0-9-]+)/?$ official.html?slug=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/official.html -f
+RewriteRule ^official/([a-zA-Z0-9-]+)/?$ public/official.html?slug=$1 [QSA,L]
+
+# Pretty blog post route: /blog/<slug>
+RewriteCond %{DOCUMENT_ROOT}/blog-post.html -f
+RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ blog-post.html?slug=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/blog-post.html -f
+RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ public/blog-post.html?slug=$1 [QSA,L]
+
+# Pretty news post route: /news/<slug>
+RewriteCond %{DOCUMENT_ROOT}/news-post.html -f
+RewriteRule ^news/([a-zA-Z0-9-]+)/?$ news-post.html?slug=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/news-post.html -f
+RewriteRule ^news/([a-zA-Z0-9-]+)/?$ public/news-post.html?slug=$1 [QSA,L]
+
+# Extensionless top-level pages
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^(index|leaderboard|polls|official|blog|news)/?$ $1.html [L]
+RewriteCond %{DOCUMENT_ROOT}/public/$1.html -f
+RewriteRule ^(index|leaderboard|polls|official|blog|news)/?$ public/$1.html [L]
+
+# Extensionless admin pages
+RewriteCond %{DOCUMENT_ROOT}/admin/$1.html -f
+RewriteRule ^admin/(login|dashboard|officials|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
+
+# Generic extensionless HTML fallback (supports nested paths)
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^(.+?)/?$ $1.html [L]
+RewriteCond %{DOCUMENT_ROOT}/public/$1.html -f
+RewriteRule ^(.+?)/?$ public/$1.html [L]
+
+# Public assets
+RewriteCond %{DOCUMENT_ROOT}/public/$1/$2 -f
+RewriteRule ^(css|js|images|img|assets|data)/(.*)$ public/$1/$2 [L]
+
+# Common static files
+RewriteCond %{DOCUMENT_ROOT}/public/$1 -f
+RewriteRule ^(favicon\.ico|robots\.txt|sitemap\.xml)$ public/$1 [L]
