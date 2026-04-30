@@ -794,6 +794,9 @@ async function loadOfficials() {
     return;
   }
   S.officials = data || [];
+  try {
+    await enrichOfficialsWithAggregates(S.officials);
+  } catch {}
   applyFilters();
 }
 
@@ -815,11 +818,44 @@ async function loadFeaturedLeaders() {
       .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
       .slice(0, 6);
 
+    let aggMap = null;
+    try {
+      aggMap = await getRatingsAggregates();
+    } catch {}
+    if (aggMap) {
+      leaders.forEach((o) => {
+        const agg = aggMap.get(o.id);
+        if (!agg) return;
+        o.rating_count = agg.count || 0;
+        o.rating_avg = agg.avg || 0;
+      });
+    }
+
     if (!leaders.length) {
-      const source = await getRatedOfficialsData();
-      const fallback = (source || [])
-        .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
+      if (!aggMap) {
+        mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+        return;
+      }
+      const ranked = [...aggMap.entries()]
+        .map(([id, agg]) => ({ id, rating_count: agg.count || 0, rating_avg: agg.avg || 0 }))
         .sort((a, b) => Number(b.rating_count || 0) - Number(a.rating_count || 0))
+        .slice(0, 30);
+      const ids = ranked.map((r) => r.id);
+      const { data: rows, error: e2 } = await supabase
+        .from('officials')
+        .select('id,full_name,common_name,role,tier,website,photo_url,states(name)')
+        .eq('status', 'active')
+        .in('id', ids);
+      if (e2) throw e2;
+      const byId = new Map((rows || []).map((o) => [o.id, o]));
+      const fallback = ranked
+        .map((r) => {
+          const o = byId.get(r.id);
+          if (!o) return null;
+          return { ...o, rating_count: r.rating_count, rating_avg: r.rating_avg };
+        })
+        .filter(Boolean)
+        .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
         .slice(0, 6);
       if (!fallback.length) {
         mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
@@ -935,19 +971,38 @@ function renderBestRatedList(mountId, rows, emptyText) {
 
 async function loadBestRatedSections() {
   try {
-    const source = await getRatedOfficialsData();
-    const ranked = [...(source || [])].sort((a, b) => {
-      const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
-      if (byScore !== 0) return byScore;
-      return Number(b.rating_count || 0) - Number(a.rating_count || 0);
-    });
+    const aggMap = await getRatingsAggregates();
+    const entries = [...aggMap.entries()]
+      .map(([id, agg]) => ({ id, rating_count: agg.count || 0, rating_avg: agg.avg || 0 }))
+      .sort((a, b) => {
+        const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
+        if (byScore !== 0) return byScore;
+        return Number(b.rating_count || 0) - Number(a.rating_count || 0);
+      });
 
     const minCount = 3;
-    const strict = ranked.filter((o) => Number(o.rating_count || 0) >= minCount);
-    const base = strict.length ? strict : ranked;
+    const strict = entries.filter((o) => Number(o.rating_count || 0) >= minCount);
+    const base = strict.length ? strict : entries;
 
-    const officials = base.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
-    const agencies = base.filter((o) => AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const ids = base.slice(0, 120).map((r) => r.id);
+    const { data, error } = await supabase
+      .from('officials')
+      .select('id,full_name,common_name,role,tier,website,photo_url,states(name)')
+      .eq('status', 'active')
+      .in('id', ids);
+    if (error) throw error;
+
+    const byId = new Map((data || []).map((o) => [o.id, o]));
+    const rankedRows = base
+      .map((r) => {
+        const o = byId.get(r.id);
+        if (!o) return null;
+        return { ...o, rating_count: r.rating_count, rating_avg: r.rating_avg };
+      })
+      .filter(Boolean);
+
+    const officials = rankedRows.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const agencies = rankedRows.filter((o) => AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
 
     renderBestRatedList('best-rated-officials', officials, 'No rated officials yet.');
     renderBestRatedList('best-rated-agencies', agencies, 'No rated agencies yet.');
@@ -1195,6 +1250,7 @@ window.submitRating = async () => {
   closeModal('rate-modal');
   showToast(`Rating submitted ${S.anonOn?'anonymously ':''}✓`);
   invalidateRatedOfficialsCache();
+  invalidateRatingsAggCache();
   loadOfficials(); loadStats(); loadBestRatedSections(); loadFeaturedLeaders();
 };
 
