@@ -4,3 +4,4 @@ Disallow: /admin/
 Disallow: /admin
 
 Sitemap: /sitemap.xml
+Sitemap: https://evote.ng/sitemap.xml
