@@ -739,14 +739,14 @@ async function loadOfficial() {
   if (error || !data) { window.location.href = '/'; return; }
   officialId = data.id;
   official = data;
-  if (!idFromPath && officialSlug) {
+  const canonicalSlug = slugifyOfficialName(data.full_name || data.common_name || 'official');
+  if (canonicalSlug) {
     try {
       const map = JSON.parse(localStorage.getItem('nr_official_slug_map') || '{}') || {};
-      map[officialSlug] = officialId;
+      map[canonicalSlug] = officialId;
       localStorage.setItem('nr_official_slug_map', JSON.stringify(map));
     } catch {}
   }
-  const canonicalSlug = slugifyOfficialName(data.full_name || data.common_name || 'official');
   if (canonicalSlug && window.location.pathname !== `/official/${canonicalSlug}`) {
     window.history.replaceState({}, '', `/official/${canonicalSlug}`);
   }
