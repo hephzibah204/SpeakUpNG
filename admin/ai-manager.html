@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Manager — NaijaRate Admin</title>
+<title>AI Manager — evote.ng Admin</title>
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="admin.css">
 <style>
@@ -225,7 +225,7 @@
     <div class="ai-card">
       <span class="ai-label">WHAT TO POST ABOUT</span>
       <textarea id="soc-prompt" class="ai-textarea" rows="3"
-        placeholder="e.g. New Minister of Finance appointed. Wale Edun assumes office. Citizens can now rate him on NaijaRate."></textarea>
+        placeholder="e.g. New Minister of Finance appointed. Wale Edun assumes office. Citizens can now rate him on evote.ng."></textarea>
       <div style="margin:1rem 0 .5rem;">
         <span class="ai-label">PLATFORM</span>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem;" id="platform-btns">
@@ -376,19 +376,7 @@ const QUERIES = [
   'Nigeria state commissioner appointment 2025 2026',
 ];
 
-const AUDIT_CHECKS = [
-  { status:'pass', label:'Row Level Security',     detail:'All tables have RLS enabled.' },
-  { status:'pass', label:'Rating Triggers',         detail:'update_official_ratings() trigger verified and active.' },
-  { status:'pass', label:'Full-Text Search Index',  detail:'GIN index on officials(full_name, role) is active.' },
-  { status:'warn', label:'Missing Profile Photos',  detail:'~78% of officials have no photo_url. Impacts credibility.' },
-  { status:'warn', label:'Active Polls',            detail:'10 polls active — archive polls older than 90 days.' },
-  { status:'warn', label:'Rating Coverage',         detail:'Most ratings are on federal tier. Promote LGA/state ratings.' },
-  { status:'warn', label:'Stale Active Officials',  detail:'Some officials may have left office without a DB update.' },
-  { status:'warn', label:'Anon Rate Limiting',      detail:'No server-side rate limit on anonymous submissions yet.' },
-  { status:'fail', label:'Official Bios',           detail:'97% of officials have empty bio fields. Hurts SEO badly.' },
-  { status:'fail', label:'Social Media Links',      detail:'social_twitter / social_facebook null for 99% of records.' },
-  { status:'fail', label:'Bio/Social Columns',      detail:'officials table may be missing bio, social_twitter, social_facebook columns.' },
-];
+let AUDIT_CHECKS = [];
 
 // ── Render query list ─────────────────────────────────────────────────────────
 document.getElementById('query-list').innerHTML = QUERIES.map((q,i) =>
@@ -396,9 +384,10 @@ document.getElementById('query-list').innerHTML = QUERIES.map((q,i) =>
     ${i%2===0?'background:rgba(255,255,255,.015)':''}">→ ${q}</div>`
 ).join('');
 
-// ── Render audit checks ───────────────────────────────────────────────────────
-document.getElementById('audit-checks-list').innerHTML = AUDIT_CHECKS.map((c,i) => `
-  <div class="audit-row" ${i===AUDIT_CHECKS.length-1?'style="border:none"':''}>
+function renderAuditChecks(list) {
+  const items = list || [];
+  document.getElementById('audit-checks-list').innerHTML = items.map((c,i) => `
+  <div class="audit-row" ${i===items.length-1?'style="border:none"':''}>
     <div class="audit-dot audit-${c.status}"></div>
     <div style="flex:1;">
       <div style="font-weight:600;font-size:.9rem;margin-bottom:.2rem;">${c.label}</div>
@@ -409,6 +398,94 @@ document.getElementById('audit-checks-list').innerHTML = AUDIT_CHECKS.map((c,i) 
       ${c.status.toUpperCase()}
     </span>
   </div>`).join('');
+}
+
+function pct(n, d) {
+  n = Number(n || 0);
+  d = Number(d || 0);
+  if (!d) return 0;
+  return Math.round((n / d) * 100);
+}
+
+async function countRows(table, filterFn) {
+  let q = supabase.from(table).select('*', { count: 'exact', head: true });
+  if (filterFn) q = filterFn(q) || q;
+  const res = await q;
+  if (res.error) throw res.error;
+  return Number(res.count || 0);
+}
+
+async function refreshAuditChecks() {
+  document.getElementById('audit-checks-list').innerHTML =
+    '<div class="audit-row" style="border:none;"><div class="audit-dot audit-warn"></div><div style="flex:1;"><div style="font-weight:600;font-size:.9rem;margin-bottom:.2rem;">Loading audit…</div><div style="font-size:.78rem;color:var(--muted);">Computing live stats from Supabase.</div></div><span class="badge-sm tag-medium">WAIT</span></div>';
+
+  const checks = [
+    { status:'warn', label:'Row Level Security', detail:'Cannot verify RLS from this admin page. Confirm policies in Supabase (Auth + RLS) for each table.' },
+    { status:'warn', label:'Rating Triggers', detail:'Cannot verify triggers from this admin page. Confirm rating aggregate triggers/functions in Supabase SQL editor.' },
+    { status:'warn', label:'Search Index', detail:'Cannot verify indexes from this admin page. Confirm indexes in Supabase database settings.' },
+    { status:'warn', label:'Rating Coverage', detail:'Promote more state/LGA ratings to reduce tier bias.' },
+    { status:'warn', label:'Stale Active Officials', detail:'Some officials may have left office without a DB update.' },
+    { status:'warn', label:'Anon Rate Limiting', detail:'Consider server-side rate limits on anonymous submissions.' },
+  ];
+
+  try {
+    const totalOfficials = await countRows('officials', (q) => q.eq('status', 'active'));
+    const missingPhoto = await countRows('officials', (q) => q.eq('status', 'active').is('photo_url', null));
+    const photoPct = pct(missingPhoto, totalOfficials);
+    checks.push({
+      status: photoPct >= 80 ? 'fail' : photoPct >= 40 ? 'warn' : 'pass',
+      label: 'Missing Profile Photos',
+      detail: `${photoPct}% (${missingPhoto}/${totalOfficials}) of active officials have no photo_url.`,
+    });
+
+    let activePolls = 0;
+    try {
+      activePolls = await countRows('polls', (q) => q.eq('status', 'active'));
+      checks.push({
+        status: activePolls > 20 ? 'warn' : 'pass',
+        label: 'Active Polls',
+        detail: `${activePolls} polls currently active.`,
+      });
+    } catch (e) {
+      checks.push({ status:'warn', label:'Active Polls', detail:'Unable to compute active polls (polls table missing or access denied).' });
+    }
+
+    let missingBio = null;
+    try {
+      missingBio = await countRows('officials', (q) => q.eq('status', 'active').is('bio', null));
+      const bioPct = pct(missingBio, totalOfficials);
+      checks.push({
+        status: bioPct >= 90 ? 'fail' : bioPct >= 50 ? 'warn' : 'pass',
+        label: 'Official Bios',
+        detail: `${bioPct}% (${missingBio}/${totalOfficials}) of active officials have empty bio fields.`,
+      });
+    } catch (e) {
+      checks.push({ status:'fail', label:'Official Bios', detail:'Unable to compute bio coverage (bio column missing or access denied).' });
+    }
+
+    try {
+      const twNull = await countRows('officials', (q) => q.eq('status', 'active').is('social_twitter', null));
+      const fbNull = await countRows('officials', (q) => q.eq('status', 'active').is('social_facebook', null));
+      const twPct = pct(twNull, totalOfficials);
+      const fbPct = pct(fbNull, totalOfficials);
+      const status = (twPct >= 95 && fbPct >= 95) ? 'fail' : (twPct >= 70 && fbPct >= 70) ? 'warn' : 'pass';
+      checks.push({
+        status,
+        label: 'Social Media Links',
+        detail: `Missing social_twitter: ${twPct}% (${twNull}/${totalOfficials}), social_facebook: ${fbPct}% (${fbNull}/${totalOfficials}).`,
+      });
+    } catch (e) {
+      checks.push({ status:'fail', label:'Social Media Links', detail:'Unable to compute social link coverage (columns missing or access denied).' });
+    }
+  } catch (e) {
+    checks.push({ status:'fail', label:'Audit Stats', detail:`Unable to compute live audit stats: ${e.message || e}` });
+  }
+
+  AUDIT_CHECKS = checks;
+  renderAuditChecks(AUDIT_CHECKS);
+}
+
+await refreshAuditChecks();
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 document.querySelectorAll('.ai-tab').forEach(btn => {

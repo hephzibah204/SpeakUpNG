@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NaijaRate Blog</title>
+  <title>evote.ng Blog</title>
   <meta name="description" content="" id="meta-description">
   <meta name="keywords" content="" id="meta-keywords">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="/blog" id="canonical-link">
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="NaijaRate">
+  <meta property="og:site_name" content="evote.ng">
   <meta property="og:locale" content="en_NG">
   <meta property="og:title" content="" id="og-title">
   <meta property="og:description" content="" id="og-description">
-  <meta property="og:image" content="/images/naijarate-og.jpg" id="og-image">
+  <meta property="og:image" content="/images/logo.png" id="og-image">
   <meta property="og:url" content="/blog" id="og-url">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="" id="twitter-title">
   <meta name="twitter:description" content="" id="twitter-description">
-  <meta name="twitter:image" content="/images/naijarate-og.jpg" id="twitter-image">
+  <meta name="twitter:image" content="/images/logo.png" id="twitter-image">
   <link rel="stylesheet" href="/css/style.css">
   <style>
     .post-wrap { max-width: 920px; }
@@ -37,7 +37,7 @@
 </head>
 <body>
   <nav class="nav">
-    <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
     <div class="nav-links">
       <a href="/" class="nav-link show-mobile">Officials</a>
       <a href="/leaderboard" class="nav-link">Rankings</a>
@@ -61,7 +61,7 @@
         <h1 class="post-title" id="post-title">Loading…</h1>
         <div class="post-meta" id="post-meta"></div>
         <div class="post-hero">
-          <img class="post-img" id="post-image" alt="" src="/images/naijarate-og.jpg">
+          <img class="post-img" id="post-image" alt="" src="/images/logo.png">
         </div>
         <div class="post-body" id="post-body"></div>
         <div class="post-cta">
@@ -73,7 +73,7 @@
   </div>
 
   <footer class="site-footer">
-    <strong>NaijaRate</strong> — Civic insights for informed public participation<br>
+    <strong>evote.ng</strong> — Civic insights for informed public participation<br>
     <a href="/" style="color:var(--green-light);">Officials</a> ·
     <a href="/leaderboard" style="color:var(--green-light);">Rankings</a> ·
     <a href="/news" style="color:var(--green-light);">News Updates</a>
@@ -123,19 +123,19 @@
     }
 
     function setMeta(post, canonicalUrl) {
-      document.title = post.title + ' | NaijaRate Blog';
+      document.title = post.title + ' | evote.ng Blog';
       if (metaDescEl) metaDescEl.setAttribute('content', post.meta_description || post.excerpt || '');
       if (metaKeywordsEl) metaKeywordsEl.setAttribute('content', post.meta_keywords || (post.tags || []).join(', '));
       if (canonicalEl) canonicalEl.href = canonicalUrl;
 
       if (ogTitleEl) ogTitleEl.setAttribute('content', post.title || '');
       if (ogDescEl) ogDescEl.setAttribute('content', post.meta_description || post.excerpt || '');
-      if (ogImgEl) ogImgEl.setAttribute('content', post.featured_image || '/images/naijarate-og.jpg');
+      if (ogImgEl) ogImgEl.setAttribute('content', post.featured_image || '/images/logo.png');
       if (ogUrlEl) ogUrlEl.setAttribute('content', canonicalUrl);
 
       if (twTitleEl) twTitleEl.setAttribute('content', post.title || '');
       if (twDescEl) twDescEl.setAttribute('content', post.meta_description || post.excerpt || '');
-      if (twImgEl) twImgEl.setAttribute('content', post.featured_image || '/images/naijarate-og.jpg');
+      if (twImgEl) twImgEl.setAttribute('content', post.featured_image || '/images/logo.png');
     }
 
     function setLd(post, canonicalUrl) {
@@ -146,11 +146,11 @@
         "@type": "BlogPosting",
         "headline": post.title,
         "description": post.meta_description || post.excerpt,
-        "image": [origin + (post.featured_image || '/images/naijarate-og.jpg')],
+        "image": [origin + (post.featured_image || '/images/logo.png')],
         "datePublished": post.published_at,
         "dateModified": post.updated_at || post.published_at,
-        "author": { "@type": "Organization", "name": "NaijaRate" },
-        "publisher": { "@type": "Organization", "name": "NaijaRate" },
+        "author": { "@type": "Organization", "name": "evote.ng" },
+        "publisher": { "@type": "Organization", "name": "evote.ng" },
         "mainEntityOfPage": { "@type": "WebPage", "@id": canonicalUrl }
       });
     }
@@ -161,7 +161,7 @@
       const rt = post.reading_time_minutes ? `${post.reading_time_minutes} min read` : '';
       metaEl.textContent = [post.category, when, rt].filter(Boolean).join(' · ');
 
-      imgEl.src = post.featured_image || '/images/naijarate-og.jpg';
+      imgEl.src = post.featured_image || '/images/logo.png';
       imgEl.alt = post.featured_image_alt || post.title;
 
       bodyEl.innerHTML = post.body_html || '';
@@ -173,7 +173,7 @@
       const canonicalUrl = slug ? (origin + '/blog/' + slug) : (origin + '/blog');
 
       if (!slug) {
-        document.title = 'Blog | NaijaRate';
+        document.title = 'Blog | evote.ng';
         if (titleEl) titleEl.textContent = 'Post not found';
         if (metaEl) metaEl.textContent = '';
         if (bodyEl) bodyEl.innerHTML = '<p class="muted">This post link looks incomplete. Go back to the blog page and pick a post.</p>';
@@ -189,7 +189,7 @@
         setLd(post, canonicalUrl);
         render(post);
       } catch (e) {
-        document.title = 'Post not found | NaijaRate Blog';
+        document.title = 'Post not found | evote.ng Blog';
         if (titleEl) titleEl.textContent = 'Post not found';
         if (metaEl) metaEl.textContent = '';
         if (bodyEl) bodyEl.innerHTML = '<p class="muted">We no see this post. Use the blog page to pick another one.</p>';

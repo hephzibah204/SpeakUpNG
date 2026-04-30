@@ -1,5 +1,5 @@
 /* ============================================================
-   NaijaRate — Global Stylesheet
+   evote.ng — Global Stylesheet
    ============================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
 
@@ -63,13 +63,36 @@ h1, h2, h3, h4 {
   font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem;
   display: flex; align-items: center; gap: .5rem;
 }
-.nav-logo span { color: var(--green-light); }
+.nav-logo img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.nav-logo .brand-text {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.nav-logo .brand-text { color: var(--white); }
 .nav-logo .badge {
   background: var(--green); color: #fff; font-size: .58rem;
   font-weight: 700; padding: 2px 6px; border-radius: 4px;
   text-transform: uppercase; letter-spacing: .06em;
 }
 .nav-links { display: flex; gap: .3rem; align-items: center; }
+.nav-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--white);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+}
 .nav-link {
   color: var(--muted); font-size: .88rem; padding: .4rem .9rem;
   border-radius: 6px; transition: all .2s; background: none; border: none;
@@ -377,7 +400,28 @@ select.form-control option { background: var(--card); }
 /* ── RESPONSIVE ── */
 @media (max-width: 640px) {
   .nav { padding: 0 1rem; }
-  .nav-links .nav-link:not(.show-mobile) { display: none; }
+  .nav-toggle { display: inline-flex; }
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    padding: .7rem 1rem 1rem;
+    background: rgba(20,23,20,.98);
+    border-bottom: 1px solid var(--border);
+    flex-direction: column;
+    align-items: stretch;
+    gap: .3rem;
+    z-index: 220;
+  }
+  .nav-links.open { display: flex; }
+  .nav-links .nav-link {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: .62rem .85rem;
+  }
   .container { padding: 0 1rem; }
   .stats-bar { gap: 1.5rem; padding: 1.5rem 1rem; }
   .officials-grid { grid-template-columns: 1fr; }

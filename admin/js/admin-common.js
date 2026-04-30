@@ -39,7 +39,7 @@ export function sidebarHTML(activePage, userEmail) {
   return `
   <div class="sidebar">
     <div class="sidebar-logo">
-      🇳🇬 Naija<span>Rate</span>
+      🇳🇬 evote.ng
       <small>Admin Dashboard</small>
     </div>
     <nav class="sidebar-nav">

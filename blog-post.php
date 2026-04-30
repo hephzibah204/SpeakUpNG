@@ -62,9 +62,9 @@ if ($slug !== '' && is_file($dataPath)) {
 
 if (!$post) {
   http_response_code($slug === '' ? 400 : 404);
-  $pageTitle = $slug === '' ? 'Blog | NaijaRate' : 'Post not found | NaijaRate Blog';
-  $desc = $slug === '' ? 'Read the NaijaRate blog.' : 'This blog post could not be found.';
-  $img = $origin . '/images/naijarate-og.jpg';
+  $pageTitle = $slug === '' ? 'Blog | evote.ng' : 'Post not found | evote.ng Blog';
+  $desc = $slug === '' ? 'Read the evote.ng blog.' : 'This blog post could not be found.';
+  $img = $origin . '/images/logo.png';
   ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,7 +76,7 @@ if (!$post) {
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="<?= nr_h($origin . '/blog') ?>">
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="NaijaRate">
+  <meta property="og:site_name" content="evote.ng">
   <meta property="og:locale" content="en_NG">
   <meta property="og:title" content="<?= nr_h($pageTitle) ?>">
   <meta property="og:description" content="<?= nr_h($desc) ?>">
@@ -95,7 +95,7 @@ if (!$post) {
 </head>
 <body>
   <nav class="nav">
-    <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
     <div class="nav-links">
       <a href="/" class="nav-link show-mobile">Officials</a>
       <a href="/leaderboard" class="nav-link">Rankings</a>
@@ -125,7 +125,7 @@ if (!$post) {
     </div>
   </div>
   <footer class="site-footer">
-    <strong>NaijaRate</strong> — Civic insights for informed public participation<br>
+    <strong>evote.ng</strong> — Civic insights for informed public participation<br>
     <a href="/" style="color:var(--green-light);">Officials</a> ·
     <a href="/leaderboard" style="color:var(--green-light);">Rankings</a> ·
     <a href="/news" style="color:var(--green-light);">News Updates</a>
@@ -136,7 +136,7 @@ if (!$post) {
   exit;
 }
 
-$title = (string)($post['title'] ?? 'NaijaRate Blog');
+$title = (string)($post['title'] ?? 'evote.ng Blog');
 $excerpt = (string)($post['meta_description'] ?? $post['excerpt'] ?? '');
 if ($excerpt === '') $excerpt = nr_first_sentence((string)($post['body_html'] ?? ''));
 $keywords = (string)($post['meta_keywords'] ?? '');
@@ -144,9 +144,9 @@ if ($keywords === '') {
   $tags = $post['tags'] ?? [];
   if (is_array($tags)) $keywords = implode(', ', array_values(array_filter($tags, fn($t) => is_string($t) && $t !== '')));
 }
-$featured = (string)($post['featured_image'] ?? '/images/naijarate-og.jpg');
+$featured = (string)($post['featured_image'] ?? '/images/logo.png');
 $featuredAbs = preg_match('/^https?:\/\//i', $featured) ? $featured : ($origin . $featured);
-$pageTitle = $title . ' | NaijaRate Blog';
+$pageTitle = $title . ' | evote.ng Blog';
 $published = (string)($post['published_at'] ?? '');
 $updated = (string)($post['updated_at'] ?? $published);
 $category = (string)($post['category'] ?? '');
@@ -166,8 +166,8 @@ $ld = [
   'image' => [$featuredAbs],
   'datePublished' => $published,
   'dateModified' => $updated,
-  'author' => ['@type' => 'Organization', 'name' => 'NaijaRate'],
-  'publisher' => ['@type' => 'Organization', 'name' => 'NaijaRate'],
+  'author' => ['@type' => 'Organization', 'name' => 'evote.ng'],
+  'publisher' => ['@type' => 'Organization', 'name' => 'evote.ng'],
   'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonicalUrl],
 ];
 ?>
@@ -182,7 +182,7 @@ $ld = [
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="<?= nr_h($canonicalUrl) ?>">
   <meta property="og:type" content="article">
-  <meta property="og:site_name" content="NaijaRate">
+  <meta property="og:site_name" content="evote.ng">
   <meta property="og:locale" content="en_NG">
   <meta property="og:title" content="<?= nr_h($title) ?>">
   <meta property="og:description" content="<?= nr_h($excerpt) ?>">
@@ -210,7 +210,7 @@ $ld = [
 </head>
 <body>
   <nav class="nav">
-    <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
     <div class="nav-links">
       <a href="/" class="nav-link show-mobile">Officials</a>
       <a href="/leaderboard" class="nav-link">Rankings</a>
@@ -246,7 +246,7 @@ $ld = [
   </div>
 
   <footer class="site-footer">
-    <strong>NaijaRate</strong> — Civic insights for informed public participation<br>
+    <strong>evote.ng</strong> — Civic insights for informed public participation<br>
     <a href="/" style="color:var(--green-light);">Officials</a> ·
     <a href="/leaderboard" style="color:var(--green-light);">Rankings</a> ·
     <a href="/news" style="color:var(--green-light);">News Updates</a>

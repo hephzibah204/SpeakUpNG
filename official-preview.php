@@ -62,7 +62,7 @@ if ($id === '') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NaijaRate</title>
+  <title>evote.ng</title>
   <meta name="robots" content="noindex">
 </head>
 <body>
@@ -106,9 +106,9 @@ if (!$o) {
 
 if (!$o) {
   http_response_code(404);
-  $pageTitle = 'Official not found | NaijaRate';
+  $pageTitle = 'Official not found | evote.ng';
   $desc = 'This official profile could not be found.';
-  $img = $origin . '/images/naijarate-og.jpg';
+  $img = $origin . '/images/logo.png';
   ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,7 +120,7 @@ if (!$o) {
   <meta name="robots" content="noindex">
   <link rel="canonical" href="<?= nr_h($origin . '/') ?>">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="NaijaRate">
+  <meta property="og:site_name" content="evote.ng">
   <meta property="og:locale" content="en_NG">
   <meta property="og:title" content="<?= nr_h($pageTitle) ?>">
   <meta property="og:description" content="<?= nr_h($desc) ?>">
@@ -148,10 +148,10 @@ if (isset($o['states']) && is_array($o['states']) && isset($o['states']['name'])
 $slug = nr_slugify($fullName);
 $canonicalUrl = $origin . '/official/' . rawurlencode($slug);
 $prettyTargetUrl = $origin . '/official/' . rawurlencode($slug) . '--' . rawurlencode($id);
-$pageTitle = $fullName . ' - ' . $role . ' | NaijaRate';
-$desc = $fullName . ' (' . $role . ') on NaijaRate: ratings, citizen reviews, reports, and accountability insights' . ($stateName !== '' ? (' in ' . $stateName) : '') . '.';
+$pageTitle = $fullName . ' - ' . $role . ' | evote.ng';
+$desc = $fullName . ' (' . $role . ') on evote.ng: ratings, citizen reviews, reports, and accountability insights' . ($stateName !== '' ? (' in ' . $stateName) : '') . '.';
 $photo = (string)($o['photo_url'] ?? '');
-$img = ($photo !== '' && preg_match('/^https?:\/\//i', $photo)) ? $photo : ($origin . '/images/naijarate-og.jpg');
+$img = ($photo !== '' && preg_match('/^https?:\/\//i', $photo)) ? $photo : ($origin . '/images/logo.png');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -163,7 +163,7 @@ $img = ($photo !== '' && preg_match('/^https?:\/\//i', $photo)) ? $photo : ($ori
   <meta name="robots" content="noindex,follow,max-image-preview:large">
   <link rel="canonical" href="<?= nr_h($canonicalUrl) ?>">
   <meta property="og:type" content="profile">
-  <meta property="og:site_name" content="NaijaRate">
+  <meta property="og:site_name" content="evote.ng">
   <meta property="og:locale" content="en_NG">
   <meta property="og:title" content="<?= nr_h($pageTitle) ?>">
   <meta property="og:description" content="<?= nr_h($desc) ?>">

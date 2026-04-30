@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ratings — NaijaRate Admin</title>
+<title>Ratings — evote.ng Admin</title>
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="admin.css">
 </head>
@@ -21,11 +21,6 @@
     <input type="text" id="search" placeholder="Search official name or review text..." oninput="applyFilter()">
     <select id="score-filter" onchange="applyFilter()">
       <option value="">All Scores</option>
-      <option value="5">★★★★★ (5)</option>
-      <option value="4">★★★★ (4)</option>
-      <option value="3">★★★ (3)</option>
-      <option value="2">★★ (2)</option>
-      <option value="1">★ (1)</option>
     </select>
     <select id="flag-filter" onchange="applyFilter()">
       <option value="">All</option>
@@ -63,6 +58,13 @@ import { supabase, requireAuth, sidebarHTML, showToast, fmt, scoreColor, wireSig
 const session = await requireAuth();
 document.getElementById('sidebar-mount').innerHTML = sidebarHTML('ratings', session.user.email);
 wireSignOut();
+
+const scoreFilterEl = document.getElementById('score-filter');
+if (scoreFilterEl) {
+  scoreFilterEl.insertAdjacentHTML('beforeend',
+    [5,4,3,2,1].map((n) => `<option value="${n}">${'★'.repeat(n)} (${n})</option>`).join('')
+  );
+}
 
 let allRatings=[], filtered=[], page=1; const perPage=25;
 

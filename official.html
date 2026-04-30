@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Official Profile - NaijaRate</title>
-<meta name="description" id="meta-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
-<meta name="keywords" content="official profile Nigeria, public servant ratings, NaijaRate profile, governance review">
+<title>Official Profile - evote.ng</title>
+<meta name="description" id="meta-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on evote.ng.">
+<meta name="keywords" content="official profile Nigeria, public servant ratings, evote.ng profile, governance review">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="/official" id="canonical-link">
 <meta property="og:type" content="profile">
-<meta property="og:site_name" content="NaijaRate">
+<meta property="og:site_name" content="evote.ng">
 <meta property="og:locale" content="en_NG">
-<meta property="og:title" id="og-title" content="Official Profile - NaijaRate">
-<meta property="og:description" id="og-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
-<meta property="og:image" id="og-image" content="/images/naijarate-og.jpg">
+<meta property="og:title" id="og-title" content="Official Profile - evote.ng">
+<meta property="og:description" id="og-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on evote.ng.">
+<meta property="og:image" id="og-image" content="/images/logo.png">
 <meta property="og:url" id="og-url" content="/official">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" id="twitter-title" content="Official Profile - NaijaRate">
-<meta name="twitter:description" id="twitter-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
-<meta name="twitter:image" id="twitter-image" content="/images/naijarate-og.jpg">
+<meta name="twitter:title" id="twitter-title" content="Official Profile - evote.ng">
+<meta name="twitter:description" id="twitter-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on evote.ng.">
+<meta name="twitter:image" id="twitter-image" content="/images/logo.png">
 <link rel="stylesheet" href="/css/style.css">
 <style>
   /* ── PROFILE HERO ── */
@@ -176,7 +176,7 @@
 <body>
 
 <nav class="nav">
-  <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
+  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
   <div class="nav-links">
     <a href="/" class="nav-link show-mobile">Officials</a>
     <a href="/leaderboard" class="nav-link">Rankings</a>
@@ -421,7 +421,7 @@
 </div>
 
 <footer class="site-footer">
-  <strong>NaijaRate</strong> — Nigerian Civic Accountability Platform<br>
+  <strong>evote.ng</strong> — Nigerian Civic Accountability Platform<br>
   All submissions are 100% anonymous · No personal data collected<br>
   <a href="/blog" style="color:var(--green-light);">Blog</a> ·
   <a href="/news" style="color:var(--green-light);">News</a> ·
@@ -712,9 +712,9 @@ function saveStoredRating(id, payload) {
 function updateSeoForOfficial(o) {
   const canonicalSlug = slugifyOfficialName(o.full_name || o.common_name || 'official');
   const profileUrl = window.location.origin + `/official/${canonicalSlug}`;
-  const title = `${o.full_name} - ${o.role} | NaijaRate`;
-  const description = `${o.full_name} (${o.role}) on NaijaRate: ratings, citizen reviews, reports, and accountability insights${o.states?.name ? ` in ${o.states.name}` : ''}.`;
-  const image = o.photo_url || '/images/naijarate-og.jpg';
+  const title = `${o.full_name} - ${o.role} | evote.ng`;
+  const description = `${o.full_name} (${o.role}) on evote.ng: ratings, citizen reviews, reports, and accountability insights${o.states?.name ? ` in ${o.states.name}` : ''}.`;
+  const image = o.photo_url || '/images/logo.png';
   document.title = title;
   const descMeta = document.getElementById('meta-description');
   const canonical = document.getElementById('canonical-link');
@@ -1296,13 +1296,13 @@ window.submitReport = async () => {
 // ── SHARE ──
 window.shareWhatsApp = () => {
   const url = (officialId ? (window.location.origin + '/official/p/' + officialId) : window.location.href);
-  const text = official?.full_name ? `Rate ${official.full_name} on NaijaRate:` : 'Rate this official on NaijaRate:';
+  const text = official?.full_name ? `Rate ${official.full_name} on evote.ng:` : 'Rate this official on evote.ng:';
   window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank', 'noopener,noreferrer');
 };
 window.shareProfile = () => {
   const url = (officialId ? (window.location.origin + '/official/p/' + officialId) : window.location.href);
   if (navigator.share) {
-    navigator.share({ title:`Rate ${official.full_name} on NaijaRate`, url });
+    navigator.share({ title:`Rate ${official.full_name} on evote.ng`, url });
   } else {
     navigator.clipboard.writeText(url);
     showToast('Link copied to clipboard ✓');

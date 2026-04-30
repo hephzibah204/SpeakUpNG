@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nigerian Official Rankings - NaijaRate Leaderboard</title>
-<meta name="description" content="View NaijaRate's live leaderboard of Nigerian public officials ranked by citizen ratings, participation volume, and accountability trends.">
-<meta name="keywords" content="Nigeria official rankings, governance scorecard, citizen ratings leaderboard, NaijaRate rankings">
+<title>Nigerian Official Rankings - evote.ng Leaderboard</title>
+<meta name="description" content="View evote.ng's live leaderboard of Nigerian public officials ranked by citizen ratings, participation volume, and accountability trends.">
+<meta name="keywords" content="Nigeria official rankings, governance scorecard, citizen ratings leaderboard, evote.ng rankings">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="/leaderboard" id="canonical-link">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="NaijaRate">
+<meta property="og:site_name" content="evote.ng">
 <meta property="og:locale" content="en_NG">
-<meta property="og:title" content="NaijaRate Leaderboard - Nigerian Official Rankings">
-<meta property="og:description" content="Explore the best rated, most rated, and trending Nigerian public officials on NaijaRate.">
-<meta property="og:image" content="/images/naijarate-og.jpg">
+<meta property="og:title" content="evote.ng Leaderboard - Nigerian Official Rankings">
+<meta property="og:description" content="Explore the best rated, most rated, and trending Nigerian public officials on evote.ng.">
+<meta property="og:image" content="/images/logo.png">
 <meta property="og:url" content="/leaderboard" id="og-url">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="NaijaRate Leaderboard - Nigerian Official Rankings">
-<meta name="twitter:description" content="Explore the best rated, most rated, and trending Nigerian public officials on NaijaRate.">
-<meta name="twitter:image" content="/images/naijarate-og.jpg">
+<meta name="twitter:title" content="evote.ng Leaderboard - Nigerian Official Rankings">
+<meta name="twitter:description" content="Explore the best rated, most rated, and trending Nigerian public officials on evote.ng.">
+<meta name="twitter:image" content="/images/logo.png">
 <link rel="stylesheet" href="css/style.css">
 <script>
   (function setCanonicalMeta() {
@@ -35,7 +35,7 @@
 {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  "name": "NaijaRate Leaderboard",
+  "name": "evote.ng Leaderboard",
   "url": "/leaderboard",
   "description": "Rankings of Nigerian public officials by citizen ratings and engagement.",
   "inLanguage": "en-NG"
@@ -44,8 +44,9 @@
 </head>
 <body>
 <nav class="nav">
-  <a href="/" class="nav-logo">🇳🇬 Naija<span>Rate</span> <span class="badge">Beta</span></a>
-  <div class="nav-links">
+  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+  <div class="nav-links" id="nav-links">
     <a href="/" class="nav-link show-mobile">Officials</a>
     <a href="/leaderboard" class="nav-link active">Rankings</a>
     <a href="/polls" class="nav-link">Polls</a>
@@ -92,18 +93,12 @@
     </div>
 
     <!-- Score legend -->
-    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:1.5rem;font-size:.78rem;color:var(--muted);">
-      <span>⬤ <span style="color:#00b368;">4.0–5.0</span> Excellent</span>
-      <span>⬤ <span style="color:#e8a020;">3.0–3.9</span> Average</span>
-      <span>⬤ <span style="color:#e87720;">2.0–2.9</span> Poor</span>
-      <span>⬤ <span style="color:#e84040;">1.0–1.9</span> Very Poor</span>
-      <span>⬤ <span style="color:var(--muted);">—</span> Not yet rated</span>
-    </div>
+    <div id="score-legend" style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:1.5rem;font-size:.78rem;color:var(--muted);"></div>
   </div>
 </div>
 
 <footer class="site-footer">
-  <strong>NaijaRate</strong> — All ratings are submitted anonymously by citizens<br>
+  <strong>evote.ng</strong> — All ratings are submitted anonymously by citizens<br>
   <a href="/blog" style="color:var(--green-light);">Blog</a> ·
   <a href="/news" style="color:var(--green-light);">News</a> ·
   <a href="/polls" style="color:var(--green-light);">Polls</a>
@@ -113,6 +108,20 @@
 import { supabase, TIER_LABELS, TIER_COLORS, scoreColor, fmt } from './js/supabase-client.js';
 
 let mode = 'most_rated';
+
+function renderLegend() {
+  const el = document.getElementById('score-legend');
+  if (!el) return;
+  const bands = [
+    { min: 4.0, max: 5.0, label: 'Excellent', color: '#00b368' },
+    { min: 3.0, max: 3.9, label: 'Average', color: '#e8a020' },
+    { min: 2.0, max: 2.9, label: 'Poor', color: '#e87720' },
+    { min: 1.0, max: 1.9, label: 'Very Poor', color: '#e84040' },
+  ];
+  el.innerHTML =
+    bands.map((b) => `<span>⬤ <span style="color:${b.color};">${b.min.toFixed(1)}–${b.max.toFixed(1)}</span> ${b.label}</span>`).join('') +
+    `<span>⬤ <span style="color:var(--muted);">—</span> Not yet rated</span>`;
+}
 
 function avatarImgStyle(tier) {
   return String(tier || '').includes('agency')
@@ -139,21 +148,67 @@ async function loadLB() {
   document.getElementById('lb-body').innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>';
 
   let q = supabase.from('officials')
-    .select('id,full_name,role,tier,photo_url,party,rating_avg,rating_count,report_count,states(name)')
+    .select('id,full_name,role,tier,photo_url,party,report_count,states(name)')
     .eq('status','active');
 
   const tierModes = ['federal_executive','state_executive','federal_legislature','federal_agency'];
   if (tierModes.includes(mode)) q = q.eq('tier', mode);
 
-  if (mode === 'best') q = q.order('rating_avg', {ascending:false});
-  else if (mode === 'worst') q = q.gt('rating_count',0).order('rating_avg', {ascending:true});
-  else q = q.order('rating_count', {ascending:false});
-
   q = q.limit(100);
-  const { data, error } = await q;
-  if (error || !data) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">Error loading data.</div></td></tr>'; return; }
+  const { data: officials, error } = await q;
+  if (error || !officials) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">Error loading data.</div></td></tr>'; return; }
 
-  if (!data.length) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">No officials found for this filter.</div></td></tr>'; return; }
+  if (!officials.length) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">No officials found for this filter.</div></td></tr>'; return; }
+
+  // Live aggregation from submitted ratings (not precomputed table fields).
+  const ids = officials.map((o) => o.id).filter(Boolean);
+  const { data: ratings, error: ratingErr } = await supabase
+    .from('public_ratings')
+    .select('official_id,overall')
+    .in('official_id', ids);
+  if (ratingErr) {
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">Error loading rating data.</div></td></tr>';
+    return;
+  }
+
+  const byOfficial = new Map();
+  (ratings || []).forEach((r) => {
+    const id = r.official_id;
+    if (!id) return;
+    const score = Number(r.overall || 0);
+    if (!Number.isFinite(score) || score <= 0) return;
+    if (!byOfficial.has(id)) byOfficial.set(id, { sum: 0, count: 0 });
+    const bucket = byOfficial.get(id);
+    bucket.sum += score;
+    bucket.count += 1;
+  });
+
+  const data = officials.map((o) => {
+    const agg = byOfficial.get(o.id) || { sum: 0, count: 0 };
+    const rating_count = agg.count || 0;
+    const rating_avg = rating_count ? (agg.sum / rating_count) : 0;
+    return { ...o, rating_count, rating_avg };
+  });
+
+  if (mode === 'best') {
+    data.sort((a, b) => {
+      if ((b.rating_avg || 0) !== (a.rating_avg || 0)) return (b.rating_avg || 0) - (a.rating_avg || 0);
+      return (b.rating_count || 0) - (a.rating_count || 0);
+    });
+  } else if (mode === 'worst') {
+    const rated = data.filter((o) => (o.rating_count || 0) > 0);
+    rated.sort((a, b) => {
+      if ((a.rating_avg || 0) !== (b.rating_avg || 0)) return (a.rating_avg || 0) - (b.rating_avg || 0);
+      return (b.rating_count || 0) - (a.rating_count || 0);
+    });
+    data.length = 0;
+    data.push(...rated);
+  } else {
+    data.sort((a, b) => {
+      if ((b.rating_count || 0) !== (a.rating_count || 0)) return (b.rating_count || 0) - (a.rating_count || 0);
+      return (b.rating_avg || 0) - (a.rating_avg || 0);
+    });
+  }
 
   document.getElementById('lb-body').innerHTML = data.map((o,i) => {
     const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
@@ -195,6 +250,25 @@ document.querySelectorAll('#lb-tabs .tab').forEach(btn => {
 });
 
 loadLB();
+renderLegend();
+</script>
+<script>
+(function () {
+  const toggle = document.getElementById('nav-toggle');
+  const links = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  const closeMenu = () => {
+    links.classList.remove('open');
+    toggle.textContent = '☰';
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.textContent = open ? '✕' : '☰';
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  links.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMenu));
+})();
 </script>
 </body>
 </html>
