@@ -24,6 +24,18 @@ RewriteRule ^$ index.html [L]
 RewriteCond %{DOCUMENT_ROOT}/public/index.html -f
 RewriteRule ^$ public/index.html [L]
 
+# Official preview route (server-rendered OG tags): /official/p/<id>
+RewriteCond %{DOCUMENT_ROOT}/official-preview.php -f
+RewriteRule ^official/p/([a-zA-Z0-9-]+)/?$ official-preview.php?id=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/official-preview.php -f
+RewriteRule ^official/p/([a-zA-Z0-9-]+)/?$ public/official-preview.php?id=$1 [QSA,L]
+
+# Fast official route by id: /official/id/<id>
+RewriteCond %{DOCUMENT_ROOT}/official.html -f
+RewriteRule ^official/id/([a-zA-Z0-9-]+)/?$ official.html?id=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/official.html -f
+RewriteRule ^official/id/([a-zA-Z0-9-]+)/?$ public/official.html?id=$1 [QSA,L]
+
 # Pretty official profile route: /official/<slug>
 RewriteCond %{DOCUMENT_ROOT}/official.html -f
 RewriteRule ^official/([a-zA-Z0-9-]+)/?$ official.html?slug=$1 [QSA,L]
@@ -31,14 +43,22 @@ RewriteCond %{DOCUMENT_ROOT}/public/official.html -f
 RewriteRule ^official/([a-zA-Z0-9-]+)/?$ public/official.html?slug=$1 [QSA,L]
 
 # Pretty blog post route: /blog/<slug>
+RewriteCond %{DOCUMENT_ROOT}/blog-post.php -f
+RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ blog-post.php?slug=$1 [QSA,L]
 RewriteCond %{DOCUMENT_ROOT}/blog-post.html -f
 RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ blog-post.html?slug=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/blog-post.php -f
+RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ public/blog-post.php?slug=$1 [QSA,L]
 RewriteCond %{DOCUMENT_ROOT}/public/blog-post.html -f
 RewriteRule ^blog/([a-zA-Z0-9-]+)/?$ public/blog-post.html?slug=$1 [QSA,L]
 
 # Pretty news post route: /news/<slug>
+RewriteCond %{DOCUMENT_ROOT}/news-post.php -f
+RewriteRule ^news/([a-zA-Z0-9-]+)/?$ news-post.php?slug=$1 [QSA,L]
 RewriteCond %{DOCUMENT_ROOT}/news-post.html -f
 RewriteRule ^news/([a-zA-Z0-9-]+)/?$ news-post.html?slug=$1 [QSA,L]
+RewriteCond %{DOCUMENT_ROOT}/public/news-post.php -f
+RewriteRule ^news/([a-zA-Z0-9-]+)/?$ public/news-post.php?slug=$1 [QSA,L]
 RewriteCond %{DOCUMENT_ROOT}/public/news-post.html -f
 RewriteRule ^news/([a-zA-Z0-9-]+)/?$ public/news-post.html?slug=$1 [QSA,L]
 

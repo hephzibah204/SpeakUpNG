@@ -131,8 +131,7 @@ function slugifyOfficialName(name) {
 }
 
 function officialPath(o) {
-  const slug = slugifyOfficialName(o.full_name || 'official');
-  return `/official/${slug}`;
+  return `/official/id/${o.id}`;
 }
 
 async function loadLB() {

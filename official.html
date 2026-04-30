@@ -433,12 +433,21 @@ import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, 
 
 // ── GET ROUTE PARAMS (id or slug) ──
 const params = new URLSearchParams(window.location.search);
-let officialId = params.get('id') || '';
 const pathParts = window.location.pathname.replace(/\/+$/,'').split('/').filter(Boolean);
 const slugFromPath = (pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'official')
   ? decodeURIComponent(pathParts[pathParts.length - 1])
   : '';
+const idFromPath = (pathParts.length >= 3 && pathParts[pathParts.length - 3] === 'official' && pathParts[pathParts.length - 2] === 'id')
+  ? decodeURIComponent(pathParts[pathParts.length - 1])
+  : '';
+let officialId = params.get('id') || idFromPath || '';
 const officialSlug = (params.get('slug') || slugFromPath || '').toLowerCase();
+if (!officialId && officialSlug) {
+  try {
+    const map = JSON.parse(localStorage.getItem('nr_official_slug_map') || '{}') || {};
+    if (map && typeof map === 'object' && map[officialSlug]) officialId = map[officialSlug];
+  } catch {}
+}
 if (!officialId && !officialSlug) { window.location.href = '/'; }
 
 const anonId = getAnonId();
@@ -703,7 +712,7 @@ async function loadOfficial() {
   } else {
     const res = await supabase
       .from('officials')
-      .select('*,states(name)')
+      .select('id,full_name,common_name')
       .eq('status', 'active')
       .limit(3000);
     error = res.error;
@@ -713,13 +722,30 @@ async function loadOfficial() {
         slugifyOfficialName(o.full_name) === officialSlug ||
         slugifyOfficialName(o.common_name) === officialSlug
       );
-      data = match || null;
+      if (match?.id) {
+        officialId = match.id;
+        ({ data, error } = await supabase
+          .from('officials')
+          .select('*,states(name)')
+          .eq('id', officialId)
+          .eq('status', 'active')
+          .single());
+      } else {
+        data = null;
+      }
     }
   }
 
   if (error || !data) { window.location.href = '/'; return; }
   officialId = data.id;
   official = data;
+  if (!idFromPath && officialSlug) {
+    try {
+      const map = JSON.parse(localStorage.getItem('nr_official_slug_map') || '{}') || {};
+      map[officialSlug] = officialId;
+      localStorage.setItem('nr_official_slug_map', JSON.stringify(map));
+    } catch {}
+  }
   const canonicalSlug = slugifyOfficialName(data.full_name || data.common_name || 'official');
   if (canonicalSlug && window.location.pathname !== `/official/${canonicalSlug}`) {
     window.history.replaceState({}, '', `/official/${canonicalSlug}`);
@@ -1178,12 +1204,12 @@ window.submitReport = async () => {
 
 // ── SHARE ──
 window.shareWhatsApp = () => {
-  const url = window.location.href;
+  const url = (officialId ? (window.location.origin + '/official/p/' + officialId) : window.location.href);
   const text = official?.full_name ? `Rate ${official.full_name} on NaijaRate:` : 'Rate this official on NaijaRate:';
   window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank', 'noopener,noreferrer');
 };
 window.shareProfile = () => {
-  const url = window.location.href;
+  const url = (officialId ? (window.location.origin + '/official/p/' + officialId) : window.location.href);
   if (navigator.share) {
     navigator.share({ title:`Rate ${official.full_name} on NaijaRate`, url });
   } else {
