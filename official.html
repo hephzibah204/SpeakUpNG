@@ -19,7 +19,18 @@
 <meta name="twitter:title" id="twitter-title" content="Official Profile - NaijaRate">
 <meta name="twitter:description" id="twitter-description" content="View ratings, reviews, reports, and performance insights for Nigerian government officials on NaijaRate.">
 <meta name="twitter:image" id="twitter-image" content="/images/naijarate-og.jpg">
-<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="" id="site-css">
+<script>
+  (function () {
+    try {
+      var depth = (window.location.pathname || '/').split('/').filter(Boolean).length;
+      var up = '';
+      for (var i = 0; i < Math.max(0, depth - 1); i++) up += '../';
+      var el = document.getElementById('site-css');
+      if (el) el.href = up + 'css/style.css';
+    } catch {}
+  })();
+</script>
 <style>
   /* ── PROFILE HERO ── */
   .profile-hero {
@@ -429,7 +440,9 @@
 </footer>
 
 <script type="module">
-import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt, scoreColor } from '/js/supabase-client.js';
+const __depth = (window.location.pathname || '/').split('/').filter(Boolean).length;
+const __base = '../'.repeat(Math.max(0, __depth - 1));
+const { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt, scoreColor } = await import(__base + 'js/supabase-client.js');
 
 // ── GET ROUTE PARAMS (id or slug) ──
 const params = new URLSearchParams(window.location.search);
