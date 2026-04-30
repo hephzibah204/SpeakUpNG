@@ -147,6 +147,7 @@ if (isset($o['states']) && is_array($o['states']) && isset($o['states']['name'])
 
 $slug = nr_slugify($fullName);
 $canonicalUrl = $origin . '/official/' . rawurlencode($slug);
+$prettyTargetUrl = $origin . '/official/' . rawurlencode($slug) . '--' . rawurlencode($id);
 $pageTitle = $fullName . ' - ' . $role . ' | NaijaRate';
 $desc = $fullName . ' (' . $role . ') on NaijaRate: ratings, citizen reviews, reports, and accountability insights' . ($stateName !== '' ? (' in ' . $stateName) : '') . '.';
 $photo = (string)($o['photo_url'] ?? '');
@@ -182,10 +183,10 @@ $img = ($photo !== '' && preg_match('/^https?:\/\//i', $photo)) ? $photo : ($ori
     <h1 style="margin:0 0 10px;"><?= nr_h($fullName) ?></h1>
     <p class="muted" style="margin:0 0 14px;"><?= nr_h($role . ($stateName !== '' ? (' · ' . $stateName) : '')) ?></p>
     <p style="margin:0 0 18px;">Opening profile…</p>
-    <p><a class="btn btn-green" href="<?= nr_h($idRouteUrl) ?>">Continue</a></p>
+    <p><a class="btn btn-green" href="<?= nr_h($prettyTargetUrl) ?>">Continue</a></p>
   </div>
   <script>
-    setTimeout(function () { window.location.replace(<?= json_encode($idRouteUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>); }, 450);
+    setTimeout(function () { window.location.replace(<?= json_encode($prettyTargetUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>); }, 450);
   </script>
 </body>
 </html>

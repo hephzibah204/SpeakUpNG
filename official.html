@@ -434,13 +434,26 @@ import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, 
 // ── GET ROUTE PARAMS (id or slug) ──
 const params = new URLSearchParams(window.location.search);
 const pathParts = window.location.pathname.replace(/\/+$/,'').split('/').filter(Boolean);
-const slugFromPath = (pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'official')
+const rawOfficialSegment = (pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'official')
   ? decodeURIComponent(pathParts[pathParts.length - 1])
   : '';
+let slugFromPath = rawOfficialSegment;
+let idFromCombined = '';
+if (rawOfficialSegment.includes('--')) {
+  const parts = rawOfficialSegment.split('--');
+  if (parts.length >= 2) {
+    const maybeId = parts[parts.length - 1];
+    const maybeSlug = parts.slice(0, -1).join('--');
+    if (/^[0-9a-fA-F-]{36}$/.test(maybeId)) {
+      idFromCombined = maybeId;
+      slugFromPath = maybeSlug;
+    }
+  }
+}
 const idFromPath = (pathParts.length >= 3 && pathParts[pathParts.length - 3] === 'official' && pathParts[pathParts.length - 2] === 'id')
   ? decodeURIComponent(pathParts[pathParts.length - 1])
   : '';
-let officialId = params.get('id') || idFromPath || '';
+let officialId = params.get('id') || idFromPath || idFromCombined || '';
 const officialSlug = (params.get('slug') || slugFromPath || '').toLowerCase();
 if (!officialId && officialSlug) {
   try {
@@ -651,7 +664,8 @@ function saveStoredRating(id, payload) {
 }
 
 function updateSeoForOfficial(o) {
-  const profileUrl = window.location.origin + window.location.pathname;
+  const canonicalSlug = slugifyOfficialName(o.full_name || o.common_name || 'official');
+  const profileUrl = window.location.origin + `/official/${canonicalSlug}`;
   const title = `${o.full_name} - ${o.role} | NaijaRate`;
   const description = `${o.full_name} (${o.role}) on NaijaRate: ratings, citizen reviews, reports, and accountability insights${o.states?.name ? ` in ${o.states.name}` : ''}.`;
   const image = o.photo_url || '/images/naijarate-og.jpg';
@@ -747,8 +761,8 @@ async function loadOfficial() {
       localStorage.setItem('nr_official_slug_map', JSON.stringify(map));
     } catch {}
   }
-  if (canonicalSlug && window.location.pathname !== `/official/${canonicalSlug}`) {
-    window.history.replaceState({}, '', `/official/${canonicalSlug}`);
+  if (canonicalSlug && officialId && window.location.pathname !== `/official/${canonicalSlug}--${officialId}`) {
+    window.history.replaceState({}, '', `/official/${canonicalSlug}--${officialId}`);
   }
   renderHero();
   renderScoreCard();
