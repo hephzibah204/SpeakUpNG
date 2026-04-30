@@ -111,6 +111,46 @@
     gap: .45rem;
     font-size: .8rem;
   }
+  .best-rated-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .best-rated-col {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    padding: 1rem;
+  }
+  .best-rated-col h3 {
+    font-family: Syne, sans-serif;
+    font-size: 1rem;
+    margin-bottom: .8rem;
+  }
+  .best-rated-list {
+    display: grid;
+    gap: .65rem;
+  }
+  .best-rated-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .6rem .7rem;
+    background: rgba(255,255,255,.02);
+  }
+  .best-rated-item a {
+    color: var(--white);
+    text-decoration: none;
+  }
+  .best-rated-item a:hover { color: var(--green-light); }
+  .best-rated-meta {
+    font-size: .74rem;
+    color: var(--muted);
+  }
   .insights-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -209,12 +249,36 @@
   <div class="stat"><div class="stat-n">100%</div><div class="stat-l">Anonymous</div></div>
 </div>
 
+<!-- BEST RATED -->
+<div class="section" style="padding-top:1.2rem;">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;">
+      <h2 class="page-title">Best Rated Officials & Agencies</h2>
+      <p class="page-sub">Live rankings from citizen reviews submitted on evote.ng.</p>
+    </div>
+    <div class="best-rated-grid">
+      <div class="best-rated-col">
+        <h3>🏛️ Best Rated Officials</h3>
+        <div class="best-rated-list" id="best-rated-officials">
+          <div class="loading"><div class="spinner"></div><br>Loading best rated officials...</div>
+        </div>
+      </div>
+      <div class="best-rated-col">
+        <h3>🏢 Best Rated Agencies</h3>
+        <div class="best-rated-list" id="best-rated-agencies">
+          <div class="loading"><div class="spinner"></div><br>Loading best rated agencies...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- FEATURED LEADERS -->
 <div class="section" style="padding-top:1.2rem;">
   <div class="container">
     <div class="page-header" style="border:none;padding-bottom:0;">
       <h2 class="page-title">Featured Leader Ratings</h2>
-      <p class="page-sub">Quick view: President Bola Tinubu and selected high-visibility governors.</p>
+      <p class="page-sub">Live leader spotlight powered by real user ratings.</p>
     </div>
     <div class="featured-grid" id="featured-leaders">
       <div class="loading"><div class="spinner"></div><br>Loading featured ratings...</div>
@@ -548,14 +612,8 @@ const CATEGORY_PROFILES = {
     visible: ['accountability','service','transparency','responsiveness','power','security'],
   },
 };
-const FEATURED_LEADERS = [
-  'Bola Ahmed Tinubu',
-  'Babajide Sanwo-Olu',
-  'Alex Otti',
-  'Babagana Zulum',
-  'Seyi Makinde',
-  'Peter Mbah',
-];
+const AGENCY_TIERS = new Set(['federal_agency', 'state_agency']);
+let ratedOfficialsCache = null;
 
 function isPowerSectorOfficial(o) {
   const hay = `${o?.full_name || ''} ${o?.common_name || ''} ${o?.role || ''} ${o?.website || ''}`.toLowerCase();
@@ -689,26 +747,26 @@ async function loadOfficials() {
 async function loadFeaturedLeaders() {
   const mount = document.getElementById('featured-leaders');
   if (!mount) return;
-  const { data, error } = await supabase
-    .from('officials')
-    .select('id,full_name,common_name,role,tier,website,photo_url,rating_avg,rating_count,states(name)')
-    .in('full_name', FEATURED_LEADERS)
-    .eq('status', 'active');
-  if (error) {
-    mount.innerHTML = `
-      <div class="empty">
-        Unable to load featured leader ratings.<br>
-        <span style="color:var(--muted);font-size:.82rem;">${error.message || ''}</span>
-      </div>`;
-    return;
-  }
-  const byName = new Map((data || []).map((o) => [o.full_name, o]));
-  const ordered = FEATURED_LEADERS.map((name) => byName.get(name)).filter(Boolean);
-  if (!ordered.length) {
+  const source = await getRatedOfficialsData();
+  if (!source.length) {
     mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
     return;
   }
-  mount.innerHTML = ordered.map((o) => {
+  const leaders = source
+    .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
+    .filter((o) => Number(o.rating_count || 0) >= 3)
+    .sort((a, b) => {
+      const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
+      if (byScore !== 0) return byScore;
+      return Number(b.rating_count || 0) - Number(a.rating_count || 0);
+    })
+    .slice(0, 6);
+
+  if (!leaders.length) {
+    mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+    return;
+  }
+  mount.innerHTML = leaders.map((o) => {
     const rating = Number(o.rating_avg || 0);
     const tier = TIER_LABELS[o.tier] || o.tier;
     const state = o.states?.name ? ` · ${o.states.name}` : '';
@@ -736,6 +794,68 @@ async function loadFeaturedLeaders() {
         </div>
       </div>`;
   }).join('');
+}
+
+async function getRatedOfficialsData() {
+  if (Array.isArray(ratedOfficialsCache)) return ratedOfficialsCache;
+  const { data, error } = await supabase
+    .from('officials')
+    .select('id,full_name,common_name,role,tier,website,photo_url,rating_avg,rating_count,states(name)')
+    .eq('status', 'active');
+  if (error) {
+    throw error;
+  }
+  ratedOfficialsCache = (data || []).filter((o) => Number(o.rating_count || 0) > 0);
+  return ratedOfficialsCache;
+}
+
+function renderBestRatedList(mountId, rows, emptyText) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  if (!rows.length) {
+    mount.innerHTML = `<div class="empty">${emptyText}</div>`;
+    return;
+  }
+  mount.innerHTML = rows.map((o) => {
+    const rating = Number(o.rating_avg || 0);
+    const tier = TIER_LABELS[o.tier] || o.tier;
+    const state = o.states?.name ? ` · ${o.states.name}` : '';
+    return `
+      <div class="best-rated-item">
+        <div style="min-width:0;">
+          <a href="${officialPath(o)}">${o.full_name}</a>
+          <div class="best-rated-meta">${o.role}</div>
+          <div class="best-rated-meta">${tier}${state}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:Syne,sans-serif;font-weight:800;">${rating.toFixed(1)}</div>
+          <div class="best-rated-meta">${fmt(o.rating_count)} ratings</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadBestRatedSections() {
+  try {
+    const source = await getRatedOfficialsData();
+    const ranked = source
+      .filter((o) => Number(o.rating_count || 0) >= 3)
+      .sort((a, b) => {
+        const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
+        if (byScore !== 0) return byScore;
+        return Number(b.rating_count || 0) - Number(a.rating_count || 0);
+      });
+
+    const officials = ranked.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const agencies = ranked.filter((o) => AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+
+    renderBestRatedList('best-rated-officials', officials, 'No rated officials yet.');
+    renderBestRatedList('best-rated-agencies', agencies, 'No rated agencies yet.');
+  } catch (error) {
+    const msg = error?.message || 'Unable to load ranked results.';
+    renderBestRatedList('best-rated-officials', [], `Error loading officials: ${msg}`);
+    renderBestRatedList('best-rated-agencies', [], `Error loading agencies: ${msg}`);
+  }
 }
 
 function applyFilters() {
@@ -1019,6 +1139,7 @@ window.closeModal = (id) => document.getElementById(id).classList.remove('open')
 
 // ── INIT ──
 loadStats();
+loadBestRatedSections();
 loadFeaturedLeaders();
 loadOfficials();
 </script>

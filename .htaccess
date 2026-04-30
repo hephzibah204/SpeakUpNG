@@ -5,6 +5,9 @@
 
 RewriteEngine On
 
+# Block direct access to server config files
+RewriteRule ^config/ - [F,L]
+
 # Redirect index.html to directory root
 RewriteCond %{THE_REQUEST} \s/+(.*/)?index\.html[\s?] [NC]
 RewriteRule ^index\.html$ /%1 [R=301,L]

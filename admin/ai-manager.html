@@ -351,7 +351,7 @@
 </div><!-- /admin-main -->
 
 <script type="module">
-import { supabase, requireAuth, sidebarHTML, showToast, wireSignOut } from './js/admin-common.js';
+import { supabase, requireAuth, sidebarHTML, showToast, wireSignOut, openRouterChat } from './js/admin-common.js';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 const session = await requireAuth();
@@ -365,7 +365,8 @@ let artTone       = 'formal';
 let socPlatform   = { id:'twitter', max:280 };
 let scanHistory   = [];
 let scanCount     = 0;
-const BROWSER_AI_UNAVAILABLE = 'Direct Anthropic calls are not configured in this browser build. Use `npm run monitor` or GitHub Actions for scans, or connect a secure backend endpoint for AI actions.';
+const DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const AI_SCAN_UNAVAILABLE = 'Full scan still runs via scripts/monitor.js or GitHub Actions. This page generates Articles, Social, SQL, and Audit using OpenRouter when /api/openrouter-chat.php is configured.';
 
 const QUERIES = [
   'Nigeria minister appointed sacked replaced 2025 2026',
@@ -500,7 +501,11 @@ document.querySelectorAll('.ai-tab').forEach(btn => {
   });
 });
 
-// ── Claude API call ───────────────────────────────────────────────────────────
+function setTab(tab) {
+  const btn = document.querySelector(`.ai-tab[data-tab="${tab}"]`);
+  if (btn) btn.click();
+}
+
 // ── MONITOR ───────────────────────────────────────────────────────────────────
 const logEl    = document.getElementById('scan-log');
 const logCard  = document.getElementById('scan-log-card');
@@ -560,12 +565,12 @@ document.getElementById('btn-scan').addEventListener('click', async () => {
   allChanges = [];
   document.getElementById('changes-list').innerHTML = '';
 
-  addLog(BROWSER_AI_UNAVAILABLE, '#e8a020');
+  addLog(AI_SCAN_UNAVAILABLE, '#e8a020');
   addLog('Loading any existing AI alerts already saved in Supabase instead…', '#7c6af7');
   await loadExistingAlerts();
   btn.innerHTML = '🔍 Run Full Scan';
   btn.disabled = false;
-  showToast('AI scan needs the background monitor or a secure backend endpoint.','error');
+  showToast('Scan requires the background monitor.','error');
   // Update scan history
   scanHistory.unshift({ ts: new Date().toLocaleString('en-NG'), found: allChanges.length });
   renderScanHistory();
@@ -657,9 +662,44 @@ document.querySelectorAll('.tone-btn').forEach(b => {
 });
 
 document.getElementById('btn-article').addEventListener('click', async () => {
-  document.getElementById('art-result').textContent = BROWSER_AI_UNAVAILABLE;
-  document.getElementById('art-result-wrap').style.display = '';
-  showToast('Use the background monitor or connect a secure backend for AI article generation.','error');
+  const prompt = document.getElementById('art-prompt').value.trim();
+  if (!prompt) return;
+  const btn = document.getElementById('btn-article');
+  const outWrap = document.getElementById('art-result-wrap');
+  const out = document.getElementById('art-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span> Writing…';
+  outWrap.style.display = '';
+  out.textContent = 'Generating…';
+  try {
+    const sys = `You are evote.ng Admin AI. Write a helpful Nigerian governance news article. Tone: ${artTone}. Output plain text with short paragraphs.`;
+    const res = await openRouterChat({
+      model: DEFAULT_MODEL,
+      temperature: 0.6,
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: prompt },
+      ],
+    });
+    const text = res?.choices?.[0]?.message?.content || '';
+    out.textContent = text || 'No output.';
+    document.getElementById('btn-art-copy')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(out.textContent || ''); showToast('Copied ✓'); } catch { showToast('Copy failed','error'); }
+    }, { once: true });
+    document.getElementById('btn-art-to-social')?.addEventListener('click', () => {
+      const v = (out.textContent || '').trim();
+      document.getElementById('soc-prompt').value = v ? `Summarize this for social:\n\n${v}` : '';
+      setTab('social');
+      document.getElementById('btn-social').disabled = !document.getElementById('soc-prompt').value.trim();
+    }, { once: true });
+    showToast('Article generated ✓');
+  } catch (e) {
+    out.textContent = `Error: ${e.message || e}`;
+    showToast('AI error: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✍️ Write Article';
+  }
 });
 
 // ── SOCIAL ────────────────────────────────────────────────────────────────────
@@ -672,8 +712,43 @@ document.querySelectorAll('.platform-btn').forEach(b => {
 });
 
 document.getElementById('btn-social').addEventListener('click', async () => {
-  document.getElementById('social-results').innerHTML = `<div class="ai-card"><div class="warn-box">${BROWSER_AI_UNAVAILABLE}</div></div>`;
-  showToast('Use the background monitor or connect a secure backend for AI social generation.','error');
+  const prompt = document.getElementById('soc-prompt').value.trim();
+  if (!prompt) return;
+  const btn = document.getElementById('btn-social');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span> Writing…';
+  document.getElementById('social-results').innerHTML = `<div class="ai-card"><div class="ai-result">Generating…</div></div>`;
+  try {
+    const sys = `You are evote.ng Admin AI. Write 1 social post for ${socPlatform.id}. Max ${socPlatform.max} characters. Include a clear call-to-action to rate officials on evote.ng. Avoid hashtags spam. Output only the post text.`;
+    const res = await openRouterChat({
+      model: DEFAULT_MODEL,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: prompt },
+      ],
+    });
+    const text = res?.choices?.[0]?.message?.content || '';
+    const safe = (text || 'No output.').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    document.getElementById('social-results').innerHTML = `
+      <div class="ai-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
+          <span class="ai-label" style="margin:0;color:#a78bfa;">GENERATED POST</span>
+          <button class="ai-btn-ghost ai-btn" id="btn-soc-copy" style="padding:.3rem .7rem;font-size:.75rem;">Copy</button>
+        </div>
+        <div class="ai-result">${safe.replace(/\n/g,'<br>')}</div>
+      </div>`;
+    document.getElementById('btn-soc-copy')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(text); showToast('Copied ✓'); } catch { showToast('Copy failed','error'); }
+    });
+    showToast('Social post generated ✓');
+  } catch (e) {
+    document.getElementById('social-results').innerHTML = `<div class="ai-card"><div class="warn-box">Error: ${(e.message||e)}</div></div>`;
+    showToast('AI error: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📣 Write Post';
+  }
 });
 
 // ── SQL PATCHER ───────────────────────────────────────────────────────────────
@@ -685,16 +760,72 @@ document.querySelectorAll('.sql-preset').forEach(b => {
 });
 
 document.getElementById('btn-sql').addEventListener('click', async () => {
-  document.getElementById('sql-result').textContent = BROWSER_AI_UNAVAILABLE;
-  document.getElementById('sql-result-wrap').style.display = '';
-  showToast('Use the background monitor or connect a secure backend for AI SQL generation.','error');
+  const prompt = document.getElementById('sql-prompt').value.trim();
+  if (!prompt) return;
+  const btn = document.getElementById('btn-sql');
+  const wrap = document.getElementById('sql-result-wrap');
+  const out = document.getElementById('sql-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span> Generating…';
+  wrap.style.display = '';
+  out.textContent = 'Generating…';
+  try {
+    const sys = `You are evote.ng Admin AI. Generate PostgreSQL SQL for Supabase. Output ONLY SQL (no markdown, no commentary). Keep it safe: prefer SELECT previews, idempotent ALTER TABLE IF NOT EXISTS, and avoid destructive operations unless explicitly requested.`;
+    const res = await openRouterChat({
+      model: DEFAULT_MODEL,
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: prompt },
+      ],
+    });
+    const sql = res?.choices?.[0]?.message?.content || '';
+    out.textContent = (sql || 'No output.').trim();
+    document.getElementById('btn-sql-copy')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(out.textContent || ''); showToast('Copied ✓'); } catch { showToast('Copy failed','error'); }
+    }, { once: true });
+    showToast('SQL generated ✓');
+  } catch (e) {
+    out.textContent = `Error: ${e.message || e}`;
+    showToast('AI error: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🗄️ Generate SQL Patch';
+  }
 });
 
 // ── AUDIT ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-audit').addEventListener('click', async () => {
-  document.getElementById('audit-result').textContent = BROWSER_AI_UNAVAILABLE;
-  document.getElementById('audit-result-wrap').style.display = '';
-  showToast('Use the background monitor or connect a secure backend for AI audit generation.','error');
+  const btn = document.getElementById('btn-audit');
+  const wrap = document.getElementById('audit-result-wrap');
+  const out = document.getElementById('audit-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span> Writing…';
+  wrap.style.display = '';
+  out.textContent = 'Generating…';
+  try {
+    const ctx = `Site: evote.ng.\n\nLive audit checks:\n${JSON.stringify(AUDIT_CHECKS, null, 2)}\n\nWrite an admin-friendly site health report with:\n- Quick summary (1 paragraph)\n- Top 5 risks\n- Top 10 recommended actions (ordered)\n- SEO checklist\n- Performance checklist\nKeep it concise and actionable.`;
+    const res = await openRouterChat({
+      model: DEFAULT_MODEL,
+      temperature: 0.4,
+      messages: [
+        { role: 'system', content: 'You are evote.ng Admin AI. Write concise, actionable audit reports.' },
+        { role: 'user', content: ctx },
+      ],
+    });
+    const text = res?.choices?.[0]?.message?.content || '';
+    out.textContent = (text || 'No output.').trim();
+    document.getElementById('btn-audit-copy')?.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(out.textContent || ''); showToast('Copied ✓'); } catch { showToast('Copy failed','error'); }
+    }, { once: true });
+    showToast('Audit generated ✓');
+  } catch (e) {
+    out.textContent = `Error: ${e.message || e}`;
+    showToast('AI error: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📊 Generate AI Site Report';
+  }
 });
 
 // ── SCHEDULER ────────────────────────────────────────────────────────────────

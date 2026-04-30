@@ -82,3 +82,21 @@ export function renderPaginationBtns(container, currentPage, totalPages, onGo) {
     .map(p=>`<button class="tab ${p===currentPage?'active':''}" onclick="${onGo}(${p})">${p}</button>`)
     .join('');
 }
+
+export async function openRouterChat({ messages, model, temperature, max_tokens }) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const res = await fetch('/api/openrouter-chat.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ messages, model, temperature, max_tokens }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((json && (json.error || json.details)) ? `${json.error || 'Request failed'}${json.details ? `: ${json.details}` : ''}` : `HTTP ${res.status}`);
+  return json;
+}
