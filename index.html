@@ -747,53 +747,58 @@ async function loadOfficials() {
 async function loadFeaturedLeaders() {
   const mount = document.getElementById('featured-leaders');
   if (!mount) return;
-  const source = await getRatedOfficialsData();
-  if (!source.length) {
-    mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
-    return;
-  }
-  const leaders = source
-    .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
-    .filter((o) => Number(o.rating_count || 0) >= 3)
-    .sort((a, b) => {
-      const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
-      if (byScore !== 0) return byScore;
-      return Number(b.rating_count || 0) - Number(a.rating_count || 0);
-    })
-    .slice(0, 6);
+  try {
+    const source = await getRatedOfficialsData();
+    if (!source.length) {
+      mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+      return;
+    }
+    const leaders = source
+      .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
+      .filter((o) => Number(o.rating_count || 0) >= 3)
+      .sort((a, b) => {
+        const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
+        if (byScore !== 0) return byScore;
+        return Number(b.rating_count || 0) - Number(a.rating_count || 0);
+      })
+      .slice(0, 6);
 
-  if (!leaders.length) {
-    mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
-    return;
+    if (!leaders.length) {
+      mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+      return;
+    }
+    mount.innerHTML = leaders.map((o) => {
+      const rating = Number(o.rating_avg || 0);
+      const tier = TIER_LABELS[o.tier] || o.tier;
+      const state = o.states?.name ? ` · ${o.states.name}` : '';
+      const avatar = avatarSrc(o);
+      const imgStyle = agencyLike(o) ? 'width:100%;height:100%;object-fit:contain;background:#fff;padding:6px;' : 'width:100%;height:100%;object-fit:cover;';
+      return `
+        <div class="featured-card">
+          <div class="featured-head">
+            <div class="featured-avatar">
+              <img src="${avatar}" alt="${o.full_name}" loading="lazy" style="${imgStyle}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent((o.full_name||'Official'))}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg'">
+            </div>
+            <div>
+              <div class="featured-name">${o.full_name}</div>
+              <div class="featured-role">${o.role}</div>
+            </div>
+          </div>
+          <div class="featured-metrics">
+            <span>${renderStarsHTML(rating)}</span>
+            <strong>${rating ? rating.toFixed(1) : '—'}</strong>
+            <span style="color:var(--muted);">(${fmt(o.rating_count)} ratings)</span>
+          </div>
+          <div style="margin-top:.55rem;font-size:.74rem;color:var(--muted);">${tier}${state}</div>
+          <div style="margin-top:.7rem;">
+            <a href="${officialPath(o)}" style="font-size:.76rem;text-decoration:none;color:var(--green-light);">View Full Profile →</a>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    mount.innerHTML = `<div class="empty">Unable to load featured ratings.<br><span style="color:var(--muted);font-size:.82rem;">${error?.message || ''}</span></div>`;
   }
-  mount.innerHTML = leaders.map((o) => {
-    const rating = Number(o.rating_avg || 0);
-    const tier = TIER_LABELS[o.tier] || o.tier;
-    const state = o.states?.name ? ` · ${o.states.name}` : '';
-    const avatar = avatarSrc(o);
-    const imgStyle = agencyLike(o) ? 'width:100%;height:100%;object-fit:contain;background:#fff;padding:6px;' : 'width:100%;height:100%;object-fit:cover;';
-    return `
-      <div class="featured-card">
-        <div class="featured-head">
-          <div class="featured-avatar">
-            <img src="${avatar}" alt="${o.full_name}" loading="lazy" style="${imgStyle}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent((o.full_name||'Official'))}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg'">
-          </div>
-          <div>
-            <div class="featured-name">${o.full_name}</div>
-            <div class="featured-role">${o.role}</div>
-          </div>
-        </div>
-        <div class="featured-metrics">
-          <span>${renderStarsHTML(rating)}</span>
-          <strong>${rating ? rating.toFixed(1) : '—'}</strong>
-          <span style="color:var(--muted);">(${fmt(o.rating_count)} ratings)</span>
-        </div>
-        <div style="margin-top:.55rem;font-size:.74rem;color:var(--muted);">${tier}${state}</div>
-        <div style="margin-top:.7rem;">
-          <a href="${officialPath(o)}" style="font-size:.76rem;text-decoration:none;color:var(--green-light);">View Full Profile →</a>
-        </div>
-      </div>`;
-  }).join('');
 }
 
 async function getRatedOfficialsData() {
