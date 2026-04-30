@@ -614,6 +614,59 @@ const CATEGORY_PROFILES = {
 };
 const AGENCY_TIERS = new Set(['federal_agency', 'state_agency']);
 let ratedOfficialsCache = null;
+let ratingsAggCache = null;
+const FEATURED_LEADER_FULL_NAMES = [
+  'Bola Ahmed Tinubu',
+  'Kashim Shettima',
+  'Peter Obi',
+  'Atiku Abubakar',
+  'Babajide Sanwo-Olu',
+  'Nyesom Wike',
+];
+
+function invalidateRatedOfficialsCache() {
+  ratedOfficialsCache = null;
+}
+
+function invalidateRatingsAggCache() {
+  ratingsAggCache = null;
+}
+
+async function getRatingsAggregates() {
+  if (ratingsAggCache instanceof Map) return ratingsAggCache;
+  const { data, error } = await supabase
+    .from('public_ratings')
+    .select('official_id,overall,created_at')
+    .order('created_at', { ascending: false })
+    .limit(10000);
+  if (error) throw error;
+
+  const map = new Map();
+  for (const row of data || []) {
+    const id = row?.official_id;
+    if (!id) continue;
+    const overall = Number(row?.overall || 0);
+    const prev = map.get(id) || { count: 0, sum: 0, avg: 0 };
+    prev.count += 1;
+    prev.sum += overall;
+    map.set(id, prev);
+  }
+  for (const agg of map.values()) {
+    agg.avg = agg.count ? (agg.sum / agg.count) : 0;
+  }
+  ratingsAggCache = map;
+  return map;
+}
+
+async function enrichOfficialsWithAggregates(list) {
+  const aggMap = await getRatingsAggregates();
+  for (const o of list || []) {
+    const agg = aggMap.get(o.id);
+    if (!agg) continue;
+    o.rating_count = agg.count || 0;
+    o.rating_avg = agg.avg || 0;
+  }
+}
 
 function isPowerSectorOfficial(o) {
   const hay = `${o?.full_name || ''} ${o?.common_name || ''} ${o?.role || ''} ${o?.website || ''}`.toLowerCase();
@@ -712,8 +765,8 @@ async function loadStats() {
     { count: rCount, error: ratingsError },
     { count: oCount, error: officialsError },
   ] = await Promise.all([
-    supabase.from('public_ratings').select('*', {count:'exact',head:true}),
-    supabase.from('officials').select('*', {count:'exact',head:true}),
+    supabase.from('public_ratings').select('id', { count: 'exact' }),
+    supabase.from('officials').select('id', { count: 'exact' }),
   ]);
   if (ratingsError || officialsError) {
     showToast('Unable to load stats. Check your Supabase connection.', 'error');
@@ -748,23 +801,59 @@ async function loadFeaturedLeaders() {
   const mount = document.getElementById('featured-leaders');
   if (!mount) return;
   try {
-    const source = await getRatedOfficialsData();
-    if (!source.length) {
-      mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
-      return;
-    }
-    const leaders = source
+    const { data, error } = await supabase
+      .from('officials')
+      .select('id,full_name,common_name,role,tier,website,photo_url,rating_avg,rating_count,states(name)')
+      .eq('status', 'active')
+      .in('full_name', FEATURED_LEADER_FULL_NAMES);
+    if (error) throw error;
+
+    const byName = new Map((data || []).map((o) => [String(o.full_name || '').toLowerCase(), o]));
+    const leaders = FEATURED_LEADER_FULL_NAMES
+      .map((n) => byName.get(n.toLowerCase()))
+      .filter(Boolean)
       .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
-      .filter((o) => Number(o.rating_count || 0) >= 3)
-      .sort((a, b) => {
-        const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
-        if (byScore !== 0) return byScore;
-        return Number(b.rating_count || 0) - Number(a.rating_count || 0);
-      })
       .slice(0, 6);
 
     if (!leaders.length) {
-      mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+      const source = await getRatedOfficialsData();
+      const fallback = (source || [])
+        .filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()))
+        .sort((a, b) => Number(b.rating_count || 0) - Number(a.rating_count || 0))
+        .slice(0, 6);
+      if (!fallback.length) {
+        mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+        return;
+      }
+      mount.innerHTML = fallback.map((o) => {
+        const rating = Number(o.rating_avg || 0);
+        const tier = TIER_LABELS[o.tier] || o.tier;
+        const state = o.states?.name ? ` · ${o.states.name}` : '';
+        const avatar = avatarSrc(o);
+        const imgStyle = agencyLike(o) ? 'width:100%;height:100%;object-fit:contain;background:#fff;padding:6px;' : 'width:100%;height:100%;object-fit:cover;';
+        return `
+          <div class="featured-card">
+            <div class="featured-head">
+              <div class="featured-avatar">
+                <img src="${avatar}" alt="${o.full_name}" loading="lazy" style="${imgStyle}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent((o.full_name||'Official'))}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg'">
+              </div>
+              <div>
+                <div class="featured-name">${o.full_name}</div>
+                <div class="featured-role">${o.role}</div>
+              </div>
+            </div>
+            <div class="featured-metrics">
+              <span>${renderStarsHTML(rating)}</span>
+              <strong>${rating ? rating.toFixed(1) : '—'}</strong>
+              <span style="color:var(--muted);">(${fmt(o.rating_count)} ratings)</span>
+            </div>
+            <div style="margin-top:.55rem;font-size:.74rem;color:var(--muted);">${tier}${state}</div>
+            <div style="margin-top:.7rem;">
+              <a href="${officialPath(o)}" style="font-size:.76rem;text-decoration:none;color:var(--green-light);">View Full Profile →</a>
+            </div>
+          </div>
+        `;
+      }).join('');
       return;
     }
     mount.innerHTML = leaders.map((o) => {
@@ -806,11 +895,15 @@ async function getRatedOfficialsData() {
   const { data, error } = await supabase
     .from('officials')
     .select('id,full_name,common_name,role,tier,website,photo_url,rating_avg,rating_count,states(name)')
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .gte('rating_count', 1)
+    .order('rating_avg', { ascending: false })
+    .order('rating_count', { ascending: false })
+    .limit(500);
   if (error) {
     throw error;
   }
-  ratedOfficialsCache = (data || []).filter((o) => Number(o.rating_count || 0) > 0);
+  ratedOfficialsCache = data || [];
   return ratedOfficialsCache;
 }
 
@@ -843,16 +936,18 @@ function renderBestRatedList(mountId, rows, emptyText) {
 async function loadBestRatedSections() {
   try {
     const source = await getRatedOfficialsData();
-    const ranked = source
-      .filter((o) => Number(o.rating_count || 0) >= 3)
-      .sort((a, b) => {
-        const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
-        if (byScore !== 0) return byScore;
-        return Number(b.rating_count || 0) - Number(a.rating_count || 0);
-      });
+    const ranked = [...(source || [])].sort((a, b) => {
+      const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
+      if (byScore !== 0) return byScore;
+      return Number(b.rating_count || 0) - Number(a.rating_count || 0);
+    });
 
-    const officials = ranked.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
-    const agencies = ranked.filter((o) => AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const minCount = 3;
+    const strict = ranked.filter((o) => Number(o.rating_count || 0) >= minCount);
+    const base = strict.length ? strict : ranked;
+
+    const officials = base.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const agencies = base.filter((o) => AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
 
     renderBestRatedList('best-rated-officials', officials, 'No rated officials yet.');
     renderBestRatedList('best-rated-agencies', agencies, 'No rated agencies yet.');
@@ -1099,7 +1194,8 @@ window.submitRating = async () => {
   S.alreadyRated = true;
   closeModal('rate-modal');
   showToast(`Rating submitted ${S.anonOn?'anonymously ':''}✓`);
-  loadOfficials(); loadStats();
+  invalidateRatedOfficialsCache();
+  loadOfficials(); loadStats(); loadBestRatedSections(); loadFeaturedLeaders();
 };
 
 // ── REPORT MODAL ──
