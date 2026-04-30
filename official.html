@@ -311,7 +311,7 @@
       <div class="modal-official" id="modal-info"></div>
 
       <div class="form-group" style="text-align:center;">
-        <div class="form-label" style="text-align:center;">Overall Performance</div>
+        <div class="form-label" style="text-align:center;">Overall Performance <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--muted);">(auto from category ratings)</span></div>
         <div class="star-picker" id="main-stars">
           <span class="star-pick" data-v="1">★</span>
           <span class="star-pick" data-v="2">★</span>
@@ -322,7 +322,7 @@
         <div class="star-label" id="star-label"></div>
       </div>
 
-      <div class="form-label">Rate by Category <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--muted);">(optional)</span></div>
+      <div class="form-label">Rate by Category <span style="font-weight:300;text-transform:none;letter-spacing:0;color:var(--muted);">(required to auto-calculate overall)</span></div>
       <div class="cat-grid">
         <div><div class="cat-label">Accountability</div><div class="cat-stars" data-cat="accountability"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
         <div><div class="cat-label">Service Delivery</div><div class="cat-stars" data-cat="service"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
@@ -372,7 +372,7 @@
         ✓ This device has already rated this official.
       </div>
 
-      <button class="submit-btn" id="submit-rate-btn" onclick="submitRating()" disabled>Select a rating to continue</button>
+      <button class="submit-btn" id="submit-rate-btn" onclick="submitRating()" disabled>Rate at least one category to continue</button>
     </div>
   </div>
 </div>
@@ -563,6 +563,52 @@ let official = null;
 let anonOn = true, reportAnonOn = true, mainStar = 0, catStars = {}, alreadyRated = false;
 let reviewPage = 1; const reviewsPerPage = 10;
 let allReviews = [];
+
+function average(nums) {
+  const vals = (nums || []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
+  if (!vals.length) return 0;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function aggregateFromReviews(rows) {
+  const list = (rows || []).filter(Boolean);
+  const base = {
+    rating_count: list.length,
+    rating_avg: average(list.map((r) => r.overall)),
+  };
+  CATEGORY_KEYS.forEach((k) => {
+    base[`${k}_avg`] = average(list.map((r) => r[k]));
+  });
+  return base;
+}
+
+function applyAggregatesToOfficial(rows) {
+  if (!official) return;
+  const agg = aggregateFromReviews(rows);
+  official.rating_count = agg.rating_count || 0;
+  official.rating_avg = agg.rating_avg || 0;
+  CATEGORY_KEYS.forEach((k) => {
+    official[`${k}_avg`] = agg[`${k}_avg`] || 0;
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeUrl(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(String(url), window.location.origin);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
+  } catch {}
+  return '';
+}
 
 function avatarImgStyle(tier) {
   return String(tier || '').includes('agency')
@@ -886,6 +932,9 @@ window.loadReviews = async () => {
     return;
   }
   allReviews = (data || []);
+  applyAggregatesToOfficial(allReviews);
+  renderScoreCard();
+  renderAbout();
   reviewPage = 1;
 
   // Score distribution
@@ -932,6 +981,9 @@ function renderReviews() {
       .filter((key) => r[key])
       .map((key) => `${labels[key] || key}: ${r[key]}`)
       .join(' · ');
+    const safeCats = escapeHtml(cats);
+    const safeState = r.reviewer_state ? `📍 ${escapeHtml(r.reviewer_state)} · ` : '';
+    const safeText = escapeHtml(r.review_text || '').replace(/\n/g, '<br>');
 
     return `
     <div class="review-card fade-up">
@@ -941,13 +993,13 @@ function renderReviews() {
             <div class="review-stars">${[1,2,3,4,5].map(i=>`<span class="review-star" style="color:${r.overall>=i?'#e8a020':'#3a3f36'};">★</span>`).join('')}</div>
             <span style="font-family:Syne,sans-serif;font-weight:700;font-size:.9rem;color:${color};">${r.overall}/5</span>
           </div>
-          ${cats ? `<div style="font-size:.7rem;color:var(--muted);">${cats}</div>` : ''}
+          ${cats ? `<div style="font-size:.7rem;color:var(--muted);">${safeCats}</div>` : ''}
         </div>
         <div class="review-meta">
-          ${r.reviewer_state ? `📍 ${r.reviewer_state} · ` : ''}${timeAgo(r.created_at)}
+          ${safeState}${timeAgo(r.created_at)}
         </div>
       </div>
-      <div class="review-text">${r.review_text}</div>
+      <div class="review-text">${safeText}</div>
     </div>`;
   }).join('');
 
@@ -1036,6 +1088,8 @@ async function loadTrend() {
 // ── ABOUT ──
 function renderAbout() {
   const o = official;
+  const totalRatings = Number(o.rating_count || 0);
+  const avgScore = Number(o.rating_avg || 0);
   const items = [
     { label:'Full Name', value: o.full_name },
     { label:'Current Role', value: o.role },
@@ -1043,8 +1097,8 @@ function renderAbout() {
     { label:'State', value: o.states?.name||'Federal' },
     { label:'Political Party', value: o.party||'—' },
     { label:'Office Start', value: o.office_start ? new Date(o.office_start).toLocaleDateString('en-NG',{year:'numeric',month:'long',day:'numeric'}) : '—' },
-    { label:'Total Ratings', value: fmt(o.rating_count) },
-    { label:'Average Score', value: o.rating_avg ? `${parseFloat(o.rating_avg).toFixed(2)} / 5.00` : 'Not yet rated' },
+    { label:'Total Ratings', value: fmt(totalRatings) },
+    { label:'Average Score', value: totalRatings > 0 ? `${avgScore.toFixed(2)} / 5.00` : 'Not yet rated' },
   ];
   document.getElementById('about-grid').innerHTML = items.map(item=>`
     <div class="info-item">
@@ -1088,15 +1142,15 @@ async function loadReports() {
     <div class="review-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;">
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-          ${(r.categories||[]).map(c=>`<span class="report-tag on" style="font-size:.72rem;">${c}</span>`).join('')}
+          ${(r.categories||[]).map(c=>`<span class="report-tag on" style="font-size:.72rem;">${escapeHtml(c)}</span>`).join('')}
         </div>
         <div style="display:flex;align-items:center;gap:.6rem;">
           <span class="status-badge ${r.status==='verified'?'s-verified':r.status==='escalated'?'s-escalated':'s-pending'}">${r.status}</span>
           <span style="font-size:.72rem;color:var(--muted);">${timeAgo(r.created_at)}</span>
         </div>
       </div>
-      <div style="font-size:.88rem;line-height:1.7;">${r.description}</div>
-      ${r.evidence_url?`<div style="margin-top:.6rem;"><a href="${r.evidence_url}" target="_blank" style="color:var(--green-light);font-size:.78rem;">View Evidence →</a></div>`:''}
+      <div style="font-size:.88rem;line-height:1.7;">${escapeHtml(r.description || '')}</div>
+      ${sanitizeUrl(r.evidence_url)?`<div style="margin-top:.6rem;"><a href="${sanitizeUrl(r.evidence_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);font-size:.78rem;">View Evidence →</a></div>`:''}
     </div>`).join('');
 }
 
@@ -1120,43 +1174,65 @@ window.openRateModal = async () => {
     <div class="avatar" style="background:${color}22;color:${color};">${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}</div>
     <div><div style="font-weight:700;font-family:Syne,sans-serif;">${o.full_name}</div><div style="font-size:.8rem;color:var(--muted);">${o.role}</div></div>`;
   document.querySelectorAll('.star-pick').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.star-pick').forEach((s)=>{ s.style.pointerEvents='none'; s.style.cursor='default'; });
   document.querySelectorAll('.cat-star').forEach(s=>s.classList.remove('on'));
   document.getElementById('star-label').textContent='';
   document.getElementById('review-text').value='';
   document.getElementById('reviewer-state').value='';
   document.getElementById('anon-toggle').className='toggle on';
   const btn=document.getElementById('submit-rate-btn');
-  btn.disabled=true; btn.textContent='Select a rating to continue';
+  btn.disabled=true; btn.textContent='Rate at least one category to continue';
 
   const existingRating = getStoredRating(officialId);
   alreadyRated = !!existingRating;
   document.getElementById('already-rated-msg').style.display = existingRating ? 'block' : 'none';
   if (existingRating) { mainStar = existingRating.overall; updateStars(); }
+  else { updateStars(); }
   document.getElementById('rate-modal').classList.add('open');
 };
 
-document.querySelectorAll('.star-pick').forEach(s=>s.addEventListener('click',()=>{ mainStar=parseInt(s.dataset.v); updateStars(); }));
+// Overall stars are display-only; score is auto-derived from category ratings.
+function autoOverallFromCategories() {
+  const vals = Object.values(catStars).map(Number).filter((v) => Number.isFinite(v) && v > 0);
+  if (!vals.length) return 0;
+  return Math.min(5, Math.max(1, Math.round(vals.reduce((a,b)=>a+b,0) / vals.length)));
+}
+function refreshSubmitState() {
+  const btn=document.getElementById('submit-rate-btn');
+  const autoOverall = autoOverallFromCategories();
+  const effectiveOverall = autoOverall || mainStar;
+  if (autoOverall) mainStar = autoOverall;
+  btn.disabled = alreadyRated || !effectiveOverall;
+  if (alreadyRated) btn.textContent='Already rated on this device';
+  else if (!effectiveOverall) btn.textContent='Rate at least one category to continue';
+  else btn.textContent='Submit Rating';
+}
 function updateStars(){
   document.querySelectorAll('.star-pick').forEach(s=>s.classList.toggle('on',parseInt(s.dataset.v)<=mainStar));
-  document.getElementById('star-label').textContent=STAR_LABELS[mainStar]||'';
-  const btn=document.getElementById('submit-rate-btn');
-  btn.disabled=alreadyRated; btn.textContent=alreadyRated?'Already rated on this device':'Submit Rating';
+  const autoOverall = autoOverallFromCategories();
+  const label = STAR_LABELS[mainStar] || '';
+  document.getElementById('star-label').textContent = autoOverall ? `Auto: ${label} (${mainStar}/5)` : label;
+  refreshSubmitState();
 }
 document.querySelectorAll('.cat-stars').forEach(row=>{
   row.querySelectorAll('.cat-star').forEach((s,i)=>s.addEventListener('click',()=>{
     catStars[row.dataset.cat]=i+1;
     row.querySelectorAll('.cat-star').forEach((cs,ci)=>cs.classList.toggle('on',ci<=i));
+    const autoOverall = autoOverallFromCategories();
+    if (autoOverall) mainStar = autoOverall;
+    updateStars();
   }));
 });
 window.toggleAnon=()=>{ anonOn=!anonOn; document.getElementById('anon-toggle').className='toggle'+(anonOn?' on':''); };
 
 window.submitRating = async () => {
-  if (!mainStar) return;
+  const computedOverall = autoOverallFromCategories() || mainStar;
+  if (!computedOverall) { showToast('Please rate at least one category.','error'); return; }
   if (alreadyRated) { showToast('This device has already rated this official.','error'); return; }
   const btn=document.getElementById('submit-rate-btn');
   btn.disabled=true; btn.textContent='Submitting...';
   const payload = {
-    official_id:officialId, anon_id:anonId, overall:mainStar,
+    official_id:officialId, anon_id:anonId, overall:computedOverall,
     accountability:catStars.accountability||null, service:catStars.service||null,
     transparency:catStars.transparency||null, responsiveness:catStars.responsiveness||null,
     power:catStars.power||null, security:catStars.security||null,
@@ -1177,7 +1253,8 @@ window.submitRating = async () => {
     ({ error } = await supabase.from('ratings').insert(fallback));
   }
   if(error){ showToast('This device has already rated this official or an error occurred.','error'); btn.disabled=false; btn.textContent='Submit Rating'; return; }
-  saveStoredRating(officialId, { overall: mainStar, created_at: new Date().toISOString() });
+  mainStar = computedOverall;
+  saveStoredRating(officialId, { overall: computedOverall, created_at: new Date().toISOString() });
   alreadyRated = true;
   closeModal('rate-modal');
   showToast(`Rating submitted ${anonOn?'anonymously ':''}✓`);
