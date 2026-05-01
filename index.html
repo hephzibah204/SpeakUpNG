@@ -617,12 +617,15 @@ let ratedOfficialsCache = null;
 let ratingsAggCache = null;
 const FEATURED_LEADER_FULL_NAMES = [
   'Bola Ahmed Tinubu',
-  'Kashim Shettima',
-  'Peter Obi',
-  'Atiku Abubakar',
+  'Seyi Makinde',
   'Babajide Sanwo-Olu',
   'Nyesom Wike',
+  'Dapo Abiodun',
+  'Alex Otti',
+  'Godswill Akpabio',
+  'Wale Edun',
 ];
+const FEATURED_DEFENSE_ROLE_MATCH = '%minister%defen%';
 
 function invalidateRatedOfficialsCache() {
   ratedOfficialsCache = null;
@@ -811,6 +814,14 @@ async function loadFeaturedLeaders() {
       .in('full_name', FEATURED_LEADER_FULL_NAMES);
     if (error) throw error;
 
+    const { data: defenseRows, error: defenseError } = await supabase
+      .from('officials')
+      .select('id,full_name,common_name,role,tier,website,photo_url,rating_avg,rating_count,states(name)')
+      .eq('status', 'active')
+      .ilike('role', FEATURED_DEFENSE_ROLE_MATCH)
+      .limit(10);
+    if (defenseError) throw defenseError;
+
     const byName = new Map((data || []).map((o) => [String(o.full_name || '').toLowerCase(), o]));
     const leaders = FEATURED_LEADER_FULL_NAMES
       .map((n) => byName.get(n.toLowerCase()))
@@ -829,6 +840,22 @@ async function loadFeaturedLeaders() {
         o.rating_count = agg.count || 0;
         o.rating_avg = agg.avg || 0;
       });
+    }
+
+    const defenseCandidates = (defenseRows || []).filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase()));
+    if (defenseCandidates.length) {
+      let defensePick = defenseCandidates[0];
+      if (aggMap) {
+        defensePick = [...defenseCandidates]
+          .map((o) => {
+            const agg = aggMap.get(o.id);
+            return { ...o, rating_count: agg?.count || 0, rating_avg: agg?.avg || 0 };
+          })
+          .sort((a, b) => (Number(b.rating_count || 0) - Number(a.rating_count || 0)) || (Number(b.rating_avg || 0) - Number(a.rating_avg || 0)))[0];
+      }
+      if (defensePick && !leaders.some((o) => o.id === defensePick.id)) {
+        leaders.push(defensePick);
+      }
     }
 
     if (!leaders.length) {
