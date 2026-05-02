@@ -21,8 +21,13 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="span2">
-          <label class="form-label">Full Name *</label>
-          <input type="text" class="form-control" id="f-name" placeholder="e.g. Bola Ahmed Tinubu">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:.3rem;">
+            <label class="form-label" style="margin:0;">Full Name *</label>
+            <button class="btn btn-ghost btn-sm" id="btn-ai-fill" onclick="autoFillProfile()" style="padding:3px 10px;font-size:.7rem;color:var(--green-light);border-color:rgba(0,179,104,.3);display:flex;align-items:center;gap:.3rem;">
+              ✨ AI Auto-Fill
+            </button>
+          </div>
+          <input type="text" class="form-control" id="f-name" placeholder="e.g. Bola Ahmed Tinubu or NAFDAC">
         </div>
         <div>
           <label class="form-label">Common Name</label>
@@ -298,6 +303,52 @@ window.openEditModal = (id) => {
 };
 
 window.closeOfficialModal = () => document.getElementById('official-modal').classList.remove('open');
+
+window.autoFillProfile = async () => {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('Type a name first', 'warn'); return; }
+  
+  const btn = document.getElementById('btn-ai-fill');
+  const ogHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm" style="border-color:var(--green-light);border-top-color:transparent;"></span> Searching...';
+  
+  try {
+    const res = await fetch('/api/fetch-official-profile.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ name })
+    });
+    
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'AI generation failed');
+    
+    const p = data.profile;
+    if (p.common_name) document.getElementById('f-common').value = p.common_name;
+    if (p.party) document.getElementById('f-party').value = p.party;
+    if (p.role) document.getElementById('f-role').value = p.role;
+    if (p.tier) {
+      const ts = document.getElementById('f-tier');
+      if (Array.from(ts.options).some(o => o.value === p.tier)) ts.value = p.tier;
+    }
+    if (p.bio) document.getElementById('f-bio').value = p.bio;
+    if (p.social_twitter) document.getElementById('f-twitter').value = p.social_twitter;
+    if (p.website) document.getElementById('f-website').value = p.website;
+    if (p.office_start) document.getElementById('f-start').value = p.office_start;
+    if (p.photo_url) document.getElementById('f-photo').value = p.photo_url;
+    
+    updateAgencyHints();
+    showToast('Profile Auto-Filled! ✓');
+  } catch (e) {
+    showToast(`AI Error: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = ogHtml;
+  }
+};
 
 window.saveOfficial = async () => {
   const name = document.getElementById('f-name').value.trim();
