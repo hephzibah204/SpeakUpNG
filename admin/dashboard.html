@@ -25,6 +25,25 @@
     <div class="stat-card"><div class="stat-card-n" id="s-polls">—</div><div class="stat-card-l">Active Polls</div></div>
     <div class="stat-card"><div class="stat-card-n" id="s-avg">—</div><div class="stat-card-l">Avg Overall Rating</div></div>
     <div class="stat-card"><div class="stat-card-n" id="s-voters">—</div><div class="stat-card-l">Unique Voters</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-blog">—</div><div class="stat-card-l">Blog (Published)</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-blog-d">—</div><div class="stat-card-l">Blog Drafts</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-news">—</div><div class="stat-card-l">News (Published)</div></div>
+    <div class="stat-card"><div class="stat-card-n" id="s-news-d">—</div><div class="stat-card-l">News Drafts</div></div>
+  </div>
+
+  <div class="card" style="padding:1rem;border:1px solid var(--border);margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;">Quick Actions</div>
+        <div style="font-size:.78rem;color:var(--muted);">Jump straight into common workflows.</div>
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a class="btn btn-green btn-sm" href="/admin/content?type=blog&new=1">New Blog Post</a>
+        <a class="btn btn-green btn-sm" href="/admin/content?type=news&new=1">New News Update</a>
+        <a class="btn btn-ghost btn-sm" href="/admin/ai-manager">AI Manager</a>
+        <a class="btn btn-ghost btn-sm" href="/admin/alerts">AI Alerts</a>
+      </div>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;flex-wrap:wrap;">
@@ -65,7 +84,7 @@
 </div>
 
 <script type="module">
-import { supabase, requireAuth, sidebarHTML, showToast, fmt, scoreColor, wireSignOut } from './js/admin-common.js';
+import { supabase, requireAuth, sidebarHTML, showToast, fmt, scoreColor, wireSignOut, adminApiJson } from './js/admin-common.js';
 
 const session = await requireAuth();
 const email = session.user.email;
@@ -93,7 +112,6 @@ async function loadStats() {
   ]);
   if (officialsError || ratingsError || reportsError || pollsError || avgError || votersError) {
     showToast('Unable to load dashboard stats right now.','error');
-    return;
   }
   document.getElementById('s-officials').textContent = fmt(oCount);
   document.getElementById('s-ratings').textContent = fmt(rCount);
@@ -104,6 +122,25 @@ async function loadStats() {
     document.getElementById('s-avg').textContent = avg.toFixed(2);
   }
   document.getElementById('s-voters').textContent = fmt(vCount);
+
+  try {
+    const [blog, news] = await Promise.all([
+      adminApiJson('/api/cms-content.php?content_type=blog'),
+      adminApiJson('/api/cms-content.php?content_type=news'),
+    ]);
+    const blogPosts = Array.isArray(blog.posts) ? blog.posts : [];
+    const newsPosts = Array.isArray(news.posts) ? news.posts : [];
+    const isDraft = (p) => String((p && p.status) || (p && p.published_at ? 'published' : 'draft')).toLowerCase() === 'draft';
+    document.getElementById('s-blog').textContent = fmt(blogPosts.filter((p) => !isDraft(p) && p.published_at).length);
+    document.getElementById('s-blog-d').textContent = fmt(blogPosts.filter((p) => isDraft(p)).length);
+    document.getElementById('s-news').textContent = fmt(newsPosts.filter((p) => !isDraft(p) && p.published_at).length);
+    document.getElementById('s-news-d').textContent = fmt(newsPosts.filter((p) => isDraft(p)).length);
+  } catch {
+    document.getElementById('s-blog').textContent = '—';
+    document.getElementById('s-blog-d').textContent = '—';
+    document.getElementById('s-news').textContent = '—';
+    document.getElementById('s-news-d').textContent = '—';
+  }
 }
 
 async function loadRecentRatings() {
