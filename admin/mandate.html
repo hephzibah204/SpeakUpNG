@@ -234,6 +234,19 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="verify-modal" style="display:none;align-items:center;justify-content:center;z-index:2000;">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <h2>🔍 AI Verification</h2>
+        <button class="modal-close" onclick="el('verify-modal').style.display='none'">✕</button>
+      </div>
+      <div class="modal-body" id="verify-modal-body">
+        <div class="loading"><div class="spinner"></div></div>
+        <p style="text-align:center;margin-top:1rem;color:var(--muted);">Searching for news and evidence...</p>
+      </div>
+    </div>
+  </div>
+
   <div class="admin-main">
     <div class="admin-header">
       <div>
@@ -472,7 +485,8 @@
           <td>${safeLink(p.evidence_url)}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm" onclick="editPromise('${p.id}')">Edit</button>
-            <button class="btn btn-sm" onclick="deletePromise('${p.id}')">Delete</button>
+            <button class="btn btn-sm" style="color:var(--green-light);border-color:var(--green-light)44;" onclick="verifyPromise('${p.id}')">🔍 Verify</button>
+            <button class="btn btn-sm" style="color:#e57368;" onclick="deletePromise('${p.id}')">Delete</button>
           </td>
         </tr>
       `).join('');
@@ -561,6 +575,67 @@
       promises = promises.filter((p) => p.id !== id);
       renderPromises();
       showToast('Deleted.', 'success');
+    };
+
+    window.verifyPromise = async (id) => {
+      const p = promises.find(x => x.id === id);
+      if (!p) return;
+      const official = officials.find(o => o.id === selectedOfficialId);
+      if (!official) return;
+
+      el('verify-modal').style.display = 'flex';
+      el('verify-modal-body').innerHTML = `<div class="loading"><div class="spinner"></div></div><p style="text-align:center;margin-top:1rem;color:var(--muted);">Analyzing progress for: <br><strong>${p.promise_title}</strong></p>`;
+
+      try {
+        const res = await fetch('/api/verify-promise-progress.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            promise_id: p.id,
+            official_name: official.full_name,
+            promise_title: p.promise_title
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Verification failed');
+
+        const v = data.verification;
+        el('verify-modal-body').innerHTML = `
+          <div style="background:rgba(255,255,255,.03);padding:1rem;border-radius:8px;border:1px solid var(--border);margin-bottom:1rem;">
+            <div style="font-weight:600;margin-bottom:.5rem;color:var(--green-light);">AI Suggestion</div>
+            <div style="font-size:.85rem;line-height:1.6;margin-bottom:1rem;">${v.ai_summary}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;font-size:.8rem;">
+              <div>Status: <span class="status-badge s-${v.suggested_status}">${v.suggested_status}</span></div>
+              <div>Progress: <strong>${v.suggested_progress_percent}%</strong></div>
+            </div>
+          </div>
+          ${v.evidence_url ? `<div style="font-size:.78rem;margin-bottom:1rem;">Source: <a href="${v.evidence_url}" target="_blank" style="color:var(--green-light);word-break:break-all;">${v.evidence_url}</a></div>` : ''}
+          <div style="display:flex;gap:.8rem;">
+            <button class="btn btn-green btn-sm" style="flex:1;" onclick="applyVerification('${p.id}', '${v.suggested_status}', ${v.suggested_progress_percent}, '${v.evidence_url || ''}')">Apply Suggestion</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="el('verify-modal').style.display='none'">Dismiss</button>
+          </div>
+        `;
+      } catch (e) {
+        el('verify-modal-body').innerHTML = `<div style="color:#e57368;text-align:center;">Error: ${e.message}</div>`;
+      }
+    };
+
+    window.applyVerification = async (id, status, progress, evidence) => {
+      const payload = {
+        status,
+        progress_percent: progress,
+        evidence_url: evidence || null,
+        last_updated: new Date().toISOString()
+      };
+      const { error } = await supabase.from('official_promises').update(payload).eq('id', id);
+      if (error) { showToast('Update failed.', 'error'); return; }
+      
+      el('verify-modal').style.display = 'none';
+      await loadPromises();
+      showToast('Promise updated with AI verification! ✓');
     };
 
     window.runExtraction = async () => {

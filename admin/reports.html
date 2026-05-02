@@ -147,6 +147,7 @@ window.viewReport = (id) => {
       <textarea class="form-control" id="admin-notes" rows="3" placeholder="Add internal notes...">${r.admin_notes||''}</textarea>
     </div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+      <button class="btn btn-gold btn-sm" id="btn-triage" onclick="aiTriage('${r.id}')">🤖 AI Triage</button>
       ${r.status!=='verified'?`<button class="btn btn-green btn-sm" onclick="updateStatusFromModal('${r.id}','verified')">✓ Verify</button>`:''}
       ${r.status!=='escalated'?`<button class="btn btn-sm" style="background:rgba(192,57,43,.2);color:#e57368;border:none;" onclick="updateStatusFromModal('${r.id}','escalated')">⬆ Escalate</button>`:''}
       ${r.status!=='dismissed'?`<button class="btn btn-ghost btn-sm" onclick="updateStatusFromModal('${r.id}','dismissed')">✕ Dismiss</button>`:''}
@@ -167,6 +168,33 @@ window.updateStatus = async (id, status, notes) => {
   if (error) { showToast('Error: '+error.message,'error'); return; }
   showToast(`Report marked as ${status} ✓`);
   loadReports();
+};
+
+window.aiTriage = async (id) => {
+  const r = reports.find(x => x.id === id);
+  if (!r) return;
+  const btn = document.getElementById('btn-triage');
+  const ogHtml = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = 'Analyzing...';
+  
+  try {
+    const prompt = `Analyze this misconduct report for priority and severity.\nOfficial: ${r.officials?.full_name}\nDescription: ${r.description}\nCategories: ${r.categories?.join(', ')}\n\nSuggest a priority (Low, Medium, High, Critical) and an internal admin note summary. Return JSON: { "priority": "...", "summary": "..." }`;
+    const res = await fetch('/api/openrouter-chat.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], temperature: 0.2 })
+    });
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content || '{}';
+    const parsed = JSON.parse(content.replace(/```json|```/g, '').trim());
+    
+    document.getElementById('admin-notes').value = `[AI TRIAGE - ${parsed.priority}] ${parsed.summary}\n\n${document.getElementById('admin-notes').value}`;
+    showToast(`AI tagged this as ${parsed.priority} priority`, 'success');
+  } catch (e) {
+    showToast('Triage failed: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = ogHtml;
+  }
 };
 
 loadReports();

@@ -295,28 +295,42 @@
         </div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;min-width:180px;text-align:right;">
           <div style="color:var(--muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;">Mandate Score</div>
-          <div style="font-weight:900;font-size:1.6rem;margin-top:.2rem;" id="mandate-score">—</div>
+    <div id="tab-mandate" class="profile-tab-content fade-up" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h3 style="font-family:Syne,sans-serif;font-weight:800;margin:0;">Mandate Scorecard</h3>
+            <div id="mandate-summary" style="font-size:.82rem;color:var(--muted);margin-top:.3rem;"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;">
+            <div style="text-align:right;">
+              <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Mandate Score</div>
+              <div id="mandate-score" style="font-size:1.8rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
+            </div>
+            <select id="mandate-filter" class="form-control" style="max-width:140px;padding:.4rem;" onchange="renderMandate()">
+              <option value="">All Promises</option>
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="fulfilled">Fulfilled</option>
+              <option value="broken">Broken</option>
+              <option value="disputed">Disputed</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="mandate-ai-summary" class="ai-box" style="display:none;margin-bottom:1.5rem;">
+          <div style="display:flex;gap:.8rem;align-items:flex-start;">
+            <div style="font-size:1.2rem;">🤖</div>
+            <div>
+              <div style="font-size:.7rem;color:var(--green-light);font-weight:700;text-transform:uppercase;margin-bottom:.3rem;letter-spacing:.05em;">AI Performance Analysis</div>
+              <div id="mandate-ai-text" style="font-size:.88rem;line-height:1.6;color:var(--white);"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="mandate-grid" class="promise-grid">
+          <div class="loading"><div class="spinner"></div></div>
         </div>
       </div>
-
-      <div style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;margin-top:1rem;flex-wrap:wrap;">
-        <select id="mandate-filter" onchange="renderMandate()" style="background:var(--card);border:1px solid var(--border);color:var(--white);padding:.45rem .8rem;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.82rem;outline:none;">
-          <option value="">All statuses</option>
-          <option value="pending">pending</option>
-          <option value="in_progress">in_progress</option>
-          <option value="fulfilled">fulfilled</option>
-          <option value="broken">broken</option>
-          <option value="disputed">disputed</option>
-        </select>
-      </div>
-
-      <div class="admin-table-wrap" style="margin-top:1rem;">
-        <table class="lb-table">
-          <thead><tr><th>Promise</th><th>Status</th><th>Category</th><th>Progress</th><th>Evidence</th></tr></thead>
-          <tbody id="mandate-table"></tbody>
-        </table>
-      </div>
-    </div>
 
     <!-- REPORTS TAB -->
     <div id="tab-reports" style="display:none;">
@@ -1220,26 +1234,66 @@ async function loadMandate() {
 }
 
 window.renderMandate = () => {
-  const tableEl = document.getElementById('mandate-table');
-  if (!tableEl) return;
-  const status = (document.getElementById('mandate-filter')?.value || '').trim();
-  const list = mandatePromises.filter((p) => !status || String(p.status || '') === status);
+  const gridEl = document.getElementById('mandate-grid');
+  if (!gridEl) return;
+  const filter = (document.getElementById('mandate-filter')?.value || '').trim();
+  const list = mandatePromises.filter((p) => !filter || String(p.status || '') === filter);
+  
   if (!list.length) {
-    tableEl.innerHTML = '<tr><td colspan="5"><div class="empty">No promises found.</div></td></tr>';
+    gridEl.innerHTML = '<div class="empty" style="width:100%;">No promises found.</div>';
     return;
   }
-  tableEl.innerHTML = list.map((p) => {
+
+  const catIcons = {
+    'Infrastructure': '🏗️',
+    'Education': '🎓',
+    'Health': '🏥',
+    'Security': '🛡️',
+    'Economy': '📈',
+    'Governance': '🏛️',
+    'Agriculture': '🌾',
+    'Technology': '💻',
+    'Other': '📝'
+  };
+
+  gridEl.innerHTML = list.map((p) => {
     const url = sanitizeUrl(p.evidence_url);
-    const ev = url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);">link</a>` : '—';
-    const prog = Number.isFinite(Number(p.progress_percent)) ? `${Math.max(0, Math.min(100, Number(p.progress_percent)))}%` : '—';
-    return `<tr>
-      <td style="max-width:520px;white-space:normal;">${escapeHtml(p.promise_title || '')}</td>
-      <td>${escapeHtml(p.status || '')}</td>
-      <td>${escapeHtml(p.promise_category || '')}</td>
-      <td>${prog}</td>
-      <td>${ev}</td>
-    </tr>`;
+    const prog = Number.isFinite(Number(p.progress_percent)) ? Math.max(0, Math.min(100, Number(p.progress_percent))) : 0;
+    const icon = catIcons[p.promise_category] || '📝';
+    const statusColor = p.status === 'fulfilled' ? 'var(--green-light)' : p.status === 'broken' ? '#e57368' : p.status === 'in_progress' ? '#e8a020' : 'var(--muted)';
+
+    return `
+    <div class="promise-card fade-up">
+      <div class="promise-header">
+        <span class="promise-icon">${icon}</span>
+        <span class="status-badge s-${p.status}" style="font-size:.6rem;">${p.status}</span>
+      </div>
+      <div class="promise-title">${escapeHtml(p.promise_title || '')}</div>
+      <div class="promise-meta">${p.promise_category}</div>
+      
+      <div class="promise-progress-wrap">
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:.3rem;">
+          <span style="color:var(--muted);">Progress</span>
+          <span style="font-weight:700;color:${statusColor}">${prog}%</span>
+        </div>
+        <div class="cat-bar-track" style="height:6px;background:rgba(255,255,255,.05);">
+          <div class="cat-bar-fill" style="width:${prog}%;background:${statusColor};"></div>
+        </div>
+      </div>
+
+      ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="promise-link">View Evidence →</a>` : ''}
+    </div>`;
   }).join('');
+
+  // AI Summary Logic
+  if (mandatePromises.length > 3) {
+    const fulfilled = mandatePromises.filter(p => p.status === 'fulfilled').length;
+    const progress = mandatePromises.filter(p => p.status === 'in_progress').length;
+    const total = mandatePromises.length;
+    
+    document.getElementById('mandate-ai-summary').style.display = 'block';
+    document.getElementById('mandate-ai-text').textContent = `Out of ${total} trackable mandates, ${official.full_name} has successfully fulfilled ${fulfilled} promises and is currently making progress on ${progress} others. The core focus appears to be in ${[...new Set(mandatePromises.map(p=>p.promise_category))].slice(0,2).join(' and ')}.`;
+  }
 };
 
 // ── REPORTS ──

@@ -148,8 +148,36 @@
     <button class="ai-tab" data-tab="social">📣 Social Posts</button>
     <button class="ai-tab" data-tab="sql">🗄️ SQL Patcher</button>
     <button class="ai-tab" data-tab="audit">📊 Site Audit</button>
+    <button class="ai-tab" data-tab="repair">🩹 Health & Repair</button>
     <button class="ai-tab" data-tab="schedule">⏰ Scheduler</button>
     <button class="ai-tab" data-tab="settings">⚙️ Settings</button>
+  </div>
+
+  <!-- ════════ REPAIR ════════ -->
+  <div id="tab-repair" style="display:none;" class="fade-up">
+    <div class="ai-card">
+      <h3 style="margin-bottom:.8rem;">🩹 Global Health & Repair</h3>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:1.5rem;">
+        Scan the entire database for "broken" or "thin" profiles. The AI will automatically find missing photos, 
+        write biographies, and detect invalid data for all officials in bulk.
+      </p>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+        <div style="background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--green-light);font-weight:700;margin-bottom:.5rem;text-transform:uppercase;">Step 1: Audit</div>
+          <div style="font-size:1.5rem;font-weight:800;margin-bottom:.5rem;" id="audit-count">—</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Profiles missing data (Bio or Photo)</div>
+          <button class="ai-btn ai-btn-ghost" style="width:100%;" onclick="runAudit()">🔍 Run Health Check</button>
+        </div>
+        <div style="background:rgba(0,135,81,.05);border:1px solid rgba(0,135,81,.2);border-radius:10px;padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--green-light);font-weight:700;margin-bottom:.5rem;text-transform:uppercase;">Step 2: Auto-Repair</div>
+          <div style="font-size:.8rem;color:var(--white);margin-bottom:1rem;line-height:1.5;">This will sequentially call the AI for every missing field found in Step 1.</div>
+          <button class="ai-btn ai-btn-green" style="width:100%;" id="btn-repair" disabled onclick="runGlobalRepair()">🩹 Start Bulk Repair</button>
+        </div>
+      </div>
+
+      <div id="repair-log" class="scan-log" style="height:300px; display:none;"></div>
+    </div>
   </div>
 
   <!-- ════════ MONITOR ════════ -->
@@ -353,6 +381,16 @@
   <!-- ════════ SETTINGS ════════ -->
   <div id="tab-settings" style="display:none;" class="fade-up">
     <div class="ai-card">
+      <h3 style="margin-bottom:1rem;">⚙️ AI System Settings</h3>
+      
+      <div class="toggle-row" onclick="toggleAutopilot()" style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.3);margin-bottom:1.5rem;">
+        <div class="toggle" id="autopilot-toggle"></div>
+        <div>
+          <div style="font-size:.9rem;font-weight:700;color:#a78bfa;">Full Autopilot Mode</div>
+          <div style="font-size:.75rem;color:var(--muted);">System will automatically discover new appointments, create officials, and publish news articles.</div>
+        </div>
+      </div>
+
       <span class="ai-label">SUPABASE SERVICE ROLE KEY</span>
       <p style="font-size:.83rem;color:var(--muted);margin-bottom:1rem;">
         The Service Role Key bypasses Row-Level Security. It is strictly required for background CLI scripts (like the <code style="color:var(--green-light)">scripts/populate_all_mandates.php</code> daemon) to insert data. 
@@ -514,7 +552,7 @@ document.querySelectorAll('.ai-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.ai-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['monitor','articles','social','sql','audit','schedule','settings'].forEach(t => {
+    ['monitor','articles','social','sql','audit','repair','schedule','settings'].forEach(t => {
       const el = document.getElementById(`tab-${t}`);
       if (el) el.style.display = t === btn.dataset.tab ? '' : 'none';
     });
@@ -932,6 +970,95 @@ document.getElementById('btn-save-secrets').addEventListener('click', async () =
     btn.innerHTML = '💾 Save Key Securely';
   }
 });
+
+// ── REPAIR LOGIC ─────────────────────────────────────────────────────────────
+let repairTargets = [];
+
+window.runAudit = async () => {
+  const el = document.getElementById('audit-count');
+  el.textContent = 'Scanning...';
+  try {
+    const { data, error } = await supabase
+      .from('officials')
+      .select('id, full_name')
+      .or('bio.is.null,photo_url.is.null')
+      .eq('status', 'active');
+    
+    if (error) throw error;
+    repairTargets = data || [];
+    el.textContent = repairTargets.length;
+    document.getElementById('btn-repair').disabled = repairTargets.length === 0;
+    showToast(`Found ${repairTargets.length} profiles needing attention.`);
+  } catch (e) {
+    el.textContent = 'Error';
+    showToast('Audit failed: ' + e.message, 'error');
+  }
+};
+
+window.runGlobalRepair = async () => {
+  if (!repairTargets.length) return;
+  const logEl = document.getElementById('repair-log');
+  const btn = document.getElementById('btn-repair');
+  logEl.style.display = 'block';
+  logEl.innerHTML = '<div style="color:var(--green-light);margin-bottom:.5rem;">Starting Global Repair Sequence...</div>';
+  btn.disabled = true;
+  
+  for (let i = 0; i < repairTargets.length; i++) {
+    const t = repairTargets[i];
+    const logItem = document.createElement('div');
+    logItem.innerHTML = `<span style="color:var(--muted)">[${i+1}/${repairTargets.length}]</span> Repairing: <strong>${t.full_name}</strong>... `;
+    logEl.appendChild(logItem);
+    logEl.scrollTop = logEl.scrollHeight;
+    
+    try {
+      const res = await fetch('/api/fetch-official-profile.php', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${session.access_token}` 
+        },
+        body: JSON.stringify({ name: t.full_name })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'AI Fetch failed');
+      
+      const v = data.profile;
+      const { error } = await supabase.from('officials').update({
+        bio: v.bio || null,
+        photo_url: v.photo_url || null,
+        // Only update these if the AI found high-confidence data
+        role: v.role || undefined,
+        party: v.party || undefined
+      }).eq('id', t.id);
+      
+      if (error) throw error;
+      logItem.innerHTML += '<span style="color:var(--green-light)">REPAIRED! ✓</span>';
+    } catch (e) {
+      logItem.innerHTML += `<span style="color:#e84040">FAILED: ${e.message}</span>`;
+    }
+    // Pause to avoid OpenRouter rate limits
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  
+  logEl.innerHTML += '<div style="color:var(--green-light);margin-top:.8rem;font-weight:700;">✅ Global Repair Finished. All profiles updated.</div>';
+  showToast('Global Repair Finished!', 'success');
+  btn.disabled = false;
+};
+window.toggleAutopilot = () => {
+  const active = localStorage.getItem('nr_autopilot') === 'true';
+  const next = !active;
+  localStorage.setItem('nr_autopilot', next);
+  updateAutopilotUI();
+  showToast(`Autopilot Mode: ${next ? 'ENGAGED 🤖' : 'OFF'}`);
+};
+
+function updateAutopilotUI() {
+  const active = localStorage.getItem('nr_autopilot') === 'true';
+  const el = document.getElementById('autopilot-toggle');
+  if (el) el.className = 'toggle' + (active ? ' on' : '');
+}
+
+updateAutopilotUI();
 </script>
 </body>
 </html>

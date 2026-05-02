@@ -83,6 +83,82 @@ h1, h2, h3, h4 {
   align-items: center;
   justify-content: center;
 }
+
+/* ── MANDATE SCORECARD PREMIUM ── */
+.promise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.2rem;
+  margin-top: 1rem;
+}
+.promise-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  position: relative;
+  transition: all .2s;
+}
+.promise-card:hover {
+  border-color: var(--green-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.promise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .8rem;
+}
+.promise-icon {
+  font-size: 1.2rem;
+}
+.promise-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .95rem;
+  margin-bottom: .4rem;
+  line-height: 1.4;
+  color: var(--white);
+}
+.promise-meta {
+  font-size: .72rem;
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+.promise-progress-wrap {
+  margin-bottom: 1rem;
+}
+.promise-link {
+  display: block;
+  font-size: .75rem;
+  color: var(--green-light);
+  font-weight: 600;
+  text-decoration: underline;
+  margin-top: auto;
+}
+.ai-box {
+  background: rgba(0,179,104,.06);
+  border: 1px dashed rgba(0,179,104,.3);
+  padding: 1.2rem;
+  border-radius: 12px;
+}
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: .62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border: 1px solid currentColor;
+}
+.s-pending { color: var(--muted); background: rgba(107,113,99,.1); }
+.s-in_progress { color: #e8a020; background: rgba(232,160,32,.1); }
+.s-fulfilled { color: var(--green-light); background: rgba(0,179,104,.1); }
+.s-broken { color: #e57368; background: rgba(229,115,104,.1); }
+.s-disputed { color: #e87720; background: rgba(232,119,32,.1); }
+
 .nav-link {
   color: var(--muted); font-size: .88rem; padding: .4rem .9rem;
   border-radius: 6px; transition: all .2s; background: none; border: none;
@@ -420,3 +496,82 @@ select.form-control option { background: var(--card); }
   .lb-table th:nth-child(3), .lb-table td:nth-child(3) { display: none; }
   .lb-table th:nth-child(6), .lb-table td:nth-child(6) { display: none; }
 }
+
+/* ── MANDATE SCORECARD PREMIUM ── */
+.promise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.2rem;
+  margin-top: 1rem;
+}
+.promise-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  position: relative;
+  transition: all .2s;
+  display: flex;
+  flex-direction: column;
+}
+.promise-card:hover {
+  border-color: var(--green-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.promise-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .8rem;
+}
+.promise-icon {
+  font-size: 1.2rem;
+}
+.promise-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: .95rem;
+  margin-bottom: .4rem;
+  line-height: 1.4;
+  color: var(--white);
+}
+.promise-meta {
+  font-size: .72rem;
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+.promise-progress-wrap {
+  margin-bottom: 1rem;
+  margin-top: auto;
+}
+.promise-link {
+  display: block;
+  font-size: .75rem;
+  color: var(--green-light);
+  font-weight: 600;
+  text-decoration: underline;
+  margin-top: .5rem;
+}
+.ai-box {
+  background: rgba(0,179,104,.06);
+  border: 1px dashed rgba(0,179,104,.3);
+  padding: 1.2rem;
+  border-radius: 12px;
+}
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: .62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border: 1px solid currentColor;
+}
+.s-pending { color: var(--muted); background: rgba(107,113,99,.1); }
+.s-in_progress { color: #e8a020; background: rgba(232,160,32,.1); }
+.s-fulfilled { color: var(--green-light); background: rgba(0,179,104,.1); }
+.s-broken { color: #e57368; background: rgba(229,115,104,.1); }
+.s-disputed { color: #e87720; background: rgba(232,119,32,.1); }
+
