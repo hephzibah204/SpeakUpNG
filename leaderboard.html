@@ -68,6 +68,7 @@
       <button class="tab active" data-mode="most_rated">Most Rated</button>
       <button class="tab" data-mode="best">Best Rated</button>
       <button class="tab" data-mode="worst">Worst Rated</button>
+      <button class="tab" data-mode="mandate_best">Best Mandate</button>
       <button class="tab" data-mode="federal_executive">Federal Exec</button>
       <button class="tab" data-mode="state_executive">Governors</button>
       <button class="tab" data-mode="federal_legislature">Legislature</button>
@@ -82,13 +83,14 @@
             <th>Official</th>
             <th>Role</th>
             <th>Score</th>
+            <th>Mandate</th>
             <th>Ratings</th>
             <th>Reports</th>
             <th>Tier</th>
           </tr>
         </thead>
         <tbody id="lb-body">
-          <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+          <tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -113,6 +115,16 @@ let mode = 'most_rated';
 function renderLegend() {
   const el = document.getElementById('score-legend');
   if (!el) return;
+  if (mode === 'mandate_best') {
+    el.innerHTML = [
+      `<span>⬤ <span style="color:#00b368;">80–100</span> Strong delivery</span>`,
+      `<span>⬤ <span style="color:#e8a020;">60–79</span> Mixed</span>`,
+      `<span>⬤ <span style="color:#e87720;">40–59</span> Weak</span>`,
+      `<span>⬤ <span style="color:#e84040;">0–39</span> Poor</span>`,
+      `<span>⬤ <span style="color:var(--muted);">—</span> Not available</span>`,
+    ].join('');
+    return;
+  }
   const bands = [
     { min: 4.0, max: 5.0, label: 'Excellent', color: '#00b368' },
     { min: 3.0, max: 3.9, label: 'Average', color: '#e8a020' },
@@ -177,8 +189,17 @@ function officialPath(o) {
   return `/official/${slug}--${o.id}`;
 }
 
+function mandateColor(score) {
+  const s = Number(score);
+  if (!Number.isFinite(s) || s <= 0) return 'var(--muted)';
+  if (s >= 80) return '#00b368';
+  if (s >= 60) return '#e8a020';
+  if (s >= 40) return '#e87720';
+  return '#e84040';
+}
+
 async function loadLB() {
-  document.getElementById('lb-body').innerHTML = '<tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  document.getElementById('lb-body').innerHTML = '<tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>';
 
   let q = supabase.from('officials')
     .select('id,full_name,common_name,role,tier,photo_url,party,report_count,states(name)')
@@ -189,14 +210,14 @@ async function loadLB() {
 
   q = q.limit(100);
   const { data: rawOfficials, error } = await q;
-  if (error || !rawOfficials) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">Error loading data.</div></td></tr>'; return; }
+  if (error || !rawOfficials) { document.getElementById('lb-body').innerHTML='<tr><td colspan="8"><div class="empty">Error loading data.</div></td></tr>'; return; }
 
   let officials = rawOfficials || [];
   if (mode === 'federal_agency') {
     officials = officials.filter((o) => isAgencyBody(o));
   }
 
-  if (!officials.length) { document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">No officials found for this filter.</div></td></tr>'; return; }
+  if (!officials.length) { document.getElementById('lb-body').innerHTML='<tr><td colspan="8"><div class="empty">No officials found for this filter.</div></td></tr>'; return; }
 
   // Live aggregation from submitted ratings (not precomputed table fields).
   const ids = officials.map((o) => o.id).filter(Boolean);
@@ -205,7 +226,7 @@ async function loadLB() {
     .select('official_id,overall')
     .in('official_id', ids);
   if (ratingErr) {
-    document.getElementById('lb-body').innerHTML='<tr><td colspan="7"><div class="empty">Error loading rating data.</div></td></tr>';
+    document.getElementById('lb-body').innerHTML='<tr><td colspan="8"><div class="empty">Error loading rating data.</div></td></tr>';
     return;
   }
 
@@ -221,14 +242,36 @@ async function loadLB() {
     bucket.count += 1;
   });
 
+  const mandateByOfficial = new Map();
+  const mandateRes = await supabase
+    .from('official_mandate_scores')
+    .select('official_id,mandate_score,total_promises')
+    .in('official_id', ids);
+  if (!mandateRes.error && Array.isArray(mandateRes.data)) {
+    mandateRes.data.forEach((row) => {
+      if (!row?.official_id) return;
+      mandateByOfficial.set(row.official_id, row);
+    });
+  }
+
   const data = officials.map((o) => {
     const agg = byOfficial.get(o.id) || { sum: 0, count: 0 };
     const rating_count = agg.count || 0;
     const rating_avg = rating_count ? (agg.sum / rating_count) : 0;
-    return { ...o, rating_count, rating_avg };
+    const m = mandateByOfficial.get(o.id) || null;
+    return { ...o, rating_count, rating_avg, mandate_score: m?.mandate_score ?? null, mandate_promises: m?.total_promises ?? null };
   });
 
-  if (mode === 'best') {
+  if (mode === 'mandate_best') {
+    const withMandate = data.filter((o) => Number.isFinite(Number(o.mandate_score)));
+    withMandate.sort((a, b) => {
+      if (Number(b.mandate_score || 0) !== Number(a.mandate_score || 0)) return Number(b.mandate_score || 0) - Number(a.mandate_score || 0);
+      if ((b.rating_count || 0) !== (a.rating_count || 0)) return (b.rating_count || 0) - (a.rating_count || 0);
+      return (b.rating_avg || 0) - (a.rating_avg || 0);
+    });
+    data.length = 0;
+    data.push(...withMandate);
+  } else if (mode === 'best') {
     data.sort((a, b) => {
       if ((b.rating_avg || 0) !== (a.rating_avg || 0)) return (b.rating_avg || 0) - (a.rating_avg || 0);
       return (b.rating_count || 0) - (a.rating_count || 0);
@@ -254,6 +297,9 @@ async function loadLB() {
     const tier = TIER_LABELS[o.tier]||o.tier;
     const rating = parseFloat(o.rating_avg)||0;
     const sc = rating ? scoreColor(rating) : 'var(--muted)';
+    const mandate = Number(o.mandate_score);
+    const mandateVal = Number.isFinite(mandate) ? Math.round(mandate) : null;
+    const mc = mandateVal !== null ? mandateColor(mandateVal) : 'var(--muted)';
     const rankCls = i===0?'gold':i===1?'silver':i===2?'bronze':'';
     return `
     <tr>
@@ -271,6 +317,7 @@ async function loadLB() {
       </td>
       <td style="color:var(--muted);font-size:.8rem;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${o.role}</td>
       <td><span class="score-pill" style="color:${sc};">${rating ? '★ '+rating.toFixed(1) : '—'}</span></td>
+      <td><span class="score-pill" style="color:${mc};">${mandateVal !== null ? `${mandateVal}` : '—'}</span></td>
       <td style="color:var(--muted);">${fmt(o.rating_count)}</td>
       <td>${o.report_count > 0 ? `<span style="color:#e57368;font-size:.82rem;">⚠ ${o.report_count}</span>` : '<span style="color:var(--border);">—</span>'}</td>
       <td><span class="tier-badge" style="color:${color};border-color:${color}44;background:${color}11;font-size:.6rem;">${tier}</span></td>
@@ -283,6 +330,7 @@ document.querySelectorAll('#lb-tabs .tab').forEach(btn => {
     document.querySelectorAll('#lb-tabs .tab').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
     mode = btn.dataset.mode;
+    renderLegend();
     loadLB();
   });
 });

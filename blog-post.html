@@ -185,7 +185,7 @@
 
       try {
         const post = await loadPost(slug);
-        if (!post) throw new Error('Not found');
+        if (!post || String(post.status || 'published').toLowerCase() === 'draft') throw new Error('Not found');
         setMeta(post, canonicalUrl);
         setLd(post, canonicalUrl);
         render(post);

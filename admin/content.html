@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content (CMS) — evote.ng Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="admin-main">
+    <div class="admin-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div class="admin-title">Content (CMS)</div>
+        <div class="admin-sub" style="max-width:720px;">Manage Blog + News, drafts, publishing, and AI-assisted writing in one place.</div>
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+        <a class="btn btn-ghost btn-sm" href="/admin/ai-manager">Open AI Manager</a>
+        <button class="btn btn-green btn-sm" id="btn-new">New Post</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="content-tabs" style="margin-bottom:1rem;">
+      <button class="tab active" data-type="blog">Blog</button>
+      <button class="tab" data-type="news">News</button>
+    </div>
+
+    <div class="card" style="padding:1rem;border:1px solid var(--border);">
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+          <input id="q" class="form-control" placeholder="Search title, slug, category…" style="min-width:240px;max-width:360px;">
+          <select id="status-filter" class="form-control" style="max-width:190px;">
+            <option value="all">All</option>
+            <option value="published">Published</option>
+            <option value="draft">Drafts</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+          <div style="font-size:.78rem;color:var(--muted);" id="count">—</div>
+          <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap" style="margin-top:1rem;">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width:40%;">Title</th>
+            <th style="width:18%;">Category</th>
+            <th style="width:12%;">Status</th>
+            <th style="width:15%;">Published</th>
+            <th style="width:15%;">Updated</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal" id="editor-modal">
+    <div class="modal-box" style="max-width:980px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;">Post Editor</div>
+          <div style="font-size:.78rem;color:var(--muted);" id="editor-sub">—</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-close">Close</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input id="f-title" class="form-control" placeholder="Post title">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Slug</label>
+          <input id="f-slug" class="form-control" placeholder="auto-from-title">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input id="f-category" class="form-control" placeholder="Product Update">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags (comma)</label>
+          <input id="f-tags" class="form-control" placeholder="accountability, governance, nigeria">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select id="f-status" class="form-control">
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Excerpt</label>
+          <textarea id="f-excerpt" class="form-control" rows="3" placeholder="Short summary shown on the list page"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reading Time (mins)</label>
+          <input id="f-rt" class="form-control" type="number" min="1" max="99" placeholder="7">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Featured Image URL</label>
+          <input id="f-img" class="form-control" placeholder="/images/featured/...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Featured Image Alt</label>
+          <input id="f-imgalt" class="form-control" placeholder="Alt text">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Meta Description</label>
+          <textarea id="f-metadesc" class="form-control" rows="2" placeholder="For SEO + social sharing"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Meta Keywords</label>
+          <textarea id="f-metakey" class="form-control" rows="2" placeholder="comma-separated"></textarea>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Body HTML</label>
+        <textarea id="f-body" class="form-control" rows="14" placeholder="<p>…</p>"></textarea>
+      </div>
+
+      <div class="card" style="padding:1rem;border:1px solid var(--border);margin-top:1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">AI Assistant</div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" id="btn-ai-excerpt">Rewrite Excerpt</button>
+            <button class="btn btn-ghost btn-sm" id="btn-ai-seo">SEO Meta</button>
+            <button class="btn btn-green btn-sm" id="btn-ai-generate">Generate Draft</button>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:.8rem;">
+          <label class="form-label">AI Prompt</label>
+          <textarea id="ai-prompt" class="form-control" rows="3" placeholder="Describe what you want to publish. Include context, target audience, and key points."></textarea>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);" id="ai-status"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <a class="btn btn-ghost btn-sm" id="btn-preview" href="#" target="_blank">Preview</a>
+          <button class="btn btn-ghost btn-sm" id="btn-duplicate">Duplicate</button>
+          <button class="btn btn-ghost btn-sm" id="btn-unpublish">Unpublish</button>
+          <button class="btn btn-ghost btn-sm" id="btn-delete" style="border-color:rgba(192,57,43,.25);color:#e57368;">Delete</button>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="btn-save">Save Draft</button>
+          <button class="btn btn-green btn-sm" id="btn-publish">Publish</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+  import { requireAuth, sidebarHTML, wireSignOut, showToast, adminApiJson, openRouterChat } from './js/admin-common.js';
+
+  const session = await requireAuth();
+  const email = session.user.email;
+  document.getElementById('sidebar-mount').innerHTML = sidebarHTML('content', email);
+  wireSignOut();
+
+  const state = {
+    type: 'blog',
+    posts: [],
+    editingSlug: '',
+    isNew: false,
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  const fields = {
+    title: $('f-title'),
+    slug: $('f-slug'),
+    category: $('f-category'),
+    tags: $('f-tags'),
+    status: $('f-status'),
+    excerpt: $('f-excerpt'),
+    rt: $('f-rt'),
+    img: $('f-img'),
+    imgalt: $('f-imgalt'),
+    metadesc: $('f-metadesc'),
+    metakey: $('f-metakey'),
+    body: $('f-body'),
+  };
+
+  function sanitizeSlug(s) {
+    return String(s || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+  }
+
+  function parseTags(s) {
+    return String(s || '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+
+  function fmtDate(s) {
+    if (!s) return '—';
+    try { return new Date(s).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return String(s); }
+  }
+
+  function statusLabel(p) {
+    const st = String((p && p.status) || (p && p.published_at ? 'published' : 'draft')).toLowerCase();
+    return st === 'draft' ? 'Draft' : 'Published';
+  }
+
+  function previewUrlFor(p) {
+    const slug = encodeURIComponent(p.slug);
+    return state.type === 'blog' ? `/blog/${slug}` : `/news/${slug}`;
+  }
+
+  function openModal() { $('editor-modal').classList.add('open'); }
+  function closeModal() { $('editor-modal').classList.remove('open'); }
+
+  function fillEditor(p) {
+    $('editor-sub').textContent = `${state.type.toUpperCase()} · ${p.slug || 'new'}`;
+    state.editingSlug = p.slug || '';
+    state.isNew = !p.slug;
+    fields.title.value = p.title || '';
+    fields.slug.value = p.slug || '';
+    fields.category.value = p.category || '';
+    fields.tags.value = (p.tags || []).join(', ');
+    fields.status.value = String((p.status) || (p.published_at ? 'published' : 'draft')).toLowerCase() === 'draft' ? 'draft' : 'published';
+    fields.excerpt.value = p.excerpt || '';
+    fields.rt.value = p.reading_time_minutes || '';
+    fields.img.value = p.featured_image || '';
+    fields.imgalt.value = p.featured_image_alt || '';
+    fields.metadesc.value = p.meta_description || '';
+    fields.metakey.value = p.meta_keywords || '';
+    fields.body.value = p.body_html || '';
+    $('ai-prompt').value = '';
+    $('ai-status').textContent = '';
+    const hasSlug = Boolean(p.slug);
+    $('btn-preview').style.display = hasSlug ? '' : 'none';
+    $('btn-preview').href = hasSlug ? previewUrlFor(p) : '#';
+    $('btn-delete').style.display = hasSlug ? '' : 'none';
+    $('btn-unpublish').style.display = hasSlug ? '' : 'none';
+    $('btn-duplicate').style.display = hasSlug ? '' : 'none';
+  }
+
+  function collectEditor() {
+    const title = String(fields.title.value || '').trim();
+    const slug = sanitizeSlug(fields.slug.value || title);
+    return {
+      slug,
+      title,
+      excerpt: String(fields.excerpt.value || '').trim(),
+      category: String(fields.category.value || '').trim(),
+      tags: parseTags(fields.tags.value),
+      featured_image: String(fields.img.value || '').trim(),
+      featured_image_alt: String(fields.imgalt.value || '').trim(),
+      meta_description: String(fields.metadesc.value || '').trim(),
+      meta_keywords: String(fields.metakey.value || '').trim(),
+      reading_time_minutes: fields.rt.value ? Number(fields.rt.value) : undefined,
+      body_html: String(fields.body.value || '').trim(),
+      status: String(fields.status.value || 'draft'),
+    };
+  }
+
+  function setRows(posts) {
+    const q = String($('q').value || '').toLowerCase();
+    const sf = String($('status-filter').value || 'all');
+    const filtered = (posts || []).filter((p) => {
+      const st = String((p && p.status) || (p && p.published_at ? 'published' : 'draft')).toLowerCase();
+      if (sf !== 'all' && st !== sf) return false;
+      if (!q) return true;
+      const hay = [p.title, p.slug, p.category].map((x) => String(x || '').toLowerCase()).join(' ');
+      return hay.includes(q);
+    });
+
+    $('count').textContent = `${filtered.length} / ${posts.length}`;
+
+    if (!filtered.length) {
+      $('rows').innerHTML = '<tr><td colspan="5"><div class="empty">No posts found.</div></td></tr>';
+      return;
+    }
+
+    $('rows').innerHTML = filtered.map((p) => {
+      const st = statusLabel(p);
+      const pill = st === 'Draft'
+        ? '<span class="pill" style="border-color:rgba(232,160,32,.35);color:#e8a020;background:rgba(232,160,32,.08);">Draft</span>'
+        : '<span class="pill" style="border-color:rgba(0,179,104,.35);color:#00b368;background:rgba(0,179,104,.08);">Published</span>';
+
+      return `
+        <tr style="cursor:pointer;" data-slug="${p.slug}">
+          <td>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;">
+              <div style="min-width:0;">
+                <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title || p.slug)}</div>
+                <div style="font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">/${state.type}/${escapeHtml(p.slug)}</div>
+              </div>
+              <a class="btn btn-ghost btn-sm" href="${previewUrlFor(p)}" target="_blank" onclick="event.stopPropagation()">View</a>
+            </div>
+          </td>
+          <td style="color:var(--muted);">${escapeHtml(p.category || '—')}</td>
+          <td>${pill}</td>
+          <td style="color:var(--muted);">${escapeHtml(fmtDate(p.published_at))}</td>
+          <td style="color:var(--muted);">${escapeHtml(fmtDate(p.updated_at))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    $('rows').querySelectorAll('tr[data-slug]').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const slug = tr.getAttribute('data-slug');
+        const p = state.posts.find((x) => x.slug === slug);
+        if (!p) return;
+        fillEditor(p);
+        openModal();
+      });
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  async function load() {
+    $('rows').innerHTML = '<tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>';
+    try {
+      const store = await adminApiJson(`/api/cms-content.php?content_type=${encodeURIComponent(state.type)}`);
+      state.posts = Array.isArray(store.posts) ? store.posts : [];
+      setRows(state.posts);
+    } catch (e) {
+      $('rows').innerHTML = '<tr><td colspan="5"><div class="empty">Unable to load content.</div></td></tr>';
+      showToast(e?.message || 'Unable to load content', 'error');
+    }
+  }
+
+  async function save(action) {
+    const post = collectEditor();
+    try {
+      const res = await adminApiJson(`/api/cms-content.php?content_type=${encodeURIComponent(state.type)}`, {
+        method: 'POST',
+        body: { action, post },
+      });
+      state.posts = Array.isArray(res.store?.posts) ? res.store.posts : state.posts;
+      setRows(state.posts);
+      const saved = res.post || post;
+      fillEditor(saved);
+      showToast(action === 'publish' ? 'Published.' : action === 'unpublish' ? 'Unpublished.' : 'Saved.');
+    } catch (e) {
+      showToast(e?.message || 'Save failed', 'error');
+    }
+  }
+
+  async function del() {
+    const slug = state.editingSlug;
+    if (!slug) return;
+    if (!confirm(`Delete "${slug}"? This cannot be undone.`)) return;
+    try {
+      await adminApiJson(`/api/cms-content.php?content_type=${encodeURIComponent(state.type)}`, {
+        method: 'POST',
+        body: { action: 'delete', slug },
+      });
+      closeModal();
+      await load();
+      showToast('Deleted.');
+    } catch (e) {
+      showToast(e?.message || 'Delete failed', 'error');
+    }
+  }
+
+  async function duplicate() {
+    const post = collectEditor();
+    const base = String(post.slug || '');
+    const next = base ? `${base}-copy` : 'copy';
+    post.slug = next;
+    post.title = post.title ? `${post.title} (Copy)` : 'Copy';
+    post.status = 'draft';
+    post.published_at = '';
+    try {
+      const res = await adminApiJson(`/api/cms-content.php?content_type=${encodeURIComponent(state.type)}`, {
+        method: 'POST',
+        body: { action: 'create', post },
+      });
+      state.posts = Array.isArray(res.store?.posts) ? res.store.posts : state.posts;
+      setRows(state.posts);
+      fillEditor(res.post || post);
+      showToast('Duplicated as draft.');
+    } catch (e) {
+      showToast(e?.message || 'Duplicate failed', 'error');
+    }
+  }
+
+  function setAiStatus(s) {
+    $('ai-status').textContent = s || '';
+  }
+
+  async function aiGenerateDraft() {
+    const prompt = String($('ai-prompt').value || '').trim();
+    if (!prompt) { showToast('Add an AI prompt first.', 'error'); return; }
+    setAiStatus('Generating draft…');
+    try {
+      const schemaHint = `Return ONLY valid JSON with keys: title, excerpt, category, tags (array), meta_description, meta_keywords, featured_image_alt, reading_time_minutes (number), body_html (string of HTML). Do not wrap in markdown.`;
+      const context = `You are writing for evote.ng (${state.type.toUpperCase()}). Tone: Nigerian-friendly, credible, concise, civic-minded. Output must be safe and non-defamatory.`;
+      const out = await openRouterChat({
+        messages: [
+          { role: 'system', content: context },
+          { role: 'user', content: schemaHint + '\n\n' + prompt },
+        ],
+        temperature: 0.6,
+        max_tokens: 1400,
+      });
+      const text = out?.choices?.[0]?.message?.content || '';
+      const json = JSON.parse(text);
+      fields.title.value = json.title || fields.title.value;
+      if (!fields.slug.value) fields.slug.value = sanitizeSlug(json.title || fields.title.value);
+      fields.excerpt.value = json.excerpt || fields.excerpt.value;
+      fields.category.value = json.category || fields.category.value;
+      fields.tags.value = Array.isArray(json.tags) ? json.tags.join(', ') : fields.tags.value;
+      fields.metadesc.value = json.meta_description || fields.metadesc.value;
+      fields.metakey.value = json.meta_keywords || fields.metakey.value;
+      fields.imgalt.value = json.featured_image_alt || fields.imgalt.value;
+      fields.rt.value = json.reading_time_minutes || fields.rt.value;
+      fields.body.value = json.body_html || fields.body.value;
+      fields.status.value = 'draft';
+      setAiStatus('Draft generated. Review and save.');
+      showToast('AI draft ready.');
+    } catch (e) {
+      setAiStatus('');
+      showToast(e?.message || 'AI generation failed', 'error');
+    }
+  }
+
+  async function aiRewriteExcerpt() {
+    const body = String(fields.body.value || '').trim();
+    if (!body) { showToast('Add body HTML first.', 'error'); return; }
+    setAiStatus('Rewriting excerpt…');
+    try {
+      const out = await openRouterChat({
+        messages: [
+          { role: 'system', content: 'Return ONLY a short excerpt (1-2 sentences). No quotes. No markdown.' },
+          { role: 'user', content: body },
+        ],
+        temperature: 0.5,
+        max_tokens: 220,
+      });
+      const text = String(out?.choices?.[0]?.message?.content || '').trim();
+      fields.excerpt.value = text;
+      setAiStatus('Excerpt updated.');
+      showToast('Excerpt rewritten.');
+    } catch (e) {
+      setAiStatus('');
+      showToast(e?.message || 'AI excerpt failed', 'error');
+    }
+  }
+
+  async function aiSeoMeta() {
+    const title = String(fields.title.value || '').trim();
+    const excerpt = String(fields.excerpt.value || '').trim();
+    const body = String(fields.body.value || '').trim();
+    if (!title || (!excerpt && !body)) { showToast('Add at least a title and excerpt/body.', 'error'); return; }
+    setAiStatus('Generating SEO meta…');
+    try {
+      const out = await openRouterChat({
+        messages: [
+          { role: 'system', content: 'Return ONLY valid JSON: { "meta_description": "...", "meta_keywords": "comma, separated, keywords" }. No markdown.' },
+          { role: 'user', content: `Title: ${title}\nExcerpt: ${excerpt}\nBody: ${body}` },
+        ],
+        temperature: 0.4,
+        max_tokens: 220,
+      });
+      const text = out?.choices?.[0]?.message?.content || '';
+      const json = JSON.parse(text);
+      fields.metadesc.value = json.meta_description || fields.metadesc.value;
+      fields.metakey.value = json.meta_keywords || fields.metakey.value;
+      setAiStatus('SEO meta updated.');
+      showToast('SEO meta ready.');
+    } catch (e) {
+      setAiStatus('');
+      showToast(e?.message || 'AI SEO failed', 'error');
+    }
+  }
+
+  $('btn-close').addEventListener('click', closeModal);
+  $('editor-modal').addEventListener('click', (e) => { if (e.target && e.target.id === 'editor-modal') closeModal(); });
+  $('btn-refresh').addEventListener('click', load);
+  $('q').addEventListener('input', () => setRows(state.posts));
+  $('status-filter').addEventListener('change', () => setRows(state.posts));
+  $('btn-new').addEventListener('click', () => { fillEditor({}); openModal(); });
+
+  $('btn-save').addEventListener('click', () => save(state.isNew ? 'create' : 'update'));
+  $('btn-publish').addEventListener('click', () => save('publish'));
+  $('btn-unpublish').addEventListener('click', () => save('unpublish'));
+  $('btn-delete').addEventListener('click', del);
+  $('btn-duplicate').addEventListener('click', duplicate);
+
+  $('btn-ai-generate').addEventListener('click', aiGenerateDraft);
+  $('btn-ai-excerpt').addEventListener('click', aiRewriteExcerpt);
+  $('btn-ai-seo').addEventListener('click', aiSeoMeta);
+
+  document.querySelectorAll('#content-tabs .tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#content-tabs .tab').forEach((t) => t.classList.remove('active'));
+      btn.classList.add('active');
+      state.type = btn.dataset.type;
+      closeModal();
+      load();
+    });
+  });
+
+  (function initFromUrl() {
+    const u = new URL(window.location.href);
+    const t = u.searchParams.get('type');
+    if (t === 'news' || t === 'blog') {
+      state.type = t;
+      document.querySelectorAll('#content-tabs .tab').forEach((b) => b.classList.toggle('active', b.dataset.type === t));
+    }
+    const newFlag = u.searchParams.get('new');
+    load().then(() => {
+      if (newFlag === '1') { fillEditor({}); openModal(); }
+    });
+  })();
+  </script>
+</body>
+</html>
+

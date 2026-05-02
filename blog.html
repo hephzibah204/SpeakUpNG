@@ -143,7 +143,10 @@
     const res = await fetch(base + 'blog-posts.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('Failed to load posts');
     const data = await res.json();
-    return (data.posts || []).slice().sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
+    return (data.posts || [])
+      .filter((p) => String((p && p.status) || 'published').toLowerCase() !== 'draft' && (p && p.published_at))
+      .slice()
+      .sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
   }
 
   function render(posts) {

@@ -27,14 +27,17 @@ export function wireSignOut(buttonId = 'signout-btn') {
 
 // ── SIDEBAR HTML — NOW INCLUDES AI MANAGER + ALERTS ──
 export function sidebarHTML(activePage, userEmail) {
-  const pages = [
+  const mainPages = [
     { id:'dashboard',   icon:'📊', label:'Dashboard',    href:'/admin/dashboard' },
+    { id:'content',     icon:'📝', label:'Content (CMS)', href:'/admin/content' },
     { id:'officials',   icon:'👤', label:'Officials',     href:'/admin/officials' },
     { id:'mandate',     icon:'📌', label:'Mandate',       href:'/admin/mandate' },
     { id:'profiles',    icon:'🧾', label:'Profiles',      href:'/admin/profiles' },
     { id:'ratings',     icon:'⭐', label:'Ratings',       href:'/admin/ratings' },
     { id:'reports',     icon:'🚨', label:'Reports',       href:'/admin/reports' },
     { id:'polls',       icon:'🗳️', label:'Polls',         href:'/admin/polls' },
+  ];
+  const aiPages = [
     { id:'alerts',      icon:'🔔', label:'AI Alerts',     href:'/admin/alerts' },
     { id:'ai-manager',  icon:'🤖', label:'AI Manager',    href:'/admin/ai-manager' },
   ];
@@ -46,12 +49,12 @@ export function sidebarHTML(activePage, userEmail) {
     </div>
     <nav class="sidebar-nav">
       <div class="sidebar-section">Main</div>
-      ${pages.slice(0,7).map(p => `
+      ${mainPages.map(p => `
         <a href="${p.href}" class="sidebar-link ${p.id===activePage?'active':''}">
           <span class="sidebar-icon">${p.icon}</span>${p.label}
         </a>`).join('')}
       <div class="sidebar-section" style="margin-top:.8rem;">AI Tools</div>
-      ${pages.slice(7).map(p => `
+      ${aiPages.map(p => `
         <a href="${p.href}" class="sidebar-link ${p.id===activePage?'active':''}">
           <span class="sidebar-icon">${p.icon}</span>${p.label}
         </a>`).join('')}
@@ -98,6 +101,23 @@ export async function openRouterChat({ messages, model, temperature, max_tokens 
     body: JSON.stringify({ messages, model, temperature, max_tokens }),
   });
 
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((json && (json.error || json.details)) ? `${json.error || 'Request failed'}${json.details ? `: ${json.details}` : ''}` : `HTTP ${res.status}`);
+  return json;
+}
+
+export async function adminApiJson(path, { method = 'GET', body } = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const res = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   const json = await res.json().catch(() => null);
   if (!res.ok) throw new Error((json && (json.error || json.details)) ? `${json.error || 'Request failed'}${json.details ? `: ${json.details}` : ''}` : `HTTP ${res.status}`);
   return json;

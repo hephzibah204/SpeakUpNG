@@ -1,4 +1,4 @@
-# NaijaRate clean URL routing (Apache/cPanel)
+# evote.ng clean URL routing (Apache/cPanel)
 # Supports both layouts:
 # 1) files directly in web root (recommended)
 # 2) files under /public (legacy)
@@ -79,7 +79,7 @@ RewriteRule ^(index|leaderboard|polls|official|blog|news|agencies)/?$ public/$1.
 
 # Extensionless admin pages
 RewriteCond %{DOCUMENT_ROOT}/admin/$1.html -f
-RewriteRule ^admin/(login|dashboard|officials|mandate|profiles|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
+RewriteRule ^admin/(login|dashboard|content|officials|mandate|profiles|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
 
 # Generic extensionless HTML fallback (supports nested paths)
 RewriteCond %{DOCUMENT_ROOT}/$1.html -f

@@ -60,6 +60,10 @@ if ($slug !== '' && is_file($dataPath)) {
   }
 }
 
+if (is_array($post) && strtolower((string)($post['status'] ?? 'published')) === 'draft') {
+  $post = null;
+}
+
 if (!$post) {
   http_response_code($slug === '' ? 400 : 404);
   $pageTitle = $slug === '' ? 'News | evote.ng' : 'Update not found | evote.ng News';
