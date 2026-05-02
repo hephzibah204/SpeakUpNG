@@ -28,11 +28,24 @@ if (is_file($secretsPath)) {
   $secrets = require $secretsPath;
 }
 
-$supabaseUrl  = $secrets['SUPABASE_URL'] ?? getenv('SUPABASE_URL');
-$supabaseAnon = $secrets['SUPABASE_ANON_KEY'] ?? getenv('SUPABASE_ANON_KEY');
+$supabaseUrl  = (string)($secrets['SUPABASE_URL'] ?? getenv('SUPABASE_URL'));
+$supabaseAnon = (string)($secrets['SUPABASE_ANON_KEY'] ?? getenv('SUPABASE_ANON_KEY'));
+
+// Fallback to JS client config if secrets.php isn't populated
+if ($supabaseUrl === '' || $supabaseAnon === '') {
+  $jsPath = __DIR__ . '/../js/supabase-client.js';
+  if (is_file($jsPath)) {
+    $rawJs = file_get_contents($jsPath);
+    if ($rawJs !== false) {
+      if (preg_match("/const\\s+SUPABASE_URL\\s*=\\s*'([^']+)'/m", $rawJs, $m)) $supabaseUrl = trim((string)$m[1]);
+      if (preg_match("/const\\s+SUPABASE_ANON_KEY\\s*=\\s*'([^']+)'/m", $rawJs, $m)) $supabaseAnon = trim((string)$m[1]);
+    }
+  }
+}
+
 $adminEmails  = $secrets['ADMIN_EMAILS'] ?? [];
 
-if (!$supabaseUrl || !$supabaseAnon) {
+if ($supabaseUrl === '' || $supabaseAnon === '') {
   mc_json(500, ['error' => 'Supabase auth not configured on server']);
 }
 
@@ -66,6 +79,10 @@ if (is_array($payload) && isset($payload['service_role_key'])) {
   $newKey = trim((string)$payload['service_role_key']);
   if ($newKey !== '') {
     $secrets['SUPABASE_SERVICE_ROLE_KEY'] = $newKey;
+    
+    // Also save the URL and Anon Key if we fell back to parsing them
+    if (empty($secrets['SUPABASE_URL'])) $secrets['SUPABASE_URL'] = $supabaseUrl;
+    if (empty($secrets['SUPABASE_ANON_KEY'])) $secrets['SUPABASE_ANON_KEY'] = $supabaseAnon;
     
     // Write back to file securely
     $exported = var_export($secrets, true);
