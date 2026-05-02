@@ -30,6 +30,8 @@ export function sidebarHTML(activePage, userEmail) {
   const pages = [
     { id:'dashboard',   icon:'📊', label:'Dashboard',    href:'/admin/dashboard' },
     { id:'officials',   icon:'👤', label:'Officials',     href:'/admin/officials' },
+    { id:'mandate',     icon:'📌', label:'Mandate',       href:'/admin/mandate' },
+    { id:'profiles',    icon:'🧾', label:'Profiles',      href:'/admin/profiles' },
     { id:'ratings',     icon:'⭐', label:'Ratings',       href:'/admin/ratings' },
     { id:'reports',     icon:'🚨', label:'Reports',       href:'/admin/reports' },
     { id:'polls',       icon:'🗳️', label:'Polls',         href:'/admin/polls' },
@@ -44,12 +46,12 @@ export function sidebarHTML(activePage, userEmail) {
     </div>
     <nav class="sidebar-nav">
       <div class="sidebar-section">Main</div>
-      ${pages.slice(0,5).map(p => `
+      ${pages.slice(0,7).map(p => `
         <a href="${p.href}" class="sidebar-link ${p.id===activePage?'active':''}">
           <span class="sidebar-icon">${p.icon}</span>${p.label}
         </a>`).join('')}
       <div class="sidebar-section" style="margin-top:.8rem;">AI Tools</div>
-      ${pages.slice(5).map(p => `
+      ${pages.slice(7).map(p => `
         <a href="${p.href}" class="sidebar-link ${p.id===activePage?'active':''}">
           <span class="sidebar-icon">${p.icon}</span>${p.label}
         </a>`).join('')}

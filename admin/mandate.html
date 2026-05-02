@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mandate — evote.ng Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-overlay" id="promise-modal" onclick="if(event.target===this)closePromiseModal()">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <h2 id="promise-modal-title">Add Promise</h2>
+        <button class="modal-close" onclick="closePromiseModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="span2">
+            <label class="form-label">Promise Title *</label>
+            <input class="form-control" id="p-title" type="text" placeholder="e.g. Build 200 classrooms across 23 LGAs by 2025">
+          </div>
+          <div class="span2">
+            <label class="form-label">Promise Detail</label>
+            <textarea class="form-control" id="p-detail" placeholder="Optional detail / context"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Category</label>
+            <select class="form-control" id="p-category">
+              <option value="Infrastructure">Infrastructure</option>
+              <option value="Education">Education</option>
+              <option value="Health">Health</option>
+              <option value="Security">Security</option>
+              <option value="Economy">Economy</option>
+              <option value="Governance">Governance</option>
+              <option value="Agriculture">Agriculture</option>
+              <option value="Technology">Technology</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Status</label>
+            <select class="form-control" id="p-status">
+              <option value="pending">pending</option>
+              <option value="in_progress">in_progress</option>
+              <option value="fulfilled">fulfilled</option>
+              <option value="broken">broken</option>
+              <option value="disputed">disputed</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Progress %</label>
+            <input class="form-control" id="p-progress" type="number" min="0" max="100" value="0">
+          </div>
+          <div>
+            <label class="form-label">Promise Date</label>
+            <input class="form-control" id="p-date" type="date">
+          </div>
+          <div>
+            <label class="form-label">Source</label>
+            <select class="form-control" id="p-source">
+              <option value="manifesto">manifesto</option>
+              <option value="speech">speech</option>
+              <option value="press_release">press_release</option>
+              <option value="inauguration">inauguration</option>
+              <option value="other">other</option>
+            </select>
+          </div>
+          <div class="span2">
+            <label class="form-label">Evidence URL</label>
+            <input class="form-control" id="p-evidence-url" type="url" placeholder="https://...">
+          </div>
+          <div class="span2">
+            <label class="form-label">Evidence Note</label>
+            <input class="form-control" id="p-evidence-note" type="text" placeholder="Optional note">
+          </div>
+          <div>
+            <label class="form-label">Verified By</label>
+            <select class="form-control" id="p-verified-by">
+              <option value="ai_agent">ai_agent</option>
+              <option value="admin">admin</option>
+              <option value="community">community</option>
+            </select>
+          </div>
+        </div>
+        <button class="submit-btn" id="promise-save-btn" onclick="savePromise()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-main">
+    <div class="admin-header">
+      <div>
+        <div class="admin-title">Mandate Scorecard</div>
+        <div class="admin-sub">Create, import, and track official promises</div>
+      </div>
+    </div>
+
+    <div class="admin-search" style="grid-template-columns:1fr 220px 160px;align-items:end;">
+      <div>
+        <label class="form-label">Official</label>
+        <input class="form-control" id="official-search" placeholder="Search officials..." oninput="filterOfficials()">
+      </div>
+      <div>
+        <label class="form-label">Select</label>
+        <select class="form-control" id="official-select" onchange="onPickOfficial()"></select>
+      </div>
+      <div>
+        <button class="btn btn-green" style="height:42px;" onclick="openAddPromise()">+ Add Promise</button>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap" style="margin-top:1rem;">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Category</th>
+            <th>Progress</th>
+            <th>Evidence</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="promises-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="section" style="margin-top:1.6rem;">
+      <div style="font-weight:700;margin-bottom:.5rem;">AI Promise Extraction</div>
+      <div class="form-grid">
+        <div class="span2">
+          <label class="form-label">Manifesto / Speech Text</label>
+          <textarea class="form-control" id="ai-text" placeholder="Paste manifesto or speech text here..."></textarea>
+        </div>
+        <div>
+          <label class="form-label">Default Source</label>
+          <select class="form-control" id="ai-source">
+            <option value="manifesto">manifesto</option>
+            <option value="speech">speech</option>
+            <option value="press_release">press_release</option>
+            <option value="inauguration">inauguration</option>
+            <option value="other">other</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Promise Date</label>
+          <input class="form-control" id="ai-date" type="date">
+        </div>
+        <div>
+          <label class="form-label">Evidence URL</label>
+          <input class="form-control" id="ai-evidence-url" type="url" placeholder="https://...">
+        </div>
+        <div>
+          <label class="form-label">&nbsp;</label>
+          <button class="btn btn-green" style="width:100%;height:42px;" onclick="runExtraction()">Extract Promises</button>
+        </div>
+      </div>
+
+      <div id="ai-results" style="display:none;margin-top:1rem;">
+        <div style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div style="font-weight:700;">Extracted Promises</div>
+          <button class="btn" onclick="importAll()">Import All</button>
+        </div>
+        <div class="admin-table-wrap" style="margin-top:.6rem;">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Measurability</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ai-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat } from './js/admin-common.js';
+
+    let officials = [];
+    let filteredOfficials = [];
+    let selectedOfficialId = '';
+    let promises = [];
+    let aiPromises = [];
+    let editingPromiseId = null;
+
+    const el = (id) => document.getElementById(id);
+
+    const session = await requireAuth();
+    el('sidebar-mount').innerHTML = sidebarHTML('mandate', session.user.email);
+    wireSignOut();
+
+    async function loadOfficials() {
+      const { data, error } = await supabase
+        .from('officials')
+        .select('id,full_name,role,tier,states(name)')
+        .eq('status', 'active')
+        .order('full_name')
+        .limit(3000);
+      if (error) {
+        showToast('Unable to load officials.', 'error');
+        return;
+      }
+      officials = data || [];
+      filteredOfficials = officials.slice(0);
+      renderOfficialSelect();
+    }
+
+    function renderOfficialSelect() {
+      const options = filteredOfficials.map((o) => {
+        const st = o.states?.name ? ` — ${o.states.name}` : '';
+        return `<option value="${o.id}">${o.full_name}${st}</option>`;
+      }).join('');
+      el('official-select').innerHTML = options ? `<option value="">Select...</option>${options}` : `<option value="">No officials</option>`;
+    }
+
+    window.filterOfficials = () => {
+      const q = (el('official-search').value || '').trim().toLowerCase();
+      filteredOfficials = officials.filter((o) => {
+        const n = String(o.full_name || '').toLowerCase();
+        const r = String(o.role || '').toLowerCase();
+        return !q || n.includes(q) || r.includes(q);
+      }).slice(0, 200);
+      renderOfficialSelect();
+    };
+
+    window.onPickOfficial = async () => {
+      selectedOfficialId = el('official-select').value || '';
+      promises = [];
+      renderPromises();
+      if (!selectedOfficialId) return;
+      await loadPromises();
+    };
+
+    async function loadPromises() {
+      const { data, error } = await supabase
+        .from('official_promises')
+        .select('*')
+        .eq('official_id', selectedOfficialId)
+        .order('last_updated', { ascending: false })
+        .limit(500);
+      if (error) {
+        showToast('Unable to load promises. Ensure the Phase 2 schema is deployed.', 'error');
+        return;
+      }
+      promises = data || [];
+      renderPromises();
+    }
+
+    function safeLink(url) {
+      const u = String(url || '').trim();
+      if (!u) return '';
+      return `<a href="${u}" target="_blank" rel="noopener noreferrer">link</a>`;
+    }
+
+    function renderPromises() {
+      if (!selectedOfficialId) {
+        el('promises-tbody').innerHTML = `<tr><td colspan="6"><div class="empty">Select an official.</div></td></tr>`;
+        return;
+      }
+      if (!promises.length) {
+        el('promises-tbody').innerHTML = `<tr><td colspan="6"><div class="empty">No promises yet.</div></td></tr>`;
+        return;
+      }
+      el('promises-tbody').innerHTML = promises.map((p) => `
+        <tr>
+          <td style="max-width:420px;white-space:normal;">${escapeHtml(p.promise_title || '')}</td>
+          <td>${escapeHtml(p.status || '')}</td>
+          <td>${escapeHtml(p.promise_category || '')}</td>
+          <td>${Number(p.progress_percent || 0)}%</td>
+          <td>${safeLink(p.evidence_url)}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm" onclick="editPromise('${p.id}')">Edit</button>
+            <button class="btn btn-sm" onclick="deletePromise('${p.id}')">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    window.openAddPromise = () => {
+      if (!selectedOfficialId) { showToast('Select an official first.', 'error'); return; }
+      editingPromiseId = null;
+      el('promise-modal-title').textContent = 'Add Promise';
+      el('p-title').value = '';
+      el('p-detail').value = '';
+      el('p-category').value = 'Other';
+      el('p-status').value = 'pending';
+      el('p-progress').value = 0;
+      el('p-date').value = '';
+      el('p-source').value = 'manifesto';
+      el('p-evidence-url').value = '';
+      el('p-evidence-note').value = '';
+      el('p-verified-by').value = 'ai_agent';
+      el('promise-modal').style.display = 'flex';
+    };
+
+    window.closePromiseModal = () => {
+      el('promise-modal').style.display = 'none';
+    };
+
+    window.editPromise = (id) => {
+      const p = promises.find((x) => x.id === id);
+      if (!p) return;
+      editingPromiseId = id;
+      el('promise-modal-title').textContent = 'Edit Promise';
+      el('p-title').value = p.promise_title || '';
+      el('p-detail').value = p.promise_detail || '';
+      el('p-category').value = p.promise_category || 'Other';
+      el('p-status').value = p.status || 'pending';
+      el('p-progress').value = Number(p.progress_percent || 0);
+      el('p-date').value = (p.promise_date || '').slice(0, 10);
+      el('p-source').value = p.promise_source || 'other';
+      el('p-evidence-url').value = p.evidence_url || '';
+      el('p-evidence-note').value = p.evidence_note || '';
+      el('p-verified-by').value = p.verified_by || 'ai_agent';
+      el('promise-modal').style.display = 'flex';
+    };
+
+    window.savePromise = async () => {
+      if (!selectedOfficialId) return;
+      const payload = {
+        official_id: selectedOfficialId,
+        promise_title: (el('p-title').value || '').trim(),
+        promise_detail: (el('p-detail').value || '').trim() || null,
+        promise_category: el('p-category').value || null,
+        status: el('p-status').value || 'pending',
+        progress_percent: Math.max(0, Math.min(100, parseInt(el('p-progress').value || '0', 10) || 0)),
+        promise_date: el('p-date').value || null,
+        promise_source: el('p-source').value || null,
+        evidence_url: (el('p-evidence-url').value || '').trim() || null,
+        evidence_note: (el('p-evidence-note').value || '').trim() || null,
+        verified_by: el('p-verified-by').value || 'ai_agent',
+        last_updated: new Date().toISOString(),
+      };
+      if (!payload.promise_title) { showToast('Promise title is required.', 'error'); return; }
+
+      let res;
+      if (editingPromiseId) {
+        res = await supabase.from('official_promises').update(payload).eq('id', editingPromiseId);
+      } else {
+        res = await supabase.from('official_promises').insert(payload);
+      }
+      if (res.error) {
+        showToast('Save failed. Check RLS/policies for official_promises.', 'error');
+        return;
+      }
+      closePromiseModal();
+      await loadPromises();
+      showToast('Saved.', 'success');
+    };
+
+    window.deletePromise = async (id) => {
+      if (!confirm('Delete this promise?')) return;
+      const { error } = await supabase.from('official_promises').delete().eq('id', id);
+      if (error) { showToast('Delete failed.', 'error'); return; }
+      promises = promises.filter((p) => p.id !== id);
+      renderPromises();
+      showToast('Deleted.', 'success');
+    };
+
+    window.runExtraction = async () => {
+      if (!selectedOfficialId) { showToast('Select an official first.', 'error'); return; }
+      const text = (el('ai-text').value || '').trim();
+      if (!text) { showToast('Paste some text first.', 'error'); return; }
+
+      const prompt = [
+        'You are a Nigerian civic-tech analyst. Read the following manifesto or speech text.',
+        'Extract every discrete, trackable promise made by the official.',
+        'For each promise, return a JSON object with these fields:',
+        '- promise_title: a short, specific headline (max 80 chars)',
+        '- promise_detail: the original or paraphrased full commitment',
+        '- promise_category: one of [Infrastructure, Education, Health, Security, Economy, Governance, Agriculture, Technology, Other]',
+        '- measurability: high | medium | low',
+        '- promise_source: describe the source document type',
+        'Return ONLY a valid JSON array. No preamble, no markdown fences.',
+        '',
+        text,
+      ].join('\n');
+
+      try {
+        const json = await openRouterChat({
+          messages: [
+            { role: 'system', content: 'Return only strict JSON.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 2500,
+        });
+        const content = json?.choices?.[0]?.message?.content || '';
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed)) throw new Error('Bad JSON');
+        aiPromises = parsed;
+        renderAi();
+      } catch (e) {
+        showToast('Extraction failed. Ensure the response is valid JSON.', 'error');
+      }
+    };
+
+    function renderAi() {
+      el('ai-results').style.display = aiPromises.length ? 'block' : 'none';
+      el('ai-tbody').innerHTML = aiPromises.map((p, idx) => `
+        <tr>
+          <td style="max-width:520px;white-space:normal;">${escapeHtml(p.promise_title || '')}</td>
+          <td>${escapeHtml(p.promise_category || '')}</td>
+          <td>${escapeHtml(p.measurability || '')}</td>
+          <td><button class="btn btn-sm" onclick="importOne(${idx})">Import</button></td>
+        </tr>
+      `).join('');
+    }
+
+    window.importOne = async (idx) => {
+      const p = aiPromises[idx];
+      if (!p) return;
+      const payload = {
+        official_id: selectedOfficialId,
+        promise_title: (p.promise_title || '').trim(),
+        promise_detail: (p.promise_detail || '').trim() || null,
+        promise_category: (p.promise_category || 'Other').trim(),
+        status: 'pending',
+        progress_percent: 0,
+        promise_date: el('ai-date').value || null,
+        promise_source: el('ai-source').value || null,
+        evidence_url: (el('ai-evidence-url').value || '').trim() || null,
+        verified_by: 'ai_agent',
+        last_updated: new Date().toISOString(),
+      };
+      if (!payload.promise_title) { showToast('Missing title.', 'error'); return; }
+      const { error } = await supabase.from('official_promises').insert(payload);
+      if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
+      showToast('Imported.', 'success');
+      await loadPromises();
+    };
+
+    window.importAll = async () => {
+      if (!aiPromises.length) return;
+      const rows = aiPromises
+        .map((p) => ({
+          official_id: selectedOfficialId,
+          promise_title: (p.promise_title || '').trim(),
+          promise_detail: (p.promise_detail || '').trim() || null,
+          promise_category: (p.promise_category || 'Other').trim(),
+          status: 'pending',
+          progress_percent: 0,
+          promise_date: el('ai-date').value || null,
+          promise_source: el('ai-source').value || null,
+          evidence_url: (el('ai-evidence-url').value || '').trim() || null,
+          verified_by: 'ai_agent',
+          last_updated: new Date().toISOString(),
+        }))
+        .filter((r) => r.promise_title);
+      if (!rows.length) return;
+      const { error } = await supabase.from('official_promises').insert(rows);
+      if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
+      showToast('Imported.', 'success');
+      await loadPromises();
+    };
+
+    await loadOfficials();
+  </script>
+</body>
+</html>

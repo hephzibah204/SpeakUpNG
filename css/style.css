@@ -57,27 +57,17 @@ h1, h2, h3, h4 {
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 2rem; height: 62px;
+  padding: .35rem 2rem;
+  min-height: 62px;
 }
 .nav-logo {
-  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem;
-  display: flex; align-items: center; gap: .5rem;
+  display: flex; align-items: center;
 }
 .nav-logo img {
-  width: 30px;
-  height: 30px;
+  width: 150px;
+  height: 60px;
   object-fit: contain;
-}
-.nav-logo .brand-text {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  letter-spacing: .01em;
-}
-.nav-logo .brand-text { color: var(--white); }
-.nav-logo .badge {
-  background: var(--green); color: #fff; font-size: .58rem;
-  font-weight: 700; padding: 2px 6px; border-radius: 4px;
-  text-transform: uppercase; letter-spacing: .06em;
+  display: block;
 }
 .nav-links { display: flex; gap: .3rem; align-items: center; }
 .nav-toggle {
@@ -399,12 +389,13 @@ select.form-control option { background: var(--card); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 640px) {
-  .nav { padding: 0 1rem; }
+  .nav { padding: .35rem 1rem; }
+  .nav-logo img { width: 108px; height: 43px; }
   .nav-toggle { display: inline-flex; }
   .nav-links {
     display: none;
     position: absolute;
-    top: 62px;
+    top: 100%;
     left: 0;
     right: 0;
     padding: .7rem 1rem 1rem;

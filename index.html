@@ -46,6 +46,42 @@
   .hero h1 em { font-style: normal; color: var(--green-light); }
   .hero p { color: var(--muted); max-width: 500px; margin: 0 auto 2.2rem; font-size: 1.02rem; }
   .hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .top-search {
+    max-width: 760px;
+    margin: 1.35rem auto 0;
+    display: flex;
+    gap: .6rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .top-search input {
+    flex: 1 1 360px;
+    min-width: 220px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    color: var(--white);
+    padding: .7rem 1rem;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+  }
+  .top-search input::placeholder { color: rgba(255,255,255,.55); }
+  .top-search select {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    color: var(--white);
+    padding: .7rem .9rem;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    cursor: pointer;
+  }
+  .top-search select option { background: var(--card); }
+  .top-search .btn {
+    padding: .7rem 1.1rem;
+    border-radius: 10px;
+  }
 
   /* Filter row */
   .filter-row {
@@ -215,9 +251,10 @@
 
 <!-- NAV -->
 <nav class="nav">
-  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
+  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
   <div class="nav-links">
     <a href="/" class="nav-link active show-mobile">Officials</a>
+    <a href="/agencies" class="nav-link">Agencies</a>
     <a href="/leaderboard" class="nav-link">Rankings</a>
     <a href="/polls" class="nav-link">Polls</a>
     <a href="/blog" class="nav-link">Blog</a>
@@ -234,6 +271,16 @@
     <div class="hero-eyebrow">🇳🇬 Civic Accountability Platform</div>
     <h1>Rate Every <em>Government Official</em> in Nigeria</h1>
     <p>From your local councillor to the President. Anonymous, transparent, and powered by citizens.</p>
+    <form class="top-search" id="top-search-form">
+      <input id="top-search-input" type="search" placeholder="Search officials or agencies by name, role, or state..." autocomplete="off">
+      <select id="top-search-type" aria-label="Search type">
+        <option value="all">All</option>
+        <option value="officials">Officials</option>
+        <option value="agencies">Agencies (Bodies)</option>
+        <option value="agency_heads">Agency Heads</option>
+      </select>
+      <button class="btn btn-green" type="submit">Search</button>
+    </form>
     <div class="hero-cta">
       <button class="btn btn-green btn-lg" onclick="document.getElementById('officials-section').scrollIntoView({behavior:'smooth'})">Start Rating ↓</button>
       <a href="/leaderboard" class="btn btn-ghost btn-lg">View Rankings</a>
@@ -508,11 +555,12 @@
 
 <script type="module">
 import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt } from './js/supabase-client.js';
+import { getDeviceHash } from './js/device-fingerprint.js';
 
 // ── STATE ──
 const S = {
   officials: [], filtered: [], page: 1, perPage: 12,
-  tier: '', search: '', state: '', sort: 'rating_count',
+  tier: '', search: '', state: '', sort: 'rating_count', type: 'all',
   currentOfficial: null,
   mainStar: 0, catStars: {}, anonOn: true, reportAnonOn: true, alreadyRated: false,
 };
@@ -1029,7 +1077,7 @@ async function loadBestRatedSections() {
       .filter(Boolean);
 
     const officials = rankedRows.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
-    const agencies = rankedRows.filter((o) => AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const agencies = rankedRows.filter((o) => isAgencyBody(o)).slice(0, 5);
 
     renderBestRatedList('best-rated-officials', officials, 'No rated officials yet.');
     renderBestRatedList('best-rated-agencies', agencies, 'No rated agencies yet.');
@@ -1045,6 +1093,10 @@ function applyFilters() {
   const q = S.search.toLowerCase();
   if (q) list = list.filter(o => o.full_name.toLowerCase().includes(q) || o.role.toLowerCase().includes(q) || (o.states?.name||'').toLowerCase().includes(q));
   if (S.state) list = list.filter(o => (o.states?.name||'') === S.state);
+  const type = String(S.type || 'all');
+  if (type === 'agencies') list = list.filter((o) => isAgencyBody(o));
+  else if (type === 'agency_heads') list = list.filter((o) => isAgencyHead(o));
+  else if (type === 'officials') list = list.filter(o => !String(o?.tier || '').includes('agency'));
 
   if (S.sort === 'rating_avg_desc') list.sort((a,b) => (b.rating_avg||0) - (a.rating_avg||0));
   else if (S.sort === 'rating_avg_asc') list.sort((a,b) => (a.rating_avg||0) - (b.rating_avg||0));
@@ -1064,6 +1116,25 @@ function avatarImgStyle(tier) {
 
 function agencyLike(o) {
   return String(o?.tier || '').includes('agency');
+}
+
+const AGENCY_HEAD_ROLE_RE = /minister|commissioner|director general|\bdg\b|managing director|\bmd\b|ceo|executive secretary|chairman|comptroller-?general|inspector general|administrator|head/i;
+const AGENCY_ORG_NAME_RE = /agency|authority|commission|corporation|company|plc|ltd|limited|board|service|department|ministry|bureau|office|council|secretariat|bank|electricity|distribution|transmission|power|disco|discos|nnpc|nafdac/i;
+function isAgencyBodyName(name) {
+  const s = String(name || '').trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  if (AGENCY_ORG_NAME_RE.test(lower)) return true;
+  if (/^[A-Z0-9]{2,12}$/.test(s)) return true;
+  return false;
+}
+function isAgencyHead(o) {
+  if (!agencyLike(o)) return false;
+  if (AGENCY_HEAD_ROLE_RE.test(String(o?.role || ''))) return true;
+  return !isAgencyBodyName(o?.full_name);
+}
+function isAgencyBody(o) {
+  return agencyLike(o) && isAgencyBodyName(o?.full_name) && !AGENCY_HEAD_ROLE_RE.test(String(o?.role || ''));
 }
 
 function domainFromUrl(url) {
@@ -1098,8 +1169,18 @@ function slugifyOfficialName(name) {
     .replace(/-{2,}/g, '-');
 }
 
+function supportsPrettyRoutes() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  if (window.location.protocol === 'file:') return false;
+  if (host === 'localhost' || host === '127.0.0.1') return false;
+  return true;
+}
+
 function officialPath(o) {
-  const slug = slugifyOfficialName(o.full_name || o.common_name || 'official');
+  if (!supportsPrettyRoutes()) return `/official.html?id=${encodeURIComponent(o.id)}`;
+  const common = String(o?.common_name || '').trim();
+  const useCommon = agencyLike(o) && common && /^[A-Za-z0-9]{2,12}$/.test(common);
+  const slug = slugifyOfficialName(useCommon ? common : (o.full_name || o.common_name || 'official')) || 'official';
   return `/official/${slug}--${o.id}`;
 }
 
@@ -1178,6 +1259,8 @@ document.querySelectorAll('#tier-tabs .tab').forEach(btn => {
     document.querySelectorAll('#tier-tabs .tab').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
     S.tier = btn.dataset.tier;
+    if (S.tier === 'federal_agency') S.type = 'agencies';
+    else if (S.tier) S.type = 'all';
     loadOfficials();
   });
 });
@@ -1190,6 +1273,30 @@ document.getElementById('search-input').addEventListener('input', e => {
 });
 document.getElementById('state-filter').addEventListener('change', e => { S.state = e.target.value; applyFilters(); });
 document.getElementById('sort-filter').addEventListener('change', e => { S.sort = e.target.value; applyFilters(); });
+
+// ── TOP SEARCH ──
+document.getElementById('top-search-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = (document.getElementById('top-search-input')?.value || '').trim();
+  const type = document.getElementById('top-search-type')?.value || 'all';
+
+  S.search = q;
+  S.type = type;
+  S.tier = '';
+  S.state = '';
+  S.page = 1;
+
+  const downSearch = document.getElementById('search-input');
+  if (downSearch) downSearch.value = q;
+  const downState = document.getElementById('state-filter');
+  if (downState) downState.value = '';
+
+  document.querySelectorAll('#tier-tabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#tier-tabs .tab[data-tier=""]')?.classList.add('active');
+
+  await loadOfficials();
+  document.getElementById('officials-section')?.scrollIntoView({ behavior: 'smooth' });
+});
 
 // ── RATE MODAL ──
 window.openRateModal = async (id) => {
@@ -1244,9 +1351,12 @@ window.submitRating = async () => {
   if (S.alreadyRated) { showToast('This device has already rated this official.','error'); return; }
   const btn = document.getElementById('submit-rate-btn');
   btn.disabled=true; btn.textContent='Submitting...';
+  let deviceHash = null;
+  try { deviceHash = await getDeviceHash(); } catch {}
   const payload = {
     official_id: S.currentOfficial.id,
     anon_id: anonId,
+    device_hash: deviceHash,
     overall: S.mainStar,
     accountability: S.catStars.accountability||null,
     service: S.catStars.service||null,
@@ -1264,6 +1374,7 @@ window.submitRating = async () => {
   let { error } = await supabase.from('ratings').insert(payload);
   if (error && String(error.message||'').toLowerCase().includes('column')) {
     const fallback = { ...payload };
+    delete fallback.device_hash;
     delete fallback.power;
     delete fallback.security;
     delete fallback.economic_stability;

@@ -1,0 +1,495 @@
+﻿EVOTE.NG
+Government Accountability Platform
+MASTER IMPLEMENTATION DOCUMENT
+Phase 2 Expansion | Version 1.0 | May 2026
+Prepared by
+Abiodun Emmanuel Gbadamosi — CEO, Hephtech Innovations
+Project
+Evote.ng — Nigerian Government Accountability Platform
+Document Type
+Consolidated Feature Implementation Plan
+Version
+1.0 — May 2026
+Stack
+Supabase (PostgreSQL), Plain HTML/CSS/JS, cPanel (Afeeshost)
+AI Integration
+OpenRouter API for Profile Generation | Claude API for Content
+Status
+Planning & Design — Ready for Development Sprint
+1. Executive Summary
+Evote.ng is a Nigerian civic-tech platform that holds government officials accountable through citizen ratings, verified data, and public scorecards. Built on a Supabase/PostgreSQL backend with a plain HTML/CSS/JS frontend hosted on cPanel (Afeeshost), it currently tracks approximately 1,074 officials across federal and state tiers, and has an AI Website Manager for automated monitoring and news generation.
+This document consolidates all planned Phase 2 features into a single implementation blueprint. It covers six interconnected work streams: (1) the Mandate Scorecard — a structured promise-versus-delivery tracking system; (2) enriched Official Profiles powered by OpenRouter AI; (3) User Authentication via Supabase Auth; (4) a Reward Engine using Nigerian VTU APIs to incentivise reviews; (5) a full Virality Feature Suite designed specifically for Nigerian youth culture; and (6) a phased Rollout Roadmap with database schemas, API integration notes, and editorial policies.
+Together these features position Evote.ng to evolve from a rating directory into a comprehensive civic intelligence platform — one that gives Nigerian youths verifiable tools to hold their elected officials accountable, share findings virally, and participate in a growing community of civic engagement.
+2. Mandate Scorecard
+2.1 Concept & Strategic Rationale
+The Mandate Scorecard is the intellectual centrepiece of Evote.ng Phase 2. While the existing platform aggregates citizen sentiment (subjective ratings), the Mandate Scorecard adds an objective accountability layer: it tracks every public promise an official made before or upon assuming office and measures delivery against those promises over time.
+This distinction matters enormously for credibility. Citizen ratings reflect how people feel about an official. The Mandate Scorecard reflects verifiable reality. The combination of both — on the same profile page — makes Evote.ng uniquely powerful as a civic resource, because it answers both "what do Nigerians think of this official?" and "what has this official actually done?"
+The feature also creates a rich content engine. Every time a promise status changes — fulfilled, broken, or disputed — the platform generates shareable content, push notifications, and data updates that keep users returning and sharing.
+2.2 Core Database Schema
+The following tables extend the existing officials schema. All tables should be created in Supabase and follow the existing row-level security (RLS) patterns already in place on the platform.
+-- Primary promises table
+CREATE TABLE official_promises (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+official_id UUID REFERENCES officials(id) ON DELETE CASCADE,
+promise_title TEXT NOT NULL,
+promise_detail TEXT,
+promise_source TEXT, -- manifesto | speech | press release | inauguration
+promise_date DATE,
+promise_category TEXT, -- Infrastructure | Education | Health | Security | Economy
+status TEXT DEFAULT 'pending'
+CHECK (status IN ('pending','in_progress','fulfilled','broken','disputed')),
+progress_percent INT DEFAULT 0 CHECK (progress_percent BETWEEN 0 AND 100),
+evidence_url TEXT,
+evidence_note TEXT,
+verified_by TEXT DEFAULT 'ai_agent', -- ai_agent | admin | community
+last_updated TIMESTAMPTZ DEFAULT now(),
+created_at TIMESTAMPTZ DEFAULT now()
+);
+-- Milestone sub-tracking for large, staged promises
+CREATE TABLE promise_milestones (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+promise_id UUID REFERENCES official_promises(id) ON DELETE CASCADE,
+milestone_title TEXT NOT NULL,
+target_date DATE,
+achieved BOOLEAN DEFAULT false,
+achieved_date DATE,
+note TEXT
+);
+-- Community-submitted counter-evidence
+CREATE TABLE promise_evidence_submissions (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+promise_id UUID REFERENCES official_promises(id) ON DELETE CASCADE,
+submitted_by UUID REFERENCES auth.users(id),
+evidence_url TEXT NOT NULL,
+note TEXT,
+stance TEXT CHECK (stance IN ('supports','contradicts')),
+status TEXT DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+created_at TIMESTAMPTZ DEFAULT now()
+);
+2.3 Mandate Score Calculation
+Each official is assigned a computed Mandate Score (0–100) derived from their promise portfolio. The formula applies weighted credit based on delivery status, acknowledging that partial progress deserves recognition while clearly distinguishing fulfilled promises from broken ones.
+-- Mandate Score formula (computed view or function)
+CREATE OR REPLACE VIEW official_mandate_scores AS
+SELECT
+official_id,
+COUNT(*) AS total_promises,
+SUM(CASE WHEN status = 'fulfilled' THEN 1 ELSE 0 END) AS fulfilled,
+SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
+SUM(CASE WHEN status = 'broken' THEN 1 ELSE 0 END) AS broken,
+SUM(CASE WHEN status = 'disputed' THEN 1 ELSE 0 END) AS disputed,
+ROUND(
+(SUM(CASE WHEN status = 'fulfilled' THEN 1.0 ELSE 0 END)
++ SUM(CASE WHEN status = 'in_progress' THEN 0.4 ELSE 0 END))
+/ NULLIF(COUNT(*), 0) * 100
+) AS mandate_score
+FROM official_promises
+GROUP BY official_id;
+2.4 Manifesto Data Sourcing Strategy
+Populating the Mandate Scorecard with accurate, credible data is the most critical — and most labour-intensive — part of this feature. The platform will use a four-layer sourcing funnel, ranked by evidentiary credibility.
+Layer 1 — Highest Credibility: Official Primary Sources
+Official government websites, APC and PDP 2023 manifestos published on party platforms, and INEC-archived campaign materials represent the gold standard. Every promise entered from these sources should be tagged verified_by = 'admin' and include the direct URL as evidence_url.
+Layer 2 — High Credibility: Reputable News Archives
+Punch, Vanguard, ThisDay, Premium Times, The Cable, and Channels TV all covered the 2022–2023 gubernatorial campaigns in detail. Journalist-reported quotes from officials carry strong evidentiary weight because they are attributed and dated. The AI Website Manager can be extended to run systematic searches against these archives using official name + "promise OR manifesto OR pledge" query patterns.
+Layer 3 — Medium Credibility: Civil Society Bodies
+Organisations including BudgIT, Dataphyte, Enough is Enough Nigeria, and Civic Hive have independently tracked Nigerian government promises and budget performance. Establishing a formal data partnership with at least one of these organisations would significantly boost Evote.ng's credibility and reduce manual data entry workload.
+Layer 4 — Community Sourcing (Moderated)
+Citizens with knowledge of specific campaign promises can submit entries through a contribution form. Every community submission must include a source URL and pass a two-step review: AI agent pre-screening for relevance and credibility signals, followed by admin approval. Approved community submissions are tagged verified_by = 'community' so users can see how each promise was sourced.
+2.5 OpenRouter AI: Automated Promise Extraction
+Rather than manually reading every manifesto, the platform will use OpenRouter AI to accelerate data extraction. The workflow operates as follows: a document (PDF, pasted text, or URL content) is submitted to the OpenRouter endpoint with a structured extraction prompt. The model returns a JSON array of discrete promises, each pre-tagged with a category, measurability assessment (high/medium/low), and a suggested initial status of "pending". A human admin reviews the batch before it is committed to the database.
+// OpenRouter extraction prompt pattern
+const EXTRACTION_PROMPT = `
+You are a Nigerian civic-tech analyst. Read the following manifesto or speech text.
+Extract every discrete, trackable promise made by the official.
+For each promise, return a JSON object with these fields:
+- promise_title: a short, specific headline (max 80 chars)
+- promise_detail: the original or paraphrased full commitment
+- promise_category: one of [Infrastructure, Education, Health, Security, Economy, Governance, Agriculture, Technology, Other]
+- measurability: high | medium | low
+- promise_source: describe the source document type
+Return ONLY a valid JSON array. No preamble, no markdown fences.
+`;
+const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+method: "POST",
+headers: {
+"Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+"Content-Type": "application/json"
+},
+body: JSON.stringify({
+model: "anthropic/claude-3.5-sonnet",
+messages: [{ role: "user", content: EXTRACTION_PROMPT + manifestoText }]
+})
+});
+2.6 Promise Classification Editorial Policy
+Before data entry begins, the team must agree on a consistent classification standard so that all promises — regardless of who enters them — are judged by the same criteria. The following rules should be documented internally and referenced by every contributor.
+Trackable Promise
+A specific, measurable commitment with an identifiable outcome — e.g., "Build 200 classrooms across 23 LGAs by 2025." These are entered as individual records.
+Aspirational Statement
+A general direction without a specific target — e.g., "We will improve education." These are NOT entered as trackable promises but may be noted in the official's profile overview.
+Inherited Project
+A project started under a previous administration. If the current official publicly claimed it as their own commitment, it qualifies. Otherwise it is tagged as "inherited" and excluded from the Mandate Score.
+Budget Commitment
+An official appropriation in a state or federal budget counts as a fulfilled promise if the funds were released and the project executed. A budget line alone (without disbursement) counts as "in_progress."
+Disputed Status
+Applied when the official claims delivery but credible counter-evidence exists (e.g., citizens report a commissioned road is substandard). A dispute panel (admin + community evidence) resolves within 14 days.
+2.7 Pilot Officials for Mandate Scorecard Launch
+Rather than attempting to onboard all 1,074 officials at once, the Mandate Scorecard will launch with a curated pilot of ten officials representing geographic, political, and tier diversity. This gives the team a working demo with real data to validate the model before scaling.
+Bola Tinubu
+President, FRN
+APC
+National reach, high interest
+Kashim Shettima
+Vice President
+APC
+Complements Tinubu tracking
+Seyi Makinde
+Governor, Oyo State
+PDP
+South-West, high media coverage
+Babajide Sanwo-Olu
+Governor, Lagos State
+APC
+Largest economy, youth base
+Peter Mbah
+Governor, Enugu State
+PDP
+South-East representation
+Hyacinth Alia
+Governor, Benue State
+APC
+North-Central representation
+Abba Kabir Yusuf
+Governor, Kano State
+NNPP
+Opposition, North-West
+Umo Eno
+Governor, Akwa Ibom
+PDP
+South-South representation
+Siminalayi Fubara
+Governor, Rivers State
+PDP
+High political tension, visible
+Lucky Aiyedatiwa
+Governor, Ondo State
+APC
+South-West balance
+3. Enriched Official Profiles
+3.1 Current State & Gap Analysis
+As of Phase 1, Evote.ng's official profile pages are sparse — they display a name, office, state, and an aggregate citizen rating. There is no biographical context, no career history, no achievement record, and no visual identity beyond basic text. For a civic accountability platform competing for youth attention against social-media-native content, this level of thinness is a significant engagement barrier. A user who lands on a Governor's page and sees only a name and a rating has no reason to stay, return, or share.
+The Phase 2 profile enrichment transforms every official page into a comprehensive, authoritative political dossier — the kind of resource a journalist, researcher, student, or engaged citizen would bookmark and cite.
+3.2 Extended Profile Database Schema
+-- Extended profile fields added to (or extending) the officials table
+ALTER TABLE officials ADD COLUMN IF NOT EXISTS
+photo_url TEXT,
+date_of_birth DATE,
+state_of_origin TEXT,
+lga_of_origin TEXT,
+religion TEXT,
+marital_status TEXT,
+education_summary TEXT,
+profile_bio TEXT, -- AI-generated 3-paragraph biography
+profile_generated BOOLEAN DEFAULT false,
+profile_verified BOOLEAN DEFAULT false,
+profile_updated_at TIMESTAMPTZ DEFAULT now();
+-- Career history (separate table for queryability)
+CREATE TABLE official_career_history (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+official_id UUID REFERENCES officials(id) ON DELETE CASCADE,
+role_title TEXT NOT NULL,
+organisation TEXT,
+start_year INT,
+end_year INT,
+is_current BOOLEAN DEFAULT false,
+category TEXT CHECK (category IN ('political','professional','military','academic','other'))
+);
+-- Education records
+CREATE TABLE official_education (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+official_id UUID REFERENCES officials(id) ON DELETE CASCADE,
+institution TEXT,
+degree TEXT,
+field TEXT,
+year INT
+);
+-- Documented achievements
+CREATE TABLE official_achievements (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+official_id UUID REFERENCES officials(id) ON DELETE CASCADE,
+title TEXT NOT NULL,
+description TEXT,
+year INT,
+category TEXT,
+evidence_url TEXT,
+verified BOOLEAN DEFAULT false
+);
+3.3 OpenRouter AI Profile Generation Pipeline
+Manually writing biographical profiles for 1,074 officials is not feasible. Instead, the platform will use OpenRouter AI to generate structured first-draft profiles at scale, which an admin then reviews and approves before publication. This "AI-generated first draft + admin verification" model balances speed with accuracy.
+The generation pipeline works in batches. For each official, the system compiles available data (name, office, state, party, any existing fields) into a context string, then sends it to OpenRouter with a structured prompt that requests a JSON response containing a biography paragraph, career highlights array, education array, and key achievements array. The response is parsed and inserted into the relevant tables with profile_generated = true and profile_verified = false until an admin reviews it.
+// OpenRouter profile generation prompt
+const PROFILE_PROMPT = `
+You are a Nigerian political researcher. Generate a factual profile for the following official.
+Return ONLY valid JSON with this structure:
+{
+"bio": "Three concise paragraphs covering background, political rise, and current office.",
+"career": [{ "role_title": "", "organisation": "", "start_year": 0, "end_year": 0, "category": "" }],
+"education": [{ "institution": "", "degree": "", "field": "", "year": 0 }],
+"achievements": [{ "title": "", "description": "", "year": 0, "category": "" }]
+}
+If you are uncertain about a specific fact, omit that field rather than fabricate.
+Official: ${official.name}, ${official.current_office}, ${official.state}, ${official.party}
+`;
+3.4 Profile Page UI Components
+On the frontend, each official's profile page will be restructured around a tabbed layout with the following sections — all rendered from Supabase data via the existing HTML/JS fetch pattern.
+Overview Tab
+Photo, biography, basic details (DOB, state of origin, religion, education summary), party affiliation, current office with tenure dates.
+Career & Education Tab
+Chronological career timeline rendered as a vertical list, followed by education credentials table.
+Mandate Tracker Tab
+Promise count summary (fulfilled / in-progress / broken), filterable promise list by category, overall Mandate Score badge, and evidence links per promise.
+Achievements Tab
+Verified achievements with year, category, and evidence URL. Both AI-generated and admin-verified achievements are shown with source labels.
+Citizen Reviews Tab
+Existing citizen rating system, now requiring user login to submit. Shows review count, average score breakdown by dimension, and recent review text.
+News & Activity Tab
+AI Website Manager auto-generated news snippets and recent platform activity (promise status changes, new evidence submissions) for this official.
+4. User Authentication System (Progressive — Traction-First)
+4.1 Why Authentication Matters Now
+Evote.ng's will launch with a zero-friction, registration-free review model. Any visitor can submit a review without creating an account. This is a deliberate traction-first decision: the biggest risk at launch is not abuse — it is emptiness. A platform with no reviews has no credibility, and requiring registration before contributing is the fastest way to kill early momentum.
+Instead of authentication, review integrity at launch is enforced through device fingerprinting — a combination of browser signals (user agent, screen resolution, timezone, canvas fingerprint, and IP hash) that uniquely identifies a device without requiring a login. A user cannot review the same official twice from the same device. This is technically sufficient for the launch phase and invisible to legitimate users.
+4.2 Device Fingerprint Anti-Duplication System
+-- Device fingerprint tracking table (no login required at launch)
+CREATE TABLE device_review_locks (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+device_hash TEXT NOT NULL, -- SHA-256 of fingerprint signals
+official_id UUID REFERENCES officials(id) ON DELETE CASCADE,
+state TEXT, -- user's state of residence
+lga TEXT, -- user's LGA
+created_at TIMESTAMPTZ DEFAULT now(),
+UNIQUE(device_hash, official_id) -- one review per device per official
+);
+created_at TIMESTAMPTZ DEFAULT now()
+);
+-- JS fingerprint generation (client-side, no library needed)
+async function getDeviceHash() {
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+const signals = [
+navigator.userAgent, screen.width + 'x' + screen.height,
+Intl.DateTimeFormat().resolvedOptions().timeZone,
+navigator.language, navigator.hardwareConcurrency
+];
+);
+const raw = signals.join('|');
+const encoded = new TextEncoder().encode(raw);
+CREATE POLICY "Users manage own profile"
+return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+4.3 Review Flow (Anonymous) & Progressive Auth Roadmap
+The user journey through authentication should be minimal-friction. Registration collects only what is immediately necessary — email, password, display name, and state of residence. The state field is collected at signup because it powers the "My Rep" personalised feed, which is the primary value proposition for a returning user. The LGA and constituency can be filled in later as part of a profile completion reward.
+Step 1 — Entry Point
+User visits any official’s profile page. A "Rate This Official" button is immediately visible with no login gate. The review form opens without any registration prompt.
+Step 2 — Anonymous Review Form
+User fills the rating form (1–5 stars, optional comment of 80+ characters). On submit, the browser generates a SHA-256 device fingerprint and sends it with the review payload.
+Step 3 — Duplicate Check
+The Supabase backend checks device_hash + official_id against device_review_locks. If a match exists, the review is rejected with a clear “You have already reviewed this official” message. Otherwise the review is saved and the device hash is recorded.
+Step 4 — Optional Registration Prompt
+After submitting, the user sees a soft skippable prompt: "Create a free account to track your reviews, earn airtime rewards, and see your personalised rep feed." No penalty for skipping.
+Step 5 — Registration Enforcement (Future Phase)
+Once the platform reaches meaningful traction (target: 10,000 reviews), registration will be enforced before new submissions. Existing anonymous reviews are preserved. Supabase Auth (email/password) is already in the stack, ready to activate without migration.
+4.4 Frontend Implementation Notes
+Since Evote.ng uses plain HTML/CSS/JS (no framework), authentication will be handled via the device fingerprinting module is a lightweight standalone script (approximately 80 lines) using the native Web Crypto API — no external library required. It generates the SHA-256 hash client-side before any network call, so no raw fingerprint data is ever transmitted. Supabase Auth remains loaded in the background, ready to activate the optional registration flow when the traction threshold is reached.
+5. Review Reward Engine
+5.1 The Bait Problem — Why Incentives Are Necessary
+Getting Nigerian youths to create an account and write a thoughtful review requires overcoming a simple economic reality: writing a review costs time and attention, and the public good of civic accountability is too abstract to motivate most people on its own. A tangible reward — airtime or mobile data — converts an abstract civic act into an immediately valuable personal transaction.
+The reward engine is therefore not an optional add-on; it is a core growth mechanism. The platform will integrate with a Nigerian Virtual Top-Up (VTU) API to automatically disburse airtime rewards upon successful, qualifying review submission. This eliminates the need for manual reward processing and makes the incentive feel instant — which is critical for user psychology.
+5.2 Recommended VTU API: VTpass
+VTpass (vtpass.com) is the recommended integration for the following reasons. It supports all four major Nigerian networks (MTN, Airtel, Glo, and 9mobile) for both airtime and data bundle purchases. It provides a RESTful API with clear documentation, a sandbox environment for testing, and webhook support for transaction status callbacks. Its pricing is competitive and it has an established track record with Nigerian fintech platforms. Nellobytes is a viable alternative and should be evaluated for pricing on bulk airtime at Evote.ng's expected volume.
+// VTpass airtime disbursement on review approval
+async function disburseAirtimeReward(userPhone, network, amount) {
+const res = await fetch("https://vtpass.com/api/pay", {
+method: "POST",
+headers: {
+"api-key": process.env.VTPASS_API_KEY,
+"secret-key": process.env.VTPASS_SECRET_KEY,
+"Content-Type": "application/json"
+},
+body: JSON.stringify({
+request_id: `REW_${Date.now()}`,
+serviceID: network.toLowerCase(), // "mtn" | "airtel" | "glo" | "9mobile"
+amount: amount, // NGN value, e.g. 50
+phone: userPhone,
+billersCode: userPhone,
+})
+});
+const data = await res.json();
+return data.code === "000" ? "success" : "failed";
+}
+5.3 Reward Rules & Anti-Abuse Logic
+An unrestricted airtime reward system will be exploited. The following rules must be enforced at the database and API level to prevent abuse while maintaining a genuine incentive for authentic reviews.
+Rule
+Implementation
+One reward per official
+A user can earn an airtime reward for reviewing the same official only once. Subsequent reviews of the same official earn points but not airtime.
+Minimum review length
+Reviews must be at least 80 characters to qualify. This is validated client-side and enforced server-side before the reward trigger fires.
+Phone number required
+Airtime disbursement requires a verified phone number. Users must add and verify their phone number (OTP SMS) before the first reward is processed.
+Daily review cap
+Maximum 3 rewarded reviews per user per day. Prevents bot accounts from exhausting the reward budget through rapid submission.
+Content moderation gate
+AI content screening (via OpenRouter) flags spam, gibberish, and copy-paste reviews before the reward trigger fires. Flagged reviews go to admin queue.
+Reward amounts
+First review of any official: NGN 50 airtime. Reviews 2–5 (different officials): NGN 30 each. Reviews 6+: points only, redeemable at NGN 100 threshold.
+Monthly budget cap
+A configurable monthly airtime budget cap (e.g., NGN 200,000) prevents runaway spending. The admin dashboard displays real-time budget consumption.
+5.4 Points System — Beyond Airtime
+In addition to direct airtime disbursement, every qualifying action on the platform earns points. Points accumulate in the user's profile and are redeemable for airtime once a threshold is reached. This secondary layer serves two purposes: it keeps users engaged between rewarded reviews, and it provides a fallback incentive mechanism if the direct airtime budget is exhausted for the month.
+Submit a qualifying review
+100 points
+Complete profile setup (LGA/constituency)
+50 points
+Submit approved evidence for a promise
+75 points
+First login of the day
+10 points
+Share an official's scorecard to social media
+25 points (verified via referral link)
+Refer a new registered user
+200 points
+Redemption threshold
+NGN 100 airtime = 500 points
+6. Virality Feature Suite
+6.1 Design Philosophy for Nigerian Youth Engagement
+Nigerian youth digital culture is shaped by three primary motivators: outrage, identity, and bragging rights. People share content that makes them angry about something real, that expresses who they are politically, or that makes them look informed and sharp in front of their peers. Every virality feature on Evote.ng must trigger at least one of these three responses. The platform's three dominant distribution channels are Twitter/X (where opinion spreads), WhatsApp (where information spreads via groups and status), and TikTok (where emotion spreads). The features below are designed to feed all three.
+6.2 Feature Catalogue
+F1 — Shareable Shame Cards & Praise Cards [HIGH PRIORITY]
+When a promise is marked "broken," the platform auto-generates a bold, branded graphic — official photo, exact promise quote, and a stark "BROKEN ✗" stamp — downloadable in one tap for WhatsApp, X, and Instagram Stories. The reverse (green "DELIVERED ✓" card) rewards performing officials. The cards must look authoritative and polished, not meme-like. When they look official, they get taken seriously, and people share them to signal civic awareness.
+F2 — Semester Report Cards (Bi-Annual Releases) [HIGH PRIORITY]
+Every six months, Evote.ng publishes a formal "Semester Report Card" for all tracked officials — framed deliberately like WAEC results because Nigerians have a deep cultural relationship with academic grading. Seeing a Governor score "F9" on their mandate scorecard is instantly understood, emotionally resonant, and highly shareable. Include a "Class Position" ranking (e.g., "Makinde ranks 3rd among 36 Governors") to trigger comparison-driven sharing.
+F3 — "My Rep" Personalised Constituency Feed [HIGH PRIORITY]
+After completing their LGA/constituency profile, users see a dashboard showing only officials who represent them personally. This transforms the platform from a national directory into a hyper-personal tool. The viral mechanic: users naturally share their rep's failures with captions like "this is YOUR governor o" — which triggers friends to check their own reps, creating a chain of engagement driven by shared civic identity.
+F4 — "Oga at the Top" National Leaderboard [HIGH PRIORITY]
+A real-time public ranking of all tracked officials from best to worst, sortable by category (infrastructure, education, health) and by tier (governors, senators, ministers). Highlights dramatic week-on-week movements — "Governor X dropped 8 positions this month." The leaderboard is inherently provocative: supporters of highly-ranked officials share it to brag; critics of low-ranked officials share it in outrage. Both reactions drive traffic.
+F5 — "Catch Them Lying" Community Evidence Submission [HIGH PRIORITY]
+Users can submit news articles, video clips, or photos as evidence that supports or contradicts a promise's current status. If a governor commissions a road residents report is substandard, they can submit that video. Submissions require a source URL and pass two-step moderation (AI screening + admin approval). This is the feature that makes the platform feel owned by its users — transforming passive consumers into active civic investigators.
+F6 — "Promise Clock" — Days Since Breach Counter [MED PRIORITY]
+For every unfulfilled promise past its stated deadline, display a dramatic running count: "This promise has been broken for 847 days." Make it embeddable — users can copy a widget link to share on X, showing a live counter for a specific broken promise. Imagine "Tinubu's subsidy promise has been unaddressed for [X] days" appearing in Twitter bios and WhatsApp statuses organically. Zero cost, perpetual reach.
+F7 — Evote.ng Election Mode [MED PRIORITY]
+Activated ahead of every election cycle, Election Mode surfaces the verified track record of every incumbent seeking re-election or a new office. Framing: "Don't vote blind — check their record on Evote.ng." Partner with YIAGA Africa, student union bodies, and civic Twitter influencers to promote this as the go-to pre-election research tool for informed voting. Election seasons generate the highest civic engagement spikes of any period in Nigeria.
+F8 — "Abeg Rate Am" Quick Pulse Polls [MED PRIORITY]
+Tie a fast 5-second reaction rating (thumbs up/down or 1–5 stars) to news events. "Governor just commissioned a half-done road — rate his performance today." These micro-interactions keep users returning daily rather than only when major promise updates occur. Surface trending sentiment shifts — "Governor X's approval dropped 12 points this week" — as push notifications and social content.
+F9 — AI-Generated Satirical Summaries ("Politician Roast") [LOW PRIORITY]
+For officials with the worst mandate scores, the platform's AI generates a witty, pointed satirical performance summary in Nigerian English — the kind of thing that would thrive on X. Clearly labelled as satire. Nigerian internet culture thrives on pointed humour, and a well-executed AI roast of a governor could generate thousands of retweets, driving platform discovery among audiences who had never heard of Evote.ng.
+F10 — WhatsApp Bot Integration [LOW PRIORITY]
+A Evote.ng WhatsApp Bot that lets users query officials directly in WhatsApp: "Makinde promises" returns a formatted summary; "worst governors 2025" returns the bottom five. Built on the WhatsApp Business API. When someone shares a Evote.ng result in a group of 200 people, those people interact with the bot themselves — and the network effect compounds organically across Nigeria's most-used communication platform.
+7. Implementation Roadmap
+7.1 Phased Delivery Plan
+The six work streams are sequenced to deliver maximum user-visible value as early as possible, while building the data and infrastructure foundations in the right order. Authentication must come first because it underpins rewards, reviews, and personalisation. Profile enrichment and the Mandate Scorecard can run in parallel as they share the OpenRouter AI pipeline. The virality features are the final layer — they amplify a platform that already has substance.
+PHASE 1
+Weeks 1–4
+Foundation — Auth, Profiles & Database
+Implement Supabase Auth (email/password) — registration, login, email verification, session management
+Create user_profiles, user_activity_log tables with RLS policies
+Build auth.js frontend module for plain HTML/JS integration
+Deploy extended official profile schema (career, education, achievements tables)
+Set up OpenRouter API integration and test profile generation on 5 pilot officials
+Build admin review interface for AI-generated profile content
+Deploy promise tables (official_promises, milestones, evidence_submissions)
+PHASE 2
+Weeks 5–8
+Content — Mandate Scorecard & Profile Pages
+Populate Mandate Scorecard data for 10 pilot officials using OpenRouter extraction pipeline
+Build Mandate Tracker tab on official profile pages (frontend)
+Launch enriched profile pages with tabbed layout (Overview, Career, Mandate, Achievements, Reviews, News)
+Implement Mandate Score computed view and display on profile pages
+Build community evidence submission form with AI moderation screening
+Internal editorial policy documentation and team training on promise classification
+PHASE 3
+Weeks 9–12
+Growth — Rewards & Virality Features
+Integrate VTpass API in sandbox mode — test airtime disbursement end-to-end
+Build reward engine backend: anti-abuse rules, daily caps, points ledger
+Build phone number verification (OTP) flow for reward eligibility
+Launch Shareable Shame Cards & Praise Cards (F1) — highest virality priority
+Build "Oga at the Top" leaderboard (F4) with weekly automated ranking updates
+Implement "My Rep" personalised feed (F3) for authenticated users
+Activate Semester Report Card generation for bi-annual release cadence
+PHASE 4
+Weeks 13–20
+Scale — Expansion & Advanced Features
+Scale Mandate Scorecard to all 36 Governors + FCT Minister + all federal ministers
+Launch Promise Clock embeddable widget (F6)
+Build Quick Pulse Polls system (F8) tied to news event triggers
+Implement Election Mode ahead of upcoming election cycles
+Build WhatsApp Bot on WhatsApp Business API (F10)
+Expand OpenRouter profile generation to all 1,074 officials in batches
+Launch civic partnership outreach to BudgIT, YIAGA Africa, and Dataphyte
+7.2 Growth Seeding Strategy
+Feature launches alone do not create virality. The following outreach strategy should run in parallel with the technical development, so that when the Shame Cards and Mandate Scorecard go live, there is already an audience primed to engage with them.
+Student Unions & NANS
+Engage campus political clubs and NANS representatives as early-access users. Give them a sense of ownership over the platform and a first look at their state governor's scorecard before public launch.
+Civic Twitter Influencers
+Accounts like Farooq Kperogi, David Hundeyin, and similar commentators already have audiences hungry for accountability content. Surface genuinely surprising data findings and tweet at them — the data does the persuasion.
+Time Launches to Events
+Budget readings, inauguration anniversaries, and pre-election periods generate civic engagement spikes. Major feature drops should be timed to coincide with these moments.
+WhatsApp Group Seeding
+Identify active Nigerian political discussion WhatsApp groups and seed the first Shame Cards directly into them, with a clear Evote.ng watermark and URL.
+Media Partnership
+Pitch Evote.ng's Semester Report Card data to Punch, The Cable, or Premium Times as an exclusive. A news story citing Evote.ng data generates massive organic awareness at zero cost.
+8. Technology Stack Summary
+Database
+Supabase (PostgreSQL)
+All structured data, RLS, real-time subscriptions
+Authentication
+Supabase Auth
+Email/password login, JWT session management, RLS integration
+Frontend
+Plain HTML / CSS / JS
+All page rendering, Supabase JS client from CDN
+Hosting
+cPanel (Afeeshost)
+Static file hosting, subdomain routing
+AI — Profiles
+OpenRouter API
+Biographical profile generation, promise extraction from manifestos
+AI — Content
+Claude API (Anthropic)
+AI Website Manager, satirical summaries, content moderation screening
+Rewards
+VTpass API
+Airtime/data disbursement to MTN, Airtel, Glo, 9mobile
+Social Sharing
+Canvas API (browser)
+Dynamic Shame/Praise card image generation client-side
+Messaging
+WhatsApp Business API
+Phase 4 WhatsApp Bot integration
+Monitoring
+AI Website Manager
+Automated news scraping, promise status flagging, SQL patching
+9. Risks & Mitigations
+AI hallucination in profiles
+HIGH
+All AI-generated content is tagged profile_verified=false until admin reviews. Users see a "Draft — pending verification" badge on unreviewed profiles.
+Reward system abuse (bots)
+HIGH
+Phone OTP verification required before first reward. Daily caps, minimum review length, AI content screening, and one-reward-per-official rule combined.
+VTpass API failure / downtime
+MED
+Implement retry logic with exponential backoff. Failed disbursements queue to a pending_rewards table and retry automatically within 24 hours.
+Legal pressure from officials
+MED
+All promise data includes source URL. Disputed status provides a fair resolution process. Satirical content is clearly labelled. Editorial policy documented.
+Data accuracy / stale profiles
+MED
+AI Website Manager flags when an official's status changes (new role, resignation). Profile updated_at timestamp displayed to users for transparency.
+Low initial review volume
+LOW
+Airtime reward incentive, campus seeding, and WhatsApp group distribution address the cold-start problem. 10-official pilot validates before full launch.
+10. Next Steps
+This document represents the full strategic and technical blueprint for Evote.ng Phase 2. The recommended immediate actions to begin the development sprint are listed below in priority order.
+Set up Supabase Auth on the existing project and deploy the user_profiles table with RLS. This unblocks auth-dependent features across all other work streams.
+Run the OpenRouter profile generation pipeline on the 10 pilot officials and have the admin review results. This validates the AI pipeline and produces demo-ready content.
+Deploy the official_promises database schema and manually enter promises for the 10 pilot officials. This provides the first real Mandate Scorecard data for a public demo.
+Design the Shame Card / Praise Card visual template. This is the highest-leverage virality asset and can be shared even before the full feature is built, by generating cards manually.
+Register for a VTpass sandbox account and test the airtime disbursement API end-to-end before going live with real NGN.
+All six sections of this document are living specifications. As development progresses and user feedback is collected, individual feature details will be refined. This document should be versioned accordingly.
+Prepared by Abiodun Emmanuel Gbadamosi — CEO, Hephtech Innovations | abbeydmarketer@gmail.com | 08037000456

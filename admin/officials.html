@@ -51,6 +51,9 @@
             <option value="military_security">Military & Security</option>
           </select>
         </div>
+        <div class="span2" id="agency-hint" style="display:none;color:var(--muted);font-size:.78rem;line-height:1.3;">
+          Add agencies (NAFDAC, NNPC, IBEDC) as their own records (role like “Agency”). Add the head separately (role like “DG/MD/CEO”).
+        </div>
         <div>
           <label class="form-label">State</label>
           <select class="form-control" id="f-state">
@@ -153,6 +156,26 @@ wireSignOut();
 let allData = [], filtered = [], states = [], editingId = null;
 let page = 1; const perPage = 20;
 
+function isAgencyTier(t) {
+  return String(t || '').includes('agency');
+}
+
+function updateAgencyHints() {
+  const tier = document.getElementById('f-tier')?.value || '';
+  const hint = document.getElementById('agency-hint');
+  if (hint) hint.style.display = isAgencyTier(tier) ? '' : 'none';
+  const name = document.getElementById('f-name');
+  const role = document.getElementById('f-role');
+  if (!name || !role) return;
+  if (isAgencyTier(tier)) {
+    name.placeholder = 'e.g. NAFDAC, NNPC, IBEDC';
+    role.placeholder = 'e.g. Agency (Body) OR DG/MD/CEO (Head)';
+  } else {
+    name.placeholder = 'e.g. Bola Ahmed Tinubu';
+    role.placeholder = 'e.g. Governor, Lagos State';
+  }
+}
+
 function avatarImgStyle(tier) {
   return String(tier || '').includes('agency')
     ? 'width:100%;height:100%;border-radius:50%;object-fit:contain;background:#fff;padding:4px;'
@@ -249,6 +272,7 @@ window.openAddModal = () => {
     const el=document.getElementById('f-'+f); if(el) el.value = f==='status'?'active':'';
   });
   document.getElementById('f-state').value='';
+  updateAgencyHints();
   document.getElementById('official-modal').classList.add('open');
 };
 
@@ -269,6 +293,7 @@ window.openEditModal = (id) => {
   document.getElementById('f-bio').value = o.bio||'';
   document.getElementById('f-twitter').value = o.social_twitter||'';
   document.getElementById('f-website').value = o.website||'';
+  updateAgencyHints();
   document.getElementById('official-modal').classList.add('open');
 };
 
@@ -312,6 +337,8 @@ window.deleteOfficial = async (id, name) => {
 };
 
 await loadStates();
+document.getElementById('f-tier')?.addEventListener('change', updateAgencyHints);
+updateAgencyHints();
 loadOfficials();
 </script>
 </body>

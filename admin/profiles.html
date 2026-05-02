@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profiles — evote.ng Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="admin-main">
+    <div class="admin-header">
+      <div>
+        <div class="admin-title">Profile Enrichment</div>
+        <div class="admin-sub">Generate biography, career, education, and achievements via OpenRouter AI</div>
+      </div>
+    </div>
+
+    <div class="admin-search" style="grid-template-columns:1fr 220px 180px;align-items:end;">
+      <div>
+        <label class="form-label">Official</label>
+        <input class="form-control" id="official-search" placeholder="Search officials..." oninput="filterOfficials()">
+      </div>
+      <div>
+        <label class="form-label">Select</label>
+        <select class="form-control" id="official-select" onchange="onPickOfficial()"></select>
+      </div>
+      <div>
+        <button class="btn btn-green" style="height:42px;width:100%;" onclick="generateProfile()">Generate</button>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top:1rem;">
+      <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;">
+        <div style="font-weight:700;">Generated JSON</div>
+        <button class="btn" onclick="saveProfile()">Save To Database</button>
+      </div>
+      <textarea class="form-control" id="json-out" style="margin-top:.6rem;min-height:240px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;" placeholder='{"bio":"...","career":[...],"education":[...],"achievements":[...]}'></textarea>
+      <div id="current-meta" style="margin-top:.6rem;color:var(--muted);font-size:.85rem;"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat } from './js/admin-common.js';
+
+    let officials = [];
+    let filteredOfficials = [];
+    let selectedOfficialId = '';
+    let selectedOfficial = null;
+
+    const el = (id) => document.getElementById(id);
+
+    const session = await requireAuth();
+    el('sidebar-mount').innerHTML = sidebarHTML('profiles', session.user.email);
+    wireSignOut();
+
+    async function loadOfficials() {
+      const { data, error } = await supabase
+        .from('officials')
+        .select('id,full_name,role,tier,party,states(name),profile_generated,profile_verified,profile_updated_at')
+        .eq('status', 'active')
+        .order('full_name')
+        .limit(3000);
+      if (error) {
+        showToast('Unable to load officials.', 'error');
+        return;
+      }
+      officials = data || [];
+      filteredOfficials = officials.slice(0);
+      renderOfficialSelect();
+    }
+
+    function renderOfficialSelect() {
+      const options = filteredOfficials.map((o) => {
+        const st = o.states?.name ? ` — ${o.states.name}` : '';
+        return `<option value="${o.id}">${o.full_name}${st}</option>`;
+      }).join('');
+      el('official-select').innerHTML = options ? `<option value="">Select...</option>${options}` : `<option value="">No officials</option>`;
+    }
+
+    window.filterOfficials = () => {
+      const q = (el('official-search').value || '').trim().toLowerCase();
+      filteredOfficials = officials.filter((o) => {
+        const n = String(o.full_name || '').toLowerCase();
+        const r = String(o.role || '').toLowerCase();
+        return !q || n.includes(q) || r.includes(q);
+      }).slice(0, 200);
+      renderOfficialSelect();
+    };
+
+    window.onPickOfficial = async () => {
+      selectedOfficialId = el('official-select').value || '';
+      selectedOfficial = officials.find((o) => o.id === selectedOfficialId) || null;
+      el('json-out').value = '';
+      renderMeta();
+    };
+
+    function renderMeta() {
+      if (!selectedOfficial) {
+        el('current-meta').textContent = '';
+        return;
+      }
+      const g = selectedOfficial.profile_generated ? 'yes' : 'no';
+      const v = selectedOfficial.profile_verified ? 'yes' : 'no';
+      const u = selectedOfficial.profile_updated_at ? String(selectedOfficial.profile_updated_at) : '';
+      el('current-meta').textContent = `profile_generated: ${g} · profile_verified: ${v}${u ? ` · updated: ${u}` : ''}`;
+    }
+
+    window.generateProfile = async () => {
+      if (!selectedOfficialId) { showToast('Select an official first.', 'error'); return; }
+
+      const context = `Official: ${selectedOfficial?.full_name || ''}, ${selectedOfficial?.role || ''}, ${selectedOfficial?.states?.name || ''}, ${selectedOfficial?.party || ''}`.trim();
+      const prompt = [
+        'You are a Nigerian political researcher. Generate a factual profile for the following official.',
+        'Return ONLY valid JSON with this structure:',
+        '{',
+        '"bio": "Three concise paragraphs covering background, political rise, and current office.",',
+        '"career": [{ "role_title": "", "organisation": "", "start_year": 0, "end_year": 0, "category": "" }],',
+        '"education": [{ "institution": "", "degree": "", "field": "", "year": 0 }],',
+        '"achievements": [{ "title": "", "description": "", "year": 0, "category": "" }]',
+        '}',
+        'If you are uncertain about a specific fact, omit that field rather than fabricate.',
+        context,
+      ].join('\n');
+
+      try {
+        const json = await openRouterChat({
+          messages: [
+            { role: 'system', content: 'Return only strict JSON.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 2500,
+        });
+        const content = json?.choices?.[0]?.message?.content || '';
+        const parsed = JSON.parse(content);
+        el('json-out').value = JSON.stringify(parsed, null, 2);
+        showToast('Generated.', 'success');
+      } catch {
+        showToast('Generation failed. Ensure the response is valid JSON.', 'error');
+      }
+    };
+
+    window.saveProfile = async () => {
+      if (!selectedOfficialId) { showToast('Select an official first.', 'error'); return; }
+      const raw = (el('json-out').value || '').trim();
+      if (!raw) { showToast('Nothing to save.', 'error'); return; }
+
+      let obj;
+      try { obj = JSON.parse(raw); } catch { showToast('Invalid JSON.', 'error'); return; }
+
+      const bio = typeof obj.bio === 'string' ? obj.bio.trim() : '';
+      const career = Array.isArray(obj.career) ? obj.career : [];
+      const education = Array.isArray(obj.education) ? obj.education : [];
+      const achievements = Array.isArray(obj.achievements) ? obj.achievements : [];
+
+      const now = new Date().toISOString();
+      const { error: upErr } = await supabase
+        .from('officials')
+        .update({ profile_bio: bio || null, profile_generated: true, profile_verified: false, profile_updated_at: now })
+        .eq('id', selectedOfficialId);
+      if (upErr) { showToast('Failed to update officials. Deploy Phase 2 schema first.', 'error'); return; }
+
+      const del1 = await supabase.from('official_career_history').delete().eq('official_id', selectedOfficialId);
+      const del2 = await supabase.from('official_education').delete().eq('official_id', selectedOfficialId);
+      const del3 = await supabase.from('official_achievements').delete().eq('official_id', selectedOfficialId);
+      if (del1.error || del2.error || del3.error) { showToast('Failed clearing old rows. Check RLS/policies.', 'error'); return; }
+
+      const careerRows = career
+        .map((c) => ({
+          official_id: selectedOfficialId,
+          role_title: (c.role_title || '').trim(),
+          organisation: (c.organisation || '').trim() || null,
+          start_year: Number(c.start_year || 0) || null,
+          end_year: Number(c.end_year || 0) || null,
+          category: (c.category || '').trim() || null,
+          is_current: false,
+        }))
+        .filter((r) => r.role_title);
+
+      const eduRows = education
+        .map((e) => ({
+          official_id: selectedOfficialId,
+          institution: (e.institution || '').trim() || null,
+          degree: (e.degree || '').trim() || null,
+          field: (e.field || '').trim() || null,
+          year: Number(e.year || 0) || null,
+        }))
+        .filter((r) => r.institution || r.degree || r.field);
+
+      const achRows = achievements
+        .map((a) => ({
+          official_id: selectedOfficialId,
+          title: (a.title || '').trim(),
+          description: (a.description || '').trim() || null,
+          year: Number(a.year || 0) || null,
+          category: (a.category || '').trim() || null,
+          evidence_url: null,
+          verified: false,
+        }))
+        .filter((r) => r.title);
+
+      if (careerRows.length) {
+        const { error } = await supabase.from('official_career_history').insert(careerRows);
+        if (error) { showToast('Failed inserting career history. Check RLS/policies.', 'error'); return; }
+      }
+      if (eduRows.length) {
+        const { error } = await supabase.from('official_education').insert(eduRows);
+        if (error) { showToast('Failed inserting education. Check RLS/policies.', 'error'); return; }
+      }
+      if (achRows.length) {
+        const { error } = await supabase.from('official_achievements').insert(achRows);
+        if (error) { showToast('Failed inserting achievements. Check RLS/policies.', 'error'); return; }
+      }
+
+      selectedOfficial = { ...selectedOfficial, profile_generated: true, profile_verified: false, profile_updated_at: now };
+      const idx = officials.findIndex((o) => o.id === selectedOfficialId);
+      if (idx >= 0) officials[idx] = selectedOfficial;
+      renderMeta();
+      showToast('Saved.', 'success');
+    };
+
+    await loadOfficials();
+  </script>
+</body>
+</html>

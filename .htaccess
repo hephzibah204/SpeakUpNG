@@ -73,13 +73,13 @@ RewriteRule ^news/([a-zA-Z0-9-]+)/?$ public/news-post.html?slug=$1 [QSA,L]
 
 # Extensionless top-level pages
 RewriteCond %{DOCUMENT_ROOT}/$1.html -f
-RewriteRule ^(index|leaderboard|polls|official|blog|news)/?$ $1.html [L]
+RewriteRule ^(index|leaderboard|polls|official|blog|news|agencies)/?$ $1.html [L]
 RewriteCond %{DOCUMENT_ROOT}/public/$1.html -f
-RewriteRule ^(index|leaderboard|polls|official|blog|news)/?$ public/$1.html [L]
+RewriteRule ^(index|leaderboard|polls|official|blog|news|agencies)/?$ public/$1.html [L]
 
 # Extensionless admin pages
 RewriteCond %{DOCUMENT_ROOT}/admin/$1.html -f
-RewriteRule ^admin/(login|dashboard|officials|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
+RewriteRule ^admin/(login|dashboard|officials|mandate|profiles|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
 
 # Generic extensionless HTML fallback (supports nested paths)
 RewriteCond %{DOCUMENT_ROOT}/$1.html -f

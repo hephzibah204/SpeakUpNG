@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agencies — evote.ng</title>
+<meta name="description" content="Browse and rate Nigerian agencies as institutions (NAFDAC, NNPC, DisCos). Agency heads are listed separately and rated as individuals.">
+<meta name="keywords" content="Nigeria agencies, NAFDAC, NNPC, DisCos, IBEDC, agency ratings, evote.ng">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="/agencies" id="canonical-link">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="evote.ng">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" content="Agencies — evote.ng">
+<meta property="og:description" content="Browse and rate Nigerian agencies as institutions. Agency heads are rated separately.">
+<meta property="og:image" content="/images/logo.png">
+<meta property="og:url" content="/agencies" id="og-url">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Agencies — evote.ng">
+<meta name="twitter:description" content="Browse and rate Nigerian agencies as institutions.">
+<meta name="twitter:image" content="/images/logo.png">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function setCanonicalMeta() {
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    var current = window.location.origin + window.location.pathname;
+    if (canonical) canonical.href = current;
+    if (ogUrl) ogUrl.setAttribute('content', current);
+  })();
+</script>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
+  <div class="nav-links">
+    <a href="/" class="nav-link show-mobile">Officials</a>
+    <a href="/agencies" class="nav-link active">Agencies</a>
+    <a href="/leaderboard" class="nav-link">Rankings</a>
+    <a href="/polls" class="nav-link">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link">News</a>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<div class="section">
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">🏢 Agencies</h1>
+      <p class="page-sub">Rate agencies as institutions (e.g. NAFDAC, NNPC, DisCos). Heads (DG/MD/CEO) are rated separately as individuals.</p>
+    </div>
+
+    <div class="filter-row">
+      <div class="search-wrap" style="flex:1;min-width:220px;margin:0;">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="q" placeholder="Search agencies by name, sector, website, or state...">
+      </div>
+      <select id="tier">
+        <option value="">All Agencies</option>
+        <option value="federal_agency">Federal Agencies</option>
+        <option value="state_agency">State Agencies</option>
+      </select>
+      <select id="sector">
+        <option value="">All Sectors</option>
+        <option value="power">Power</option>
+        <option value="health">Health</option>
+        <option value="economy">Finance/Economy</option>
+        <option value="security">Security</option>
+        <option value="education">Education</option>
+        <option value="infrastructure">Infrastructure</option>
+        <option value="transport">Transport</option>
+        <option value="agriculture">Agriculture</option>
+        <option value="general">General</option>
+      </select>
+      <select id="sort">
+        <option value="rating_count">Most Rated</option>
+        <option value="rating_avg_desc">Highest Rated</option>
+        <option value="name">A–Z</option>
+      </select>
+      <span class="results-count" id="count"></span>
+    </div>
+
+    <div class="officials-grid" id="grid">
+      <div class="loading"><div class="spinner"></div><br>Loading agencies...</div>
+    </div>
+    <div id="pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap;"></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <strong>evote.ng</strong> — Rate agencies and their leadership separately<br>
+  <a href="/" style="color:var(--green-light);">Officials</a> ·
+  <a href="/leaderboard" style="color:var(--green-light);">Rankings</a> ·
+  <a href="/polls" style="color:var(--green-light);">Polls</a>
+</footer>
+
+<script type="module">
+import { supabase, TIER_LABELS, TIER_COLORS, showToast, fmt } from './js/supabase-client.js';
+
+const AGENCY_HEAD_ROLE_RE = /minister|commissioner|director general|\\bdg\\b|managing director|\\bmd\\b|ceo|executive secretary|chairman|comptroller-?general|inspector general|administrator|head/i;
+const AGENCY_ORG_NAME_RE = /agency|authority|commission|corporation|company|plc|ltd|limited|board|service|department|ministry|bureau|office|council|secretariat|bank|electricity|distribution|transmission|power|disco|discos|nnpc|nafdac/i;
+
+const S = {
+  list: [],
+  filtered: [],
+  page: 1,
+  perPage: 18,
+  q: '',
+  tier: '',
+  sector: '',
+  sort: 'rating_count',
+};
+
+let ratingsAggCache = null;
+async function getRatingsAggregates() {
+  if (ratingsAggCache instanceof Map) return ratingsAggCache;
+  const { data, error } = await supabase
+    .from('public_ratings')
+    .select('official_id,overall,created_at')
+    .order('created_at', { ascending: false })
+    .limit(10000);
+  if (error) throw error;
+
+  const map = new Map();
+  for (const row of data || []) {
+    const id = row?.official_id;
+    if (!id) continue;
+    const overall = Number(row?.overall || 0);
+    const prev = map.get(id) || { count: 0, sum: 0, avg: 0 };
+    prev.count += 1;
+    prev.sum += overall;
+    map.set(id, prev);
+  }
+  for (const agg of map.values()) {
+    agg.avg = agg.count ? (agg.sum / agg.count) : 0;
+  }
+  ratingsAggCache = map;
+  return map;
+}
+
+function agencyLike(o) {
+  return String(o?.tier || '').includes('agency');
+}
+function isAgencyBodyName(name) {
+  const s = String(name || '').trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  if (AGENCY_ORG_NAME_RE.test(lower)) return true;
+  if (/^[A-Z0-9]{2,12}$/.test(s)) return true;
+  return false;
+}
+function isAgencyHead(o) {
+  if (!agencyLike(o)) return false;
+  if (AGENCY_HEAD_ROLE_RE.test(String(o?.role || ''))) return true;
+  return !isAgencyBodyName(o?.full_name);
+}
+function isAgencyBody(o) {
+  return agencyLike(o) && isAgencyBodyName(o?.full_name) && !AGENCY_HEAD_ROLE_RE.test(String(o?.role || ''));
+}
+
+function domainFromUrl(url) {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\\./, '');
+  } catch {
+    return null;
+  }
+}
+
+function detectSector(o) {
+  const hay = `${o?.full_name || ''} ${o?.common_name || ''} ${o?.role || ''} ${o?.website || ''}`.toLowerCase();
+  if (/electricity|disco|distribution company|transmission company of nigeria|nerc|nbet|rea|nemsa|niso|ikeja electric|eko electricity|ibedc|aedc|phed|kaedco|kedco|yedc|eedc|jos electric|benin electricity/.test(hay)) return 'power';
+  if (/nafdac|nphcda|health|hospital|medical|phc|nhis|aids|drug|vaccine|disease/.test(hay)) return 'health';
+  if (/finance|budget|econom|revenue|tax|customs|trade|industry|investment|fiscal|cbn|firs|sec|nnpc|petroleum|oil|gas|energy/.test(hay)) return 'economy';
+  if (/interior|defen[cs]e|police|security|intelligence|immigration|nscdc|ndlea|military|army|navy|air force/.test(hay)) return 'security';
+  if (/education|school|university|polytechnic|teaching|student/.test(hay)) return 'education';
+  if (/works|housing|infrastructure|urban|water resources|environment|housing|works/.test(hay)) return 'infrastructure';
+  if (/transport|aviation|marine|maritime|rail|ports|waterways/.test(hay)) return 'transport';
+  if (/agric|livestock|food|fertilizer/.test(hay)) return 'agriculture';
+  return 'general';
+}
+
+function slugify(name) {
+  return String(name || '')
+    .normalize('NFKD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function supportsPrettyRoutes() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  if (window.location.protocol === 'file:') return false;
+  if (host === 'localhost' || host === '127.0.0.1') return false;
+  return true;
+}
+
+function profilePath(o) {
+  if (!supportsPrettyRoutes()) return `/official.html?id=${encodeURIComponent(o.id)}`;
+  const common = String(o?.common_name || '').trim();
+  const useCommon = common && /^[A-Za-z0-9]{2,12}$/.test(common);
+  const slug = slugify(useCommon ? common : (o.full_name || o.common_name || 'agency')) || 'agency';
+  return `/official/${slug}--${o.id}`;
+}
+
+function renderStarsHTML(r) {
+  return [1,2,3,4,5].map(i => {
+    const cls = r >= i ? 'on' : r >= i-.5 ? 'half' : '';
+    return `<span class="star ${cls}">★</span>`;
+  }).join('');
+}
+
+function avatarSrc(o) {
+  if (o.photo_url) return o.photo_url;
+  const domain = domainFromUrl(o.website);
+  if (domain) return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+  const name = encodeURIComponent(o.full_name || o.common_name || 'Agency');
+  return `https://ui-avatars.com/api/?name=${name}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg`;
+}
+
+function applyFilters() {
+  const q = S.q.toLowerCase();
+  let list = [...S.list];
+
+  if (S.tier) list = list.filter((o) => o.tier === S.tier);
+  if (S.sector) list = list.filter((o) => detectSector(o) === S.sector);
+  if (q) {
+    list = list.filter((o) => {
+      const hay = `${o.full_name || ''} ${o.common_name || ''} ${o.role || ''} ${(o.states?.name || '')} ${domainFromUrl(o.website) || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  if (S.sort === 'rating_avg_desc') list.sort((a,b) => (b.rating_avg||0) - (a.rating_avg||0));
+  else if (S.sort === 'name') list.sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''));
+  else list.sort((a,b) => (b.rating_count||0) - (a.rating_count||0));
+
+  S.filtered = list;
+  S.page = 1;
+  render();
+}
+
+function renderPagination(total) {
+  const pages = Math.ceil(total / S.perPage);
+  const el = document.getElementById('pagination');
+  if (!el) return;
+  if (pages <= 1) { el.innerHTML=''; return; }
+  el.innerHTML = Array.from({length:pages},(_,i)=>i+1).map(p =>
+    `<button class="tab ${p===S.page?'active':''}" onclick="goPage(${p})">${p}</button>`
+  ).join('');
+}
+
+window.goPage = (p) => { S.page=p; render(); window.scrollTo({top:document.querySelector('.page-header')?.offsetTop||0,behavior:'smooth'}); };
+
+function render() {
+  const grid = document.getElementById('grid');
+  const total = S.filtered.length;
+  document.getElementById('count').textContent = `${fmt(total)} agenc${total===1?'y':'ies'}`;
+  const start = (S.page-1)*S.perPage;
+  const slice = S.filtered.slice(start, start+S.perPage);
+
+  if (!slice.length) {
+    grid.innerHTML = '<div class="empty">No agencies found. Try a different search.</div>';
+    renderPagination(0);
+    return;
+  }
+
+  grid.innerHTML = slice.map((o,i) => {
+    const color = TIER_COLORS[o.tier] || '#888';
+    const tier = TIER_LABELS[o.tier] || o.tier;
+    const rating = Number(o.rating_avg || 0);
+    const state = o.states?.name ? ` · ${o.states.name}` : '';
+    const sector = detectSector(o);
+    const sectorLabel = sector === 'economy' ? 'Economy' : (sector.charAt(0).toUpperCase() + sector.slice(1));
+    return `
+      <div class="official-card card-hover fade-up fade-up-${Math.min(i+1,5)}" onclick="window.location.href='${profilePath(o)}'" style="cursor:pointer;">
+        <div class="card-head">
+          <div class="avatar" style="background:${color}22;color:${color};">
+            <img src="${avatarSrc(o)}" alt="${o.full_name}" loading="lazy" style="width:100%;height:100%;border-radius:50%;object-fit:contain;background:#fff;padding:4px;" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent((o.full_name||'Agency'))}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg'">
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="card-name">${o.full_name}</div>
+            <div class="card-role">${o.role || 'Agency'}</div>
+            <span class="tier-badge" style="color:${color};border-color:${color}44;background:${color}11;">${tier}${state}</span>
+            <div style="margin-top:.35rem;color:var(--muted);font-size:.74rem;">${sectorLabel}</div>
+          </div>
+        </div>
+        <div class="stars-row">
+          <div class="stars">${renderStarsHTML(rating)}</div>
+          <span class="rating-num">${rating ? rating.toFixed(1) : '—'}</span>
+          <span class="rating-count">(${fmt(o.rating_count)} ratings)</span>
+        </div>
+        <div class="card-footer">
+          <a href="${profilePath(o)}" onclick="event.stopPropagation()" class="btn btn-green btn-sm" style="flex:1;justify-content:center;">View</a>
+          <a href="${profilePath(o)}" onclick="event.stopPropagation()" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;">Rate</a>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  renderPagination(total);
+}
+
+async function loadAgencies() {
+  document.getElementById('grid').innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading agencies...</div>';
+  try {
+    const { data, error } = await supabase
+      .from('officials')
+      .select('id,full_name,common_name,role,tier,website,photo_url,states(name),status')
+      .eq('status','active')
+      .in('tier', ['federal_agency','state_agency'])
+      .order('full_name')
+      .limit(1000);
+    if (error) throw error;
+
+    const bodies = (data || []).filter((o) => isAgencyBody(o));
+    const agg = await getRatingsAggregates().catch(() => null);
+    if (agg) {
+      bodies.forEach((o) => {
+        const a = agg.get(o.id);
+        if (!a) return;
+        o.rating_count = a.count || 0;
+        o.rating_avg = a.avg || 0;
+      });
+    } else {
+      bodies.forEach((o) => { o.rating_count = Number(o.rating_count || 0); o.rating_avg = Number(o.rating_avg || 0); });
+    }
+
+    S.list = bodies;
+    applyFilters();
+  } catch (err) {
+    document.getElementById('grid').innerHTML = `<div class="empty">Unable to load agencies.<br><span style="color:var(--muted);font-size:.82rem;">${err?.message || ''}</span></div>`;
+    showToast('Unable to load agencies. Check your connection.', 'error');
+  }
+}
+
+let searchTimer;
+document.getElementById('q').addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { S.q = e.target.value; applyFilters(); }, 220);
+});
+document.getElementById('tier').addEventListener('change', (e) => { S.tier = e.target.value; applyFilters(); });
+document.getElementById('sector').addEventListener('change', (e) => { S.sector = e.target.value; applyFilters(); });
+document.getElementById('sort').addEventListener('change', (e) => { S.sort = e.target.value; applyFilters(); });
+
+loadAgencies();
+</script>
+</body>
+</html>
+

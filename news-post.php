@@ -95,9 +95,10 @@ if (!$post) {
 </head>
 <body>
   <nav class="nav">
-    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
     <div class="nav-links">
       <a href="/" class="nav-link show-mobile">Officials</a>
+      <a href="/agencies" class="nav-link">Agencies</a>
       <a href="/leaderboard" class="nav-link">Rankings</a>
       <a href="/polls" class="nav-link">Polls</a>
       <a href="/blog" class="nav-link">Blog</a>
@@ -207,9 +208,10 @@ $ld = [
 </head>
 <body>
   <nav class="nav">
-    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"><span class="brand-text">evote.ng</span> <span class="badge">Beta</span></a>
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
     <div class="nav-links">
       <a href="/" class="nav-link show-mobile">Officials</a>
+      <a href="/agencies" class="nav-link">Agencies</a>
       <a href="/leaderboard" class="nav-link">Rankings</a>
       <a href="/polls" class="nav-link">Polls</a>
       <a href="/blog" class="nav-link">Blog</a>
