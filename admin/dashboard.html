@@ -42,6 +42,7 @@
         <a class="btn btn-green btn-sm" href="/admin/content?type=news&new=1">New News Update</a>
         <a class="btn btn-ghost btn-sm" href="/admin/ai-manager">AI Manager</a>
         <a class="btn btn-ghost btn-sm" href="/admin/alerts">AI Alerts</a>
+        <button class="btn btn-ghost btn-sm" id="btn-settings">API Keys</button>
       </div>
     </div>
   </div>
@@ -79,6 +80,61 @@
     <div>
       <h3 style="font-size:1rem;margin-bottom:1rem;">🔴 Lowest Rated Officials</h3>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Official</th><th>Score</th><th>Ratings</th></tr></thead><tbody id="bot-officials"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h2>Server Settings</h2>
+      <button class="modal-close" id="settings-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="card" style="padding:1rem;border:1px solid var(--border);">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">OpenRouter</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;" id="st-openrouter">—</div>
+          <div class="form-group" style="margin-top:.8rem;">
+            <label class="form-label">API Key</label>
+            <input class="form-control" id="s-openrouter-key" type="password" placeholder="sk-or-...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Model</label>
+            <input class="form-control" id="s-openrouter-model" placeholder="openai/gpt-4o-mini">
+          </div>
+        </div>
+
+        <div class="card" style="padding:1rem;border:1px solid var(--border);">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Supabase (Server)</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;" id="st-supabase">—</div>
+          <div class="form-group" style="margin-top:.8rem;">
+            <label class="form-label">SUPABASE_URL</label>
+            <input class="form-control" id="s-supabase-url" placeholder="https://xxxx.supabase.co">
+          </div>
+          <div class="form-group">
+            <label class="form-label">SUPABASE_ANON_KEY</label>
+            <input class="form-control" id="s-supabase-anon" type="password" placeholder="sb_publishable_...">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:1rem;border:1px solid var(--border);margin-top:1rem;">
+        <div style="font-family:'Syne',sans-serif;font-weight:800;">Admin Allowlist</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">Optional: if set, only these emails can access AI + CMS admin APIs.</div>
+        <div class="form-group" style="margin-top:.8rem;">
+          <label class="form-label">Admin Emails (comma separated)</label>
+          <textarea class="form-control" id="s-admin-emails" rows="2" placeholder="admin@evote.ng, editor@evote.ng"></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:1rem;">
+        <div style="font-size:.78rem;color:var(--muted);" id="settings-note">Keys are saved on the server and never shown back in the dashboard.</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="settings-refresh">Refresh</button>
+          <button class="btn btn-green btn-sm" id="settings-save">Save</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -201,6 +257,58 @@ function timeAgo(ts) {
 }
 
 loadStats(); loadRecentRatings(); loadPendingReports(); loadTopBot();
+
+const settingsModal = document.getElementById('settings-modal');
+function openSettings() { if (settingsModal) settingsModal.classList.add('open'); }
+function closeSettings() { if (settingsModal) settingsModal.classList.remove('open'); }
+
+async function loadSettingsStatus() {
+  try {
+    const st = await adminApiJson('/api/admin-secrets.php');
+    document.getElementById('st-openrouter').textContent = st.openrouter_configured ? `Configured · Model: ${st.openrouter_model || '—'}` : 'Not configured';
+    document.getElementById('st-supabase').textContent = st.supabase_configured ? `Configured (${st.supabase_source || '—'})` : 'Not configured';
+    document.getElementById('s-openrouter-model').value = st.openrouter_model || 'openai/gpt-4o-mini';
+  } catch (e) {
+    document.getElementById('st-openrouter').textContent = 'Unable to load';
+    document.getElementById('st-supabase').textContent = 'Unable to load';
+  }
+}
+
+document.getElementById('btn-settings')?.addEventListener('click', async () => {
+  openSettings();
+  await loadSettingsStatus();
+});
+document.getElementById('settings-close')?.addEventListener('click', closeSettings);
+settingsModal?.addEventListener('click', (e) => { if (e.target === settingsModal) closeSettings(); });
+document.getElementById('settings-refresh')?.addEventListener('click', loadSettingsStatus);
+
+document.getElementById('settings-save')?.addEventListener('click', async () => {
+  const key = String(document.getElementById('s-openrouter-key')?.value || '').trim();
+  const model = String(document.getElementById('s-openrouter-model')?.value || '').trim();
+  const sbUrl = String(document.getElementById('s-supabase-url')?.value || '').trim();
+  const sbAnon = String(document.getElementById('s-supabase-anon')?.value || '').trim();
+  const emailsRaw = String(document.getElementById('s-admin-emails')?.value || '').trim();
+  const admin_emails = emailsRaw ? emailsRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+
+  const body = { action: 'set' };
+  if (key) body.openrouter_api_key = key;
+  if (model) body.openrouter_model = model;
+  if (sbUrl) body.supabase_url = sbUrl;
+  if (sbAnon) body.supabase_anon_key = sbAnon;
+  if (admin_emails.length) body.admin_emails = admin_emails;
+
+  try {
+    await adminApiJson('/api/admin-secrets.php', { method: 'POST', body });
+    const keyEl = document.getElementById('s-openrouter-key');
+    const sbAnonEl = document.getElementById('s-supabase-anon');
+    if (keyEl) keyEl.value = '';
+    if (sbAnonEl) sbAnonEl.value = '';
+    showToast('Saved.');
+    await loadSettingsStatus();
+  } catch (e) {
+    showToast(e?.message || 'Save failed', 'error');
+  }
+});
 </script>
 </body>
 </html>
