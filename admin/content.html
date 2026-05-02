@@ -63,15 +63,14 @@
     </div>
   </div>
 
-  <div class="modal" id="editor-modal">
-    <div class="modal-box" style="max-width:980px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;">Post Editor</div>
-          <div style="font-size:.78rem;color:var(--muted);" id="editor-sub">—</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="btn-close">Close</button>
+  <div class="modal-overlay" id="editor-modal">
+    <div class="modal" style="max-width:980px;">
+      <div class="modal-header">
+        <h2>Post Editor</h2>
+        <button class="modal-close" id="btn-close">✕</button>
       </div>
+      <div class="modal-body">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;" id="editor-sub">—</div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
         <div class="form-group">
@@ -167,6 +166,7 @@
           <button class="btn btn-ghost btn-sm" id="btn-save">Save Draft</button>
           <button class="btn btn-green btn-sm" id="btn-publish">Publish</button>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -541,4 +541,3 @@
   </script>
 </body>
 </html>
-
