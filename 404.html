@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found - evote.ng</title>
+  <meta name="robots" content="noindex,follow">
+  <meta name="description" content="The page you requested could not be found on evote.ng.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
+    <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+    <div class="nav-links" id="nav-links">
+      <a href="/" class="nav-link show-mobile">Officials</a>
+      <a href="/agencies" class="nav-link">Agencies</a>
+      <a href="/leaderboard" class="nav-link">Rankings</a>
+      <a href="/polls" class="nav-link">Polls</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/news" class="nav-link">News</a>
+    </div>
+  </nav>
+
+  <div class="section">
+    <div class="container" style="max-width:860px;">
+      <div class="page-header">
+        <h1 class="page-title">404 — Page Not Found</h1>
+        <p class="page-sub">That link doesn’t exist here. Use the options below to get back on track.</p>
+      </div>
+
+      <div class="card" style="padding:1.2rem;border:1px solid var(--border);">
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+          <a class="btn btn-green" href="/">Go to Officials</a>
+          <a class="btn btn-ghost" href="/leaderboard">View Rankings</a>
+          <a class="btn btn-ghost" href="/polls">Open Polls</a>
+          <a class="btn btn-ghost" href="/blog">Read Blog</a>
+        </div>
+        <div style="margin-top:1rem;color:var(--muted);font-size:.85rem;">
+          If you typed the URL manually, check the spelling. If you clicked a link, it may have moved.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <strong>evote.ng</strong> — Civic accountability platform<br>
+    <a href="/blog" style="color:var(--green-light);">Blog</a> ·
+    <a href="/news" style="color:var(--green-light);">News</a> ·
+    <a href="/polls" style="color:var(--green-light);">Polls</a>
+  </footer>
+
+  <script>
+  (function () {
+    const toggle = document.getElementById('nav-toggle');
+    const links = document.getElementById('nav-links');
+    if (!toggle || !links) return;
+    const closeMenu = () => {
+      links.classList.remove('open');
+      toggle.textContent = '☰';
+      toggle.setAttribute('aria-expanded', 'false');
+    };
+    toggle.addEventListener('click', () => {
+      const open = links.classList.toggle('open');
+      toggle.textContent = open ? '✕' : '☰';
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    links.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeMenu));
+  })();
+  </script>
+</body>
+</html>
+

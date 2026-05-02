@@ -42,6 +42,7 @@ export function sidebarHTML(activePage, userEmail) {
     { id:'ai-manager',  icon:'🤖', label:'AI Manager',    href:'/admin/ai-manager' },
   ];
   return `
+  <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
   <div class="sidebar">
     <div class="sidebar-logo">
       🇳🇬 evote.ng
@@ -67,7 +68,8 @@ export function sidebarHTML(activePage, userEmail) {
       <div class="admin-user">📧 ${userEmail||'Admin'}</div>
       <button class="btn-signout" id="signout-btn">Sign Out</button>
     </div>
-  </div>`;
+  </div>
+  <div class="mobile-menu-overlay" onclick="document.querySelector('.sidebar').classList.remove('open')"></div>`;
 }
 
 // Backward-compatible no-op for pages that still import it.

@@ -6,10 +6,153 @@
   <title>Mandate — evote.ng Admin</title>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="admin.css">
+  <style>
+    /* ── AUTO-POPULATE PANEL ── */
+    .auto-pop-panel {
+      background: linear-gradient(135deg, rgba(0,135,81,.08) 0%, rgba(0,180,110,.04) 100%);
+      border: 1px solid rgba(0,135,81,.3);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      margin-top: 1.6rem;
+    }
+    .auto-pop-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .8rem; margin-bottom: 1rem;
+    }
+    .auto-pop-title {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .auto-pop-badge {
+      font-size: .68rem; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; padding: 2px 8px; border-radius: 20px;
+      background: rgba(0,135,81,.2); color: var(--green-light); border: 1px solid rgba(0,135,81,.4);
+    }
+    .auto-pop-sources {
+      display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem;
+    }
+    .source-chip {
+      font-size: .72rem; padding: 3px 10px; border-radius: 20px;
+      border: 1px solid var(--border); color: var(--muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .source-chip.active { color: var(--green-light); border-color: rgba(0,135,81,.4); }
+    .ap-status {
+      font-size: .82rem; color: var(--muted); min-height: 1.4rem;
+      display: flex; align-items: center; gap: .5rem; margin-bottom: .8rem;
+    }
+    .ap-spinner {
+      width: 14px; height: 14px; border: 2px solid rgba(0,135,81,.3);
+      border-top-color: var(--green-light); border-radius: 50%;
+      animation: spin .8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .btn-auto-pop {
+      background: linear-gradient(135deg, #008751, #00b368);
+      color: #fff; border: none; padding: .7rem 1.6rem;
+      border-radius: 8px; font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: .95rem; cursor: pointer;
+      display: flex; align-items: center; gap: .5rem;
+      box-shadow: 0 4px 20px rgba(0,135,81,.35);
+      transition: all .2s; white-space: nowrap;
+    }
+    .btn-auto-pop:hover:not(:disabled) {
+      transform: translateY(-1px); box-shadow: 0 6px 28px rgba(0,135,81,.5);
+    }
+    .btn-auto-pop:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .manual-toggle {
+      cursor: pointer; font-size: .82rem; color: var(--muted);
+      display: flex; align-items: center; gap: .4rem;
+      user-select: none; margin-top: 1.2rem;
+    }
+    .manual-toggle:hover { color: var(--white); }
+    .manual-panel { margin-top: .8rem; }
+    .btn-bulk {
+      background: linear-gradient(135deg, #2c3e50, #34495e);
+      color: #fff; border: none; padding: .7rem 1.6rem;
+      border-radius: 8px; font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: .95rem; cursor: pointer;
+      display: flex; align-items: center; gap: .5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,.2);
+      transition: all .2s; white-space: nowrap;
+    }
+    .btn-bulk:hover:not(:disabled) {
+      transform: translateY(-1px); box-shadow: 0 6px 28px rgba(0,0,0,.3);
+    }
+    .btn-bulk:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .bulk-progress-bar { width: 100%; height: 8px; background: rgba(255,255,255,.1); border-radius: 4px; overflow: hidden; margin: 1rem 0; }
+    .bulk-progress-fill { height: 100%; background: var(--green-light); width: 0%; transition: width .3s; }
+    .bulk-log { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem; height: 180px; overflow-y: auto; font-family: monospace; font-size: .75rem; color: var(--muted); margin-bottom: 1rem; }
+    .bulk-log { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem; height: 180px; overflow-y: auto; font-family: monospace; font-size: .75rem; color: var(--muted); margin-bottom: 1rem; }
+    .bulk-log div { margin-bottom: .3rem; border-bottom: 1px solid rgba(255,255,255,.05); padding-bottom: .2rem; }
+
+    /* ── RESPONSIVE ADMIN ── */
+    .admin-search-grid {
+      display: grid;
+      grid-template-columns: 1fr 220px auto auto auto;
+      align-items: end;
+      gap: 1rem;
+    }
+    @media (max-width: 992px) {
+      .admin-search-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .admin-search-grid > div:nth-child(1),
+      .admin-search-grid > div:nth-child(2) {
+        grid-column: span 1;
+      }
+      .admin-search-grid > div:nth-child(3),
+      .admin-search-grid > div:nth-child(4),
+      .admin-search-grid > div:nth-child(5) {
+        grid-column: span 2;
+      }
+      .btn-bulk, .btn-auto-pop, .btn-green {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+    @media (max-width: 600px) {
+      .admin-search-grid {
+        grid-template-columns: 1fr;
+      }
+      .admin-search-grid > div {
+        grid-column: 1 / -1 !important;
+      }
+      .auto-pop-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .modal { margin: 1rem; width: auto; }
+      .ap-status { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
 </head>
 <body>
   <div id="sidebar-mount"></div>
   <div class="toast" id="toast"></div>
+
+  <!-- BULK MODAL -->
+  <div class="modal-overlay" id="bulk-modal" onclick="if(event.target===this && !bulkIsRunning) closeBulkModal()">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header">
+        <h2>⚡ Bulk AI Auto-Populate</h2>
+        <button class="modal-close" onclick="if(!bulkIsRunning) closeBulkModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="bulk-status" style="font-weight:600;margin-bottom:.5rem;">Ready to process.</div>
+        <div style="font-size:.8rem;color:var(--muted);">This will auto-fetch context, extract promises, and save them for officials in the current filter who do NOT already have promises.</div>
+        
+        <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="bulk-progress"></div></div>
+        
+        <div class="bulk-log" id="bulk-log"></div>
+        
+        <div style="display:flex;gap:1rem;justify-content:flex-end;">
+          <button class="btn" id="bulk-stop-btn" onclick="stopBulkAp()" disabled>Stop</button>
+          <button class="btn btn-green" id="bulk-start-btn" onclick="startBulkAp()">Start Bulk Process</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="promise-modal" onclick="if(event.target===this)closePromiseModal()">
     <div class="modal" style="max-width:720px;">
@@ -99,7 +242,7 @@
       </div>
     </div>
 
-    <div class="admin-search" style="grid-template-columns:1fr 220px 160px;align-items:end;">
+    <div class="admin-search admin-search-grid">
       <div>
         <label class="form-label">Official</label>
         <input class="form-control" id="official-search" placeholder="Search officials..." oninput="filterOfficials()">
@@ -109,6 +252,15 @@
         <select class="form-control" id="official-select" onchange="onPickOfficial()"></select>
       </div>
       <div>
+        <label class="form-label">&nbsp;</label>
+        <button class="btn-bulk" id="bulk-ap-btn" onclick="openBulkModal()" title="Run AI on multiple officials sequentially">⚡ Bulk Auto-Populate</button>
+      </div>
+      <div>
+        <label class="form-label">&nbsp;</label>
+        <button class="btn-auto-pop" id="auto-pop-btn" onclick="autoPopulate()" title="AI fetches mandate from manifesto.ng, promisetracker.ng, Wikipedia &amp; official website">🤖 AI Auto-Populate</button>
+      </div>
+      <div>
+        <label class="form-label">&nbsp;</label>
         <button class="btn btn-green" style="height:42px;" onclick="openAddPromise()">+ Add Promise</button>
       </div>
     </div>
@@ -129,54 +281,87 @@
       </table>
     </div>
 
-    <div class="section" style="margin-top:1.6rem;">
-      <div style="font-weight:700;margin-bottom:.5rem;">AI Promise Extraction</div>
-      <div class="form-grid">
-        <div class="span2">
-          <label class="form-label">Manifesto / Speech Text</label>
-          <textarea class="form-control" id="ai-text" placeholder="Paste manifesto or speech text here..."></textarea>
-        </div>
+    <!-- ══ AI AUTO-POPULATE PANEL ══ -->
+    <div class="auto-pop-panel">
+      <div class="auto-pop-header">
         <div>
-          <label class="form-label">Default Source</label>
-          <select class="form-control" id="ai-source">
-            <option value="manifesto">manifesto</option>
-            <option value="speech">speech</option>
-            <option value="press_release">press_release</option>
-            <option value="inauguration">inauguration</option>
-            <option value="other">other</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Promise Date</label>
-          <input class="form-control" id="ai-date" type="date">
-        </div>
-        <div>
-          <label class="form-label">Evidence URL</label>
-          <input class="form-control" id="ai-evidence-url" type="url" placeholder="https://...">
-        </div>
-        <div>
-          <label class="form-label">&nbsp;</label>
-          <button class="btn btn-green" style="width:100%;height:42px;" onclick="runExtraction()">Extract Promises</button>
+          <div class="auto-pop-title">🤖 AI Auto-Populate Mandate <span class="auto-pop-badge">Web-Sourced</span></div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:.3rem;">Fetches pledges & promises from multiple sources, then uses AI to build the mandate scorecard</div>
         </div>
       </div>
 
-      <div id="ai-results" style="display:none;margin-top:1rem;">
-        <div style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-          <div style="font-weight:700;">Extracted Promises</div>
-          <button class="btn" onclick="importAll()">Import All</button>
+      <div class="auto-pop-sources" id="ap-sources">
+        <span class="source-chip" id="src-mandate">📋 manifesto.ng</span>
+        <span class="source-chip" id="src-promise">✅ promisetracker.ng</span>
+        <span class="source-chip" id="src-ftp">🚀 followthepromises.org</span>
+        <span class="source-chip" id="src-tracka">📊 tracka.ng</span>
+        <span class="source-chip" id="src-op">📜 orderpaper.ng</span>
+        <span class="source-chip" id="src-dp">📈 dataphyte.com</span>
+        <span class="source-chip" id="src-wiki">📖 Wikipedia</span>
+        <span class="source-chip" id="src-website">🌐 Official Website</span>
+        <span class="source-chip" id="src-ai">🧠 AI Knowledge</span>
+      </div>
+
+      <div class="ap-status" id="ap-status">Select an official above, then click <strong style="color:var(--green-light);">AI Auto-Populate</strong> to auto-fill their mandate.</div>
+
+      <div id="ap-results" style="display:none;margin-top:1rem;">
+        <div style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:.6rem;">
+          <div style="font-weight:700;" id="ap-results-title">Extracted Promises</div>
+          <button class="btn btn-green" onclick="importAllAp()">✅ Import All</button>
         </div>
-        <div class="admin-table-wrap" style="margin-top:.6rem;">
+        <div class="admin-table-wrap">
           <table class="lb-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Measurability</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="ai-tbody"></tbody>
+            <thead><tr><th>#</th><th>Promise Title</th><th>Category</th><th>Measurability</th><th>Action</th></tr></thead>
+            <tbody id="ap-tbody"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MANUAL PASTE (collapsible) ══ -->
+    <div class="section" style="margin-top:1.2rem;">
+      <div class="manual-toggle" onclick="toggleManual()" id="manual-toggle">▶ Manual: Paste Manifesto / Speech Text</div>
+      <div class="manual-panel" id="manual-panel" style="display:none;">
+        <div class="form-grid" style="margin-top:.8rem;">
+          <div class="span2">
+            <label class="form-label">Manifesto / Speech Text</label>
+            <textarea class="form-control" id="ai-text" placeholder="Paste manifesto or speech text here..."></textarea>
+          </div>
+          <div>
+            <label class="form-label">Default Source</label>
+            <select class="form-control" id="ai-source">
+              <option value="manifesto">manifesto</option>
+              <option value="speech">speech</option>
+              <option value="press_release">press_release</option>
+              <option value="inauguration">inauguration</option>
+              <option value="other">other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Promise Date</label>
+            <input class="form-control" id="ai-date" type="date">
+          </div>
+          <div>
+            <label class="form-label">Evidence URL</label>
+            <input class="form-control" id="ai-evidence-url" type="url" placeholder="https://...">
+          </div>
+          <div>
+            <label class="form-label">&nbsp;</label>
+            <button class="btn btn-green" style="width:100%;height:42px;" onclick="runExtraction()">Extract Promises</button>
+          </div>
+        </div>
+
+        <div id="ai-results" style="display:none;margin-top:1rem;">
+          <div style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+            <div style="font-weight:700;">Extracted Promises</div>
+            <button class="btn" onclick="importAll()">Import All</button>
+          </div>
+          <div class="admin-table-wrap" style="margin-top:.6rem;">
+            <table class="lb-table">
+              <thead><tr><th>Title</th><th>Category</th><th>Measurability</th><th>Action</th></tr></thead>
+              <tbody id="ai-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -188,8 +373,10 @@
     let officials = [];
     let filteredOfficials = [];
     let selectedOfficialId = '';
+    let selectedOfficial = null;
     let promises = [];
     let aiPromises = [];
+    let apPromises = []; // auto-populate results
     let editingPromiseId = null;
 
     const el = (id) => document.getElementById(id);
@@ -201,7 +388,7 @@
     async function loadOfficials() {
       const { data, error } = await supabase
         .from('officials')
-        .select('id,full_name,role,tier,states(name)')
+        .select('id,full_name,role,tier,website,states(name)')
         .eq('status', 'active')
         .order('full_name')
         .limit(3000);
@@ -234,7 +421,13 @@
 
     window.onPickOfficial = async () => {
       selectedOfficialId = el('official-select').value || '';
+      selectedOfficial = officials.find((o) => o.id === selectedOfficialId) || null;
       promises = [];
+      apPromises = [];
+      el('ap-results').style.display = 'none';
+      el('ap-status').innerHTML = selectedOfficialId
+        ? `Ready — click <strong style="color:var(--green-light);">AI Auto-Populate</strong> to fetch ${escapeHtml(selectedOfficial?.full_name || '')}'s mandate`
+        : 'Select an official above, then click <strong style="color:var(--green-light);">AI Auto-Populate</strong> to auto-fill their mandate.';
       renderPromises();
       if (!selectedOfficialId) return;
       await loadPromises();
@@ -465,6 +658,401 @@
       if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
       showToast('Imported.', 'success');
       await loadPromises();
+    };
+
+    // ── AUTO-POPULATE ──
+    window.toggleManual = () => {
+      const panel = el('manual-panel');
+      const isHidden = panel.style.display === 'none';
+      panel.style.display = isHidden ? 'block' : 'none';
+      el('manual-toggle').textContent = isHidden ? '▼ Manual: Paste Manifesto / Speech Text' : '▶ Manual: Paste Manifesto / Speech Text';
+    };
+
+    window.autoPopulate = async () => {
+      if (!selectedOfficialId || !selectedOfficial) { showToast('Select an official first.', 'error'); return; }
+
+      const btn = el('auto-pop-btn');
+      const statusEl = el('ap-status');
+      const resultsDiv = el('ap-results');
+      const tbody = el('ap-tbody');
+      const sourceChips = document.querySelectorAll('.source-chip');
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="ap-spinner"></div> Fetching Context...';
+      statusEl.innerHTML = `Fetching web context for ${escapeHtml(selectedOfficial.full_name)}...`;
+      resultsDiv.style.display = 'none';
+      apPromises = [];
+      sourceChips.forEach(c => c.classList.remove('active'));
+
+      try {
+        // 1. Fetch context
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) throw new Error('Not authenticated');
+
+        const ctxRes = await fetch('/api/fetch-mandate-context.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            name: selectedOfficial.full_name,
+            role: selectedOfficial.role,
+            state: selectedOfficial.states?.name || '',
+            website: selectedOfficial.website || ''
+          }),
+        });
+
+        const ctxJson = await ctxRes.json().catch(() => null);
+        if (!ctxRes.ok) throw new Error(ctxJson?.error || 'Context fetch failed');
+
+        const contexts = ctxJson.contexts || [];
+        
+        // Update UI with found sources
+        el('src-ai').classList.add('active'); // AI is always used
+        contexts.forEach(c => {
+          if (c.source === 'manifesto.ng') el('src-mandate').classList.add('active');
+          if (c.source === 'promisetracker.ng') el('src-promise').classList.add('active');
+          if (c.source === 'followthepromises.org') el('src-ftp').classList.add('active');
+          if (c.source === 'tracka.ng') el('src-tracka').classList.add('active');
+          if (c.source === 'orderpaper.ng') el('src-op').classList.add('active');
+          if (c.source === 'dataphyte.com') el('src-dp').classList.add('active');
+          if (c.source === 'Wikipedia') el('src-wiki').classList.add('active');
+          if (c.source === 'Official Website') el('src-website').classList.add('active');
+        });
+
+        // 2. Build Prompt
+        btn.innerHTML = '<div class="ap-spinner"></div> Extracting Promises...';
+        statusEl.innerHTML = `Analyzing ${contexts.length} sources to extract mandate...`;
+
+        let contextText = contexts.map(c => `=== SOURCE: ${c.source} ===\n${c.text}\n`).join('\n');
+        if (!contextText) contextText = "No web context found. Rely on your base knowledge.";
+
+        const prompt = [
+          `You are a Nigerian civic-tech analyst. Your goal is to compile a "Mandate Scorecard" for the following official:`,
+          `Name: ${selectedOfficial.full_name}`,
+          `Role: ${selectedOfficial.role}`,
+          selectedOfficial.states?.name ? `State: ${selectedOfficial.states.name}` : '',
+          ``,
+          `Below is context gathered from the web (Wikipedia, trackers, official sites).`,
+          `Extract every discrete, trackable promise, campaign pledge, or official mandate for this official.`,
+          `If the context is empty, use your training data to list their known major campaign promises or statutory mandates.`,
+          ``,
+          contextText,
+          ``,
+          `For each promise, return a JSON object with these fields:`,
+          `- promise_title: a short, specific headline (max 80 chars)`,
+          `- promise_detail: the original or paraphrased full commitment`,
+          `- promise_category: one of [Infrastructure, Education, Health, Security, Economy, Governance, Agriculture, Technology, Other]`,
+          `- measurability: high | medium | low`,
+          `- promise_source: guess the source (manifesto | speech | press_release | inauguration | other)`,
+          `Return ONLY a valid JSON array. No preamble, no markdown fences.`
+        ].filter(Boolean).join('\n');
+
+        // 3. Call AI
+        const aiJson = await openRouterChat({
+          messages: [
+            { role: 'system', content: 'Return only strict JSON. Extract at least 3-5 major promises if possible.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 3000,
+        });
+
+        const content = aiJson?.choices?.[0]?.message?.content || '';
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed)) throw new Error('Bad JSON format returned');
+
+        apPromises = parsed;
+        
+        // 4. Render
+        if (apPromises.length === 0) {
+          statusEl.innerHTML = `No specific trackable promises found for ${escapeHtml(selectedOfficial.full_name)}.`;
+        } else {
+          statusEl.innerHTML = `Found <strong style="color:var(--green-light);">${apPromises.length}</strong> trackable promises.`;
+          renderApPromises();
+        }
+
+      } catch (err) {
+        console.error(err);
+        statusEl.innerHTML = `<span style="color:var(--red);">Error: ${err.message}</span>`;
+        showToast('Auto-populate failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🤖 AI Auto-Populate';
+      }
+    };
+
+    function renderApPromises() {
+      const resultsDiv = el('ap-results');
+      const tbody = el('ap-tbody');
+      
+      resultsDiv.style.display = 'block';
+      tbody.innerHTML = apPromises.map((p, idx) => `
+        <tr>
+          <td style="color:var(--muted);font-size:.8rem;">${idx + 1}</td>
+          <td style="max-width:520px;white-space:normal;">
+            <div style="font-weight:600;">${escapeHtml(p.promise_title || '')}</div>
+            <div style="font-size:.8rem;color:var(--muted);margin-top:4px;">${escapeHtml(p.promise_detail || '')}</div>
+          </td>
+          <td>${escapeHtml(p.promise_category || '')}</td>
+          <td>${escapeHtml(p.measurability || '')}</td>
+          <td><button class="btn btn-sm" onclick="importOneAp(${idx})">Import</button></td>
+        </tr>
+      `).join('');
+    }
+
+    window.importOneAp = async (idx) => {
+      const p = apPromises[idx];
+      if (!p) return;
+      const payload = {
+        official_id: selectedOfficialId,
+        promise_title: (p.promise_title || '').trim(),
+        promise_detail: (p.promise_detail || '').trim() || null,
+        promise_category: (p.promise_category || 'Other').trim(),
+        status: 'pending',
+        progress_percent: 0,
+        promise_date: null,
+        promise_source: p.promise_source || 'other',
+        evidence_url: null,
+        verified_by: 'ai_agent',
+        last_updated: new Date().toISOString(),
+      };
+      if (!payload.promise_title) { showToast('Missing title.', 'error'); return; }
+      const { error } = await supabase.from('official_promises').insert(payload);
+      if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
+      showToast('Imported.', 'success');
+      await loadPromises();
+    };
+
+    window.importAllAp = async () => {
+      if (!apPromises.length) return;
+      const rows = apPromises
+        .map((p) => ({
+          official_id: selectedOfficialId,
+          promise_title: (p.promise_title || '').trim(),
+          promise_detail: (p.promise_detail || '').trim() || null,
+          promise_category: (p.promise_category || 'Other').trim(),
+          status: 'pending',
+          progress_percent: 0,
+          promise_date: null,
+          promise_source: p.promise_source || 'other',
+          evidence_url: null,
+          verified_by: 'ai_agent',
+          last_updated: new Date().toISOString(),
+        }))
+        .filter((r) => r.promise_title);
+      if (!rows.length) return;
+      const { error } = await supabase.from('official_promises').insert(rows);
+      if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
+      showToast(`Imported ${rows.length} promises.`, 'success');
+      
+      // Clear the list after successful import
+      apPromises = [];
+      el('ap-results').style.display = 'none';
+      el('ap-status').innerHTML = 'Promises imported successfully.';
+      
+      await loadPromises();
+    };
+
+    // ── BULK AUTO-POPULATE ──
+    let bulkIsRunning = false;
+    let bulkShouldStop = false;
+
+    window.openBulkModal = () => {
+      if (!filteredOfficials || !filteredOfficials.length) {
+        showToast('No officials found in current filter.', 'error');
+        return;
+      }
+      bulkShouldStop = false;
+      bulkIsRunning = false;
+      el('bulk-modal').style.display = 'flex';
+      el('bulk-status').textContent = `Ready to process ${filteredOfficials.length} official(s).`;
+      el('bulk-progress').style.width = '0%';
+      el('bulk-log').innerHTML = '';
+      el('bulk-start-btn').disabled = false;
+      el('bulk-stop-btn').disabled = true;
+    };
+
+    window.closeBulkModal = () => {
+      if (!bulkIsRunning) {
+        el('bulk-modal').style.display = 'none';
+        if (selectedOfficialId) loadPromises(); // refresh table if they processed the currently selected guy
+      }
+    };
+
+    window.stopBulkAp = () => {
+      bulkShouldStop = true;
+      logBulk('<span style="color:var(--gold);">Stopping gracefully after current item...</span>');
+    };
+
+    function logBulk(msg) {
+      const logEl = el('bulk-log');
+      const div = document.createElement('div');
+      div.innerHTML = msg;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    window.startBulkAp = async () => {
+      if (bulkIsRunning) return;
+      bulkIsRunning = true;
+      bulkShouldStop = false;
+      el('bulk-start-btn').disabled = true;
+      el('bulk-stop-btn').disabled = false;
+
+      const officialsToProcess = [...filteredOfficials];
+      const total = officialsToProcess.length;
+      let processed = 0;
+      let skipped = 0;
+      let imported = 0;
+      let errors = 0;
+
+      logBulk(`Started bulk processing for ${total} officials...`);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        logBulk('<span style="color:var(--red);">Authentication error. Stopping.</span>');
+        bulkIsRunning = false;
+        return;
+      }
+
+      for (let i = 0; i < total; i++) {
+        if (bulkShouldStop) {
+          logBulk('<span style="color:var(--gold);">Process stopped by user.</span>');
+          break;
+        }
+
+        const o = officialsToProcess[i];
+        processed++;
+        const pct = Math.round((processed / total) * 100);
+        el('bulk-progress').style.width = `${pct}%`;
+        el('bulk-status').textContent = `Processing ${processed} of ${total}: ${o.full_name}...`;
+
+        // 1. Check if official already has promises
+        try {
+          const { count, error: countErr } = await supabase
+            .from('official_promises')
+            .select('*', { count: 'exact', head: true })
+            .eq('official_id', o.id);
+            
+          if (countErr) throw countErr;
+          
+          if (count > 0) {
+            skipped++;
+            logBulk(`Skipped: ${escapeHtml(o.full_name)} (Already has ${count} promises)`);
+            continue; // Skip to next official
+          }
+        } catch (err) {
+          errors++;
+          logBulk(`<span style="color:var(--red);">Error checking DB for ${escapeHtml(o.full_name)}: ${err.message}</span>`);
+          continue;
+        }
+
+        // 2. Fetch context
+        try {
+          const ctxRes = await fetch('/api/fetch-mandate-context.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              name: o.full_name,
+              role: o.role,
+              state: o.states?.name || '',
+              website: o.website || ''
+            }),
+          });
+          
+          const ctxJson = await ctxRes.json().catch(() => null);
+          if (!ctxRes.ok) throw new Error(ctxJson?.error || 'Context fetch failed');
+          
+          const contexts = ctxJson.contexts || [];
+          let contextText = contexts.map(c => `=== SOURCE: ${c.source} ===\n${c.text}\n`).join('\n');
+          if (!contextText) contextText = "No web context found. Rely on your base knowledge.";
+
+          const prompt = [
+            `You are a Nigerian civic-tech analyst. Your goal is to compile a "Mandate Scorecard" for the following official:`,
+            `Name: ${o.full_name}`,
+            `Role: ${o.role}`,
+            o.states?.name ? `State: ${o.states.name}` : '',
+            ``,
+            `Below is context gathered from the web (Wikipedia, trackers, official sites).`,
+            `Extract every discrete, trackable promise, campaign pledge, or official mandate for this official.`,
+            `If the context is empty, use your training data to list their known major campaign promises or statutory mandates.`,
+            ``,
+            contextText,
+            ``,
+            `For each promise, return a JSON object with these fields:`,
+            `- promise_title: a short, specific headline (max 80 chars)`,
+            `- promise_detail: the original or paraphrased full commitment`,
+            `- promise_category: one of [Infrastructure, Education, Health, Security, Economy, Governance, Agriculture, Technology, Other]`,
+            `- measurability: high | medium | low`,
+            `- promise_source: guess the source (manifesto | speech | press_release | inauguration | other)`,
+            `Return ONLY a valid JSON array. No preamble, no markdown fences.`
+          ].filter(Boolean).join('\n');
+
+          // 3. Call AI
+          const aiJson = await openRouterChat({
+            messages: [
+              { role: 'system', content: 'Return only strict JSON. Extract at least 3-5 major promises if possible.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 3000,
+          });
+
+          const content = aiJson?.choices?.[0]?.message?.content || '';
+          const parsed = JSON.parse(content);
+          if (!Array.isArray(parsed)) throw new Error('Bad JSON format returned');
+
+          // 4. Save to Supabase
+          if (parsed.length === 0) {
+            logBulk(`<span style="color:var(--muted);">No promises found for ${escapeHtml(o.full_name)}.</span>`);
+          } else {
+            const rows = parsed
+              .map((p) => ({
+                official_id: o.id,
+                promise_title: (p.promise_title || '').trim(),
+                promise_detail: (p.promise_detail || '').trim() || null,
+                promise_category: (p.promise_category || 'Other').trim(),
+                status: 'pending',
+                progress_percent: 0,
+                promise_date: null,
+                promise_source: p.promise_source || 'other',
+                evidence_url: null,
+                verified_by: 'ai_agent',
+                last_updated: new Date().toISOString(),
+              }))
+              .filter((r) => r.promise_title);
+
+            if (rows.length > 0) {
+              const { error: insertErr } = await supabase.from('official_promises').insert(rows);
+              if (insertErr) throw insertErr;
+              imported += rows.length;
+              logBulk(`<span style="color:var(--green-light);">Saved ${rows.length} promises for ${escapeHtml(o.full_name)}.</span>`);
+            }
+          }
+        } catch (err) {
+          errors++;
+          logBulk(`<span style="color:var(--red);">Error processing ${escapeHtml(o.full_name)}: ${err.message}</span>`);
+        }
+
+        // Wait before processing next official to avoid rate limits
+        if (i < total - 1 && !bulkShouldStop) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+
+      bulkIsRunning = false;
+      el('bulk-stop-btn').disabled = true;
+      el('bulk-start-btn').disabled = false;
+      el('bulk-start-btn').textContent = 'Restart';
+      el('bulk-status').textContent = `Finished processing.`;
+      
+      logBulk(`<strong>Done.</strong> Processed: ${processed}. Skipped: ${skipped}. Promises imported: ${imported}. Errors: ${errors}.`);
+      showToast(`Bulk processing complete. Imported ${imported} promises.`, 'success');
     };
 
     await loadOfficials();

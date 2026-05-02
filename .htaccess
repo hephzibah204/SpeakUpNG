@@ -3,7 +3,25 @@
 # 1) files directly in web root (recommended)
 # 2) files under /public (legacy)
 
+Options -Indexes
+ErrorDocument 404 /404.html
+
 RewriteEngine On
+
+# Security headers (best-effort; ignored if mod_headers is disabled)
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+</IfModule>
+
+# Block dotfiles and sensitive artifacts
+RewriteRule "(^|/)\.(?!well-known/)" - [F,L]
+RewriteRule ^\.tmp_evote_docx_extract/ - [F,L]
+RewriteRule ^data/.*\.sql$ - [F,L]
+RewriteRule \.(?:sql|sqlite|db|bak|backup|old|log|ini|yml|yaml|env|zip|tar|gz|tgz|rar|7z|docx)$ - [F,L]
 
 # Block direct access to server config files
 RewriteRule ^config/ - [F,L]
@@ -15,6 +33,9 @@ RewriteRule ^index\.html$ /%1 [R=301,L]
 # Redirect .html URLs to extensionless equivalents
 RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
 RewriteRule ^ /%1 [R=301,L]
+
+# Avoid directory listing for /admin (send to login)
+RewriteRule ^admin/?$ /admin/login [R=302,L]
 
 # Keep real files/directories untouched
 RewriteCond %{REQUEST_FILENAME} -f [OR]

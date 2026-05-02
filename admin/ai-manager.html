@@ -149,6 +149,7 @@
     <button class="ai-tab" data-tab="sql">🗄️ SQL Patcher</button>
     <button class="ai-tab" data-tab="audit">📊 Site Audit</button>
     <button class="ai-tab" data-tab="schedule">⏰ Scheduler</button>
+    <button class="ai-tab" data-tab="settings">⚙️ Settings</button>
   </div>
 
   <!-- ════════ MONITOR ════════ -->
@@ -348,6 +349,26 @@
       </a>
     </div>
   </div>
+
+  <!-- ════════ SETTINGS ════════ -->
+  <div id="tab-settings" style="display:none;" class="fade-up">
+    <div class="ai-card">
+      <span class="ai-label">SUPABASE SERVICE ROLE KEY</span>
+      <p style="font-size:.83rem;color:var(--muted);margin-bottom:1rem;">
+        The Service Role Key bypasses Row-Level Security. It is strictly required for background CLI scripts (like the <code style="color:var(--green-light)">scripts/populate_all_mandates.php</code> daemon) to insert data. 
+        <br><br>
+        <strong>⚠️ WARNING:</strong> Do NOT use your Anon Key here. Do NOT share this key. It grants full administrative access to your database.
+      </p>
+      
+      <div style="display:flex;gap:.6rem;align-items:flex-start;flex-direction:column;">
+        <input type="password" id="service-key-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5c..." 
+          style="width:100%;max-width:600px;padding:.8rem 1rem;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;color:var(--white);font-size:.85rem;font-family:monospace;outline:none;">
+        <button class="ai-btn ai-btn-green" id="btn-save-secrets" style="margin-top:.5rem;">💾 Save Key Securely</button>
+      </div>
+      <div id="secrets-status" style="font-size:.78rem;margin-top:.8rem;font-weight:600;"></div>
+    </div>
+  </div>
+
 </div><!-- /admin-main -->
 
 <script type="module">
@@ -493,7 +514,7 @@ document.querySelectorAll('.ai-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.ai-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['monitor','articles','social','sql','audit','schedule'].forEach(t => {
+    ['monitor','articles','social','sql','audit','schedule','settings'].forEach(t => {
       const el = document.getElementById(`tab-${t}`);
       if (el) el.style.display = t === btn.dataset.tab ? '' : 'none';
     });
@@ -872,6 +893,45 @@ function renderScanHistory() {
 // Make showToast available globally for inline onclick
 window.showToast = showToast;
 loadExistingAlerts();
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-save-secrets').addEventListener('click', async () => {
+  const key = document.getElementById('service-key-input').value.trim();
+  if (!key) return showToast('Please paste the Service Role Key first', 'warn');
+  
+  const btn = document.getElementById('btn-save-secrets');
+  const status = document.getElementById('secrets-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-sm"></span> Saving…';
+  status.textContent = '';
+  
+  try {
+    const res = await fetch('/api/save-secrets.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ service_role_key: key })
+    });
+    const data = await res.json();
+    
+    if (res.ok && data.ok) {
+      status.textContent = '✅ Key successfully saved to config/secrets.php! You can now run background scripts.';
+      status.style.color = 'var(--green-light)';
+      document.getElementById('service-key-input').value = '';
+      showToast('Secrets updated');
+    } else {
+      throw new Error(data.error || 'Failed to save');
+    }
+  } catch (e) {
+    status.textContent = `❌ ${e.message}`;
+    status.style.color = '#e84040';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Key Securely';
+  }
+});
 </script>
 </body>
 </html>
