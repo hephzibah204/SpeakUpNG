@@ -1181,7 +1181,8 @@ function renderAbout() {
   const bio = o.profile_bio || o.bio;
   if (bio) {
     document.getElementById('bio-section').style.display='block';
-    document.getElementById('bio-text').textContent = bio;
+    const safe = escapeHtml(bio).replace(/\n{2,}/g, '</p><p style="margin-top:.85rem;">').replace(/\n/g, '<br>');
+    document.getElementById('bio-text').innerHTML = `<p style="margin:0;">${safe}</p>`;
   }
 
   const links = [];

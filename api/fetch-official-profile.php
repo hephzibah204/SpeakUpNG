@@ -126,6 +126,28 @@ function nr_commons_file_url(string $filename): string {
   return 'https://commons.wikimedia.org/wiki/Special:FilePath/' . rawurlencode($filename);
 }
 
+function nr_wiki_title_from_entity(array $entity): string {
+  $sitelinks = $entity['sitelinks'] ?? null;
+  if (!is_array($sitelinks)) return '';
+  $enwiki = $sitelinks['enwiki'] ?? null;
+  if (!is_array($enwiki)) return '';
+  $title = $enwiki['title'] ?? '';
+  return is_string($title) ? trim($title) : '';
+}
+
+function nr_wikipedia_summary(string $title, string $ua): array {
+  $title = trim($title);
+  if ($title === '') return ['ok' => false, 'extract' => '', 'url' => ''];
+  $sumUrl = 'https://en.wikipedia.org/api/rest_v1/page/summary/' . rawurlencode($title);
+  $sum = nr_http_json($sumUrl, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 20);
+  if (!$sum['ok'] || !is_array($sum['json'])) return ['ok' => false, 'extract' => '', 'url' => ''];
+  $extract = (string)($sum['json']['extract'] ?? '');
+  $url = '';
+  $cu = $sum['json']['content_urls']['desktop']['page'] ?? '';
+  if (is_string($cu) && $cu !== '') $url = $cu;
+  return ['ok' => true, 'extract' => trim($extract), 'url' => $url];
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') nr_json(405, ['ok' => false, 'error' => 'Method not allowed']);
 nr_require_admin();
 
@@ -160,6 +182,8 @@ $youtube = nr_claim_string($entity, 'P2397');
 $tiktok = nr_handle(nr_claim_string($entity, 'P7085'));
 $linkedin = nr_claim_string($entity, 'P6634');
 $dob = nr_claim_time_ymd($entity, 'P569');
+$wikiTitle = nr_wiki_title_from_entity($entity);
+$wiki = $wikiTitle ? nr_wikipedia_summary($wikiTitle, $ua) : ['ok' => false, 'extract' => '', 'url' => ''];
 
 $profile = [
   'source' => 'wikidata',
@@ -168,7 +192,8 @@ $profile = [
   'party' => null,
   'role' => null,
   'tier' => null,
-  'bio' => null,
+  'bio' => ($wiki['ok'] && $wiki['extract'] !== '') ? $wiki['extract'] : null,
+  'wiki_url' => ($wiki['ok'] && $wiki['url'] !== '') ? $wiki['url'] : null,
   'office_start' => null,
   'photo_url' => $imageName ? nr_commons_file_url($imageName) : null,
   'website' => $website ?: null,
@@ -184,4 +209,3 @@ $profile = [
 ];
 
 nr_json(200, ['ok' => true, 'profile' => $profile]);
-

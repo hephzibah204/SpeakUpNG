@@ -35,6 +35,32 @@
 
     <div class="section" style="margin-top:1rem;">
       <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;">
+        <div>
+          <div style="font-weight:700;">Bulk: Governors Biographies</div>
+          <div style="color:var(--muted);font-size:.85rem;margin-top:.25rem;">Generates expanded biographies and saves to officials.profile_bio (public About tab).</div>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:end;">
+          <div>
+            <label class="form-label">Mode</label>
+            <select class="form-control" id="bulk-mode" style="min-width:220px;">
+              <option value="missing_only">Missing only</option>
+              <option value="regenerate_all">Regenerate all</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Limit</label>
+            <input class="form-control" id="bulk-limit" type="number" min="1" max="3000" value="80" style="width:120px;">
+          </div>
+          <button class="btn btn-green" style="height:42px;" onclick="bulkGenerateGovernors()" id="bulk-start-btn">Generate Governors</button>
+          <button class="btn" style="height:42px;" onclick="stopBulk()" id="bulk-stop-btn" disabled>Stop</button>
+        </div>
+      </div>
+      <div id="bulk-status" style="margin-top:.6rem;color:var(--muted);font-size:.85rem;"></div>
+      <div id="bulk-log" style="margin-top:.6rem;display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:.8rem;max-height:280px;overflow:auto;font-size:.85rem;line-height:1.6;"></div>
+    </div>
+
+    <div class="section" style="margin-top:1rem;">
+      <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;">
         <div style="font-weight:700;">Generated JSON</div>
         <button class="btn" onclick="saveProfile()">Save To Database</button>
       </div>
@@ -44,12 +70,14 @@
   </div>
 
   <script type="module">
-    import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat } from './js/admin-common.js';
+    import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat, adminApiJson } from './js/admin-common.js';
 
     let officials = [];
     let filteredOfficials = [];
     let selectedOfficialId = '';
     let selectedOfficial = null;
+    let bulkIsRunning = false;
+    let bulkShouldStop = false;
 
     const el = (id) => document.getElementById(id);
 
@@ -60,7 +88,7 @@
     async function loadOfficials() {
       const { data, error } = await supabase
         .from('officials')
-        .select('id,full_name,role,tier,party,states(name),profile_generated,profile_verified,profile_updated_at')
+        .select('id,full_name,role,tier,party,states(name),profile_bio,profile_generated,profile_verified,profile_updated_at')
         .eq('status', 'active')
         .order('full_name')
         .limit(3000);
@@ -112,17 +140,27 @@
     window.generateProfile = async () => {
       if (!selectedOfficialId) { showToast('Select an official first.', 'error'); return; }
 
+      let wikiBio = '';
+      let wikiUrl = '';
+      try {
+        const res = await adminApiJson('/api/fetch-official-profile.php', { method: 'POST', body: { name: selectedOfficial?.full_name || '' } });
+        wikiBio = String(res?.profile?.bio || '').trim();
+        wikiUrl = String(res?.profile?.wiki_url || '').trim();
+      } catch {}
+
       const context = `Official: ${selectedOfficial?.full_name || ''}, ${selectedOfficial?.role || ''}, ${selectedOfficial?.states?.name || ''}, ${selectedOfficial?.party || ''}`.trim();
       const prompt = [
         'You are a Nigerian political researcher. Generate a factual profile for the following official.',
         'Return ONLY valid JSON with this structure:',
         '{',
-        '"bio": "Three concise paragraphs covering background, political rise, and current office.",',
+        '"bio": "A detailed expanded biography in 8-12 paragraphs, separated by blank lines. Use only facts you are confident about.",',
         '"career": [{ "role_title": "", "organisation": "", "start_year": 0, "end_year": 0, "category": "" }],',
         '"education": [{ "institution": "", "degree": "", "field": "", "year": 0 }],',
         '"achievements": [{ "title": "", "description": "", "year": 0, "category": "" }]',
         '}',
         'If you are uncertain about a specific fact, omit that field rather than fabricate.',
+        wikiBio ? `Wikipedia extract (use as grounding facts):\n${wikiBio}` : '',
+        wikiUrl ? `Wikipedia URL: ${wikiUrl}` : '',
         context,
       ].join('\n');
 
@@ -133,7 +171,7 @@
             { role: 'user', content: prompt },
           ],
           temperature: 0.2,
-          max_tokens: 2500,
+          max_tokens: 3500,
         });
         const content = json?.choices?.[0]?.message?.content || '';
         const parsed = JSON.parse(content);
@@ -221,6 +259,128 @@
       if (idx >= 0) officials[idx] = selectedOfficial;
       renderMeta();
       showToast('Saved.', 'success');
+    };
+
+    function bulkLog(html) {
+      const box = el('bulk-log');
+      if (!box) return;
+      box.style.display = 'block';
+      const row = document.createElement('div');
+      row.innerHTML = html;
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function governorLike(o) {
+      const tier = String(o?.tier || '').toLowerCase();
+      const role = String(o?.role || '').toLowerCase();
+      if (tier !== 'state_executive') return false;
+      return role.includes('governor');
+    }
+
+    async function generateExpandedBioForOfficial(o) {
+      const name = String(o?.full_name || '').trim();
+      let wikiBio = '';
+      let wikiUrl = '';
+      try {
+        const res = await adminApiJson('/api/fetch-official-profile.php', { method: 'POST', body: { name } });
+        wikiBio = String(res?.profile?.bio || '').trim();
+        wikiUrl = String(res?.profile?.wiki_url || '').trim();
+      } catch {}
+
+      const prompt = [
+        'Write an expanded biography for a Nigerian governor.',
+        'Return ONLY valid JSON:',
+        '{ "bio": "..." }',
+        'Rules:',
+        '- 8-12 paragraphs, separated by blank lines.',
+        '- Neutral tone, no praise language.',
+        '- Use ONLY the provided extract + the metadata below as factual sources.',
+        '- Do not invent dates, offices, awards, schools, or events not present in the extract.',
+        '- If the extract is short, write fewer paragraphs rather than padding with new facts.',
+        wikiBio ? `Wikipedia extract:\n${wikiBio}` : 'Wikipedia extract: (none)',
+        wikiUrl ? `Wikipedia URL: ${wikiUrl}` : '',
+        `Metadata: ${name} · ${String(o?.role || '')} · ${String(o?.states?.name || '')} · ${String(o?.party || '')}`.trim(),
+      ].filter(Boolean).join('\n');
+
+      const json = await openRouterChat({
+        messages: [
+          { role: 'system', content: 'Return only strict JSON.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 2200,
+      });
+
+      const content = json?.choices?.[0]?.message?.content || '';
+      const parsed = JSON.parse(content);
+      const bio = typeof parsed?.bio === 'string' ? parsed.bio.trim() : '';
+      return { bio, wikiUrl };
+    }
+
+    window.stopBulk = () => { bulkShouldStop = true; };
+
+    window.bulkGenerateGovernors = async () => {
+      if (bulkIsRunning) return;
+      const mode = String(el('bulk-mode')?.value || 'missing_only');
+      const lim = Math.max(1, Math.min(3000, Number(el('bulk-limit')?.value || 80) || 80));
+      const targetsAll = officials.filter(governorLike);
+      const targets = targetsAll
+        .filter((o) => {
+          if (mode === 'regenerate_all') return true;
+          return !String(o?.profile_bio || '').trim();
+        })
+        .slice(0, lim);
+
+      if (!targets.length) { showToast('No governors found for this mode.', 'error'); return; }
+
+      bulkIsRunning = true;
+      bulkShouldStop = false;
+      el('bulk-start-btn').disabled = true;
+      el('bulk-stop-btn').disabled = false;
+      el('bulk-status').textContent = `Starting… ${targets.length} governors queued (${mode}).`;
+      el('bulk-log').innerHTML = '';
+      el('bulk-log').style.display = 'block';
+
+      let processed = 0;
+      let updated = 0;
+      let skipped = targetsAll.length - targets.length;
+      let errors = 0;
+
+      for (let i = 0; i < targets.length; i++) {
+        if (bulkShouldStop) break;
+        const o = targets[i];
+        processed++;
+        el('bulk-status').textContent = `Generating (${i + 1}/${targets.length}): ${o.full_name}`;
+        try {
+          const { bio, wikiUrl } = await generateExpandedBioForOfficial(o);
+          if (!bio) {
+            bulkLog(`<span style="color:var(--gold);">No bio generated:</span> ${o.full_name}${wikiUrl ? ` · <a href="${wikiUrl}" target="_blank" rel="noopener noreferrer">wikipedia</a>` : ''}`);
+            continue;
+          }
+          const now = new Date().toISOString();
+          const { error: upErr } = await supabase
+            .from('officials')
+            .update({ profile_bio: bio, profile_generated: true, profile_verified: false, profile_updated_at: now })
+            .eq('id', o.id);
+          if (upErr) throw upErr;
+          updated++;
+          const idx = officials.findIndex((x) => x.id === o.id);
+          if (idx >= 0) officials[idx] = { ...officials[idx], profile_generated: true, profile_verified: false, profile_updated_at: now };
+          bulkLog(`<span style="color:var(--green-light);">Saved:</span> ${o.full_name}${wikiUrl ? ` · <a href="${wikiUrl}" target="_blank" rel="noopener noreferrer">wikipedia</a>` : ''}`);
+        } catch (e) {
+          errors++;
+          bulkLog(`<span style="color:var(--red);">Error:</span> ${o.full_name} (${String(e?.message || 'failed')})`);
+        }
+        if (!bulkShouldStop) await new Promise((r) => setTimeout(r, 600));
+      }
+
+      bulkIsRunning = false;
+      el('bulk-stop-btn').disabled = true;
+      el('bulk-start-btn').disabled = false;
+      el('bulk-status').textContent = bulkShouldStop ? 'Stopped.' : 'Finished.';
+      bulkLog(`<strong>Done.</strong> Processed: ${processed}. Updated: ${updated}. Skipped: ${skipped}. Errors: ${errors}.`);
+      showToast(`Bulk governors bios complete. Updated ${updated}.`, errors ? 'error' : 'success');
     };
 
     await loadOfficials();
