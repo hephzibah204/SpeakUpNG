@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promise Detail - evote.ng</title>
+<meta name="description" content="Full promise details, evidence, and public review for a mandate item on evote.ng.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="/promise" id="canonical-link">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="evote.ng">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" content="Promise Detail - evote.ng" id="og-title">
+<meta property="og:description" content="Full promise details, evidence, and public review for a mandate item on evote.ng." id="og-description">
+<meta property="og:image" content="/images/logo.png" id="og-image">
+<meta property="og:url" content="/promise" id="og-url">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Promise Detail - evote.ng" id="twitter-title">
+<meta name="twitter:description" content="Full promise details, evidence, and public review for a mandate item on evote.ng." id="twitter-description">
+<meta name="twitter:image" content="/images/logo.png" id="twitter-image">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  (function setCanonicalMeta() {
+    var origin = window.location.origin || '';
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id') || '';
+    var url = origin + '/promise' + (id ? ('?id=' + encodeURIComponent(id)) : '');
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    if (canonical) canonical.href = url;
+    if (ogUrl) ogUrl.setAttribute('content', url);
+  })();
+</script>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+  <div class="nav-links" id="nav-links">
+    <a href="/" class="nav-link show-mobile">Officials</a>
+    <a href="/agencies" class="nav-link">Agencies</a>
+    <a href="/leaderboard" class="nav-link">Rankings</a>
+    <a href="/polls" class="nav-link">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link">News</a>
+  </div>
+</nav>
+<div class="toast" id="toast"></div>
+
+<div class="section">
+  <div class="container" style="max-width:980px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Mandate Promise</div>
+        <h1 id="promise-title" style="margin:.3rem 0 0;font-family:Syne,sans-serif;font-weight:900;letter-spacing:-.02em;">Loading…</h1>
+      </div>
+      <a id="back-to-official" href="/" class="btn btn-ghost" style="white-space:nowrap;display:none;">← Back to official</a>
+    </div>
+
+    <div class="card" style="margin-top:1rem;">
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem;">
+        <span class="report-tag on" id="promise-category" style="display:none;"></span>
+        <span class="status-badge" id="promise-status" style="display:none;"></span>
+        <span style="font-size:.8rem;color:var(--muted);" id="promise-meta"></span>
+      </div>
+      <div id="promise-detail" style="font-size:.95rem;line-height:1.9;color:var(--white);"></div>
+      <div id="promise-links" style="margin-top:1rem;display:flex;gap:.7rem;flex-wrap:wrap;"></div>
+    </div>
+
+    <div class="card" style="margin-top:1.2rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem;">Public Opinion</div>
+          <div style="font-size:.92rem;color:rgba(255,255,255,.9);line-height:1.6;">Help verify this promise. One review per device.</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Sentiment Score</div>
+          <div id="sentiment-score" style="font-size:1.4rem;font-weight:900;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">
+            <span id="sentiment-supports">0</span> supports · <span id="sentiment-contradicts">0</span> contradicts · <span id="sentiment-total">0</span> total
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:.8rem;margin-top:1rem;">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <button class="btn" id="btn-supports" onclick="pickStance('supports')">✅ Supports</button>
+          <button class="btn" id="btn-contradicts" style="color:#e57368;border-color:#e5736844;" onclick="pickStance('contradicts')">❌ Contradicts</button>
+        </div>
+        <textarea id="opinion-comment" class="form-control" rows="4" placeholder="Optional comment (what you know, links, context)…" style="resize:vertical;"></textarea>
+        <button class="submit-btn" id="submit-opinion-btn" onclick="submitOpinion()">Submit Opinion</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1.2rem;">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.7rem;">Recent Community Notes</div>
+      <div id="opinions-list"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase, getAnonId, showToast } from './js/supabase-client.js';
+import { getDeviceHash } from './js/device-fingerprint.js';
+
+const params = new URLSearchParams(window.location.search);
+const promiseId = (params.get('id') || '').trim();
+if (!promiseId) window.location.replace('/');
+
+const S = { stance: '', promise: null, official: null };
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function sanitizeUrl(url) {
+  const s = String(url || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s, window.location.origin);
+    if (!/^https?:$/.test(u.protocol)) return '';
+    return u.href;
+  } catch {
+    return '';
+  }
+}
+
+function statusBadgeClass(status) {
+  const s = String(status || '').trim();
+  if (!s) return 'status-badge';
+  if (s === 'fulfilled') return 'status-badge s-verified';
+  if (s === 'in_progress') return 'status-badge s-escalated';
+  if (s === 'broken') return 'status-badge s-rejected';
+  if (s === 'disputed') return 'status-badge s-pending';
+  return 'status-badge s-pending';
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  try {
+    const dt = new Date(d);
+    if (!Number.isFinite(dt.getTime())) return '';
+    return dt.toLocaleDateString();
+  } catch { return ''; }
+}
+
+window.pickStance = (stance) => {
+  S.stance = stance;
+  document.getElementById('btn-supports').classList.toggle('btn-ghost', stance !== 'supports');
+  document.getElementById('btn-contradicts').classList.toggle('btn-ghost', stance !== 'contradicts');
+};
+
+function renderPromise() {
+  const p = S.promise;
+  if (!p) return;
+  document.getElementById('promise-title').textContent = p.promise_title || 'Promise';
+  document.title = `${p.promise_title || 'Promise'} - evote.ng`;
+
+  const catEl = document.getElementById('promise-category');
+  if (p.promise_category) { catEl.style.display = ''; catEl.textContent = p.promise_category; }
+  const stEl = document.getElementById('promise-status');
+  if (p.status) { stEl.style.display = ''; stEl.className = statusBadgeClass(p.status); stEl.textContent = p.status; }
+
+  const meta = [];
+  if (S.official?.full_name) meta.push(`${S.official.full_name}${S.official.role ? ` (${S.official.role})` : ''}`);
+  if (p.promise_date) meta.push(`Promise date: ${fmtDate(p.promise_date)}`);
+  if (p.promise_source) meta.push(`Source: ${p.promise_source}`);
+  document.getElementById('promise-meta').textContent = meta.join(' · ');
+
+  const detail = String(p.promise_detail || '').trim();
+  document.getElementById('promise-detail').innerHTML = detail
+    ? `<div>${escapeHtml(detail).replace(/\\n\\n+/g, '</div><div style=&quot;margin-top:.85rem;&quot;>').replace(/\\n/g,'<br>')}</div>`
+    : `<div style="color:var(--muted);">No full detail has been added yet for this promise.</div>`;
+
+  const links = [];
+  const ev = sanitizeUrl(p.evidence_url);
+  if (ev) links.push(`<a href="${ev}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">View Evidence →</a>`);
+  if (S.official?.id) links.push(`<a href="/official/id/${encodeURIComponent(S.official.id)}" class="btn btn-ghost btn-sm">View Official →</a>`);
+  document.getElementById('promise-links').innerHTML = links.join('');
+
+  if (S.official?.id) {
+    const back = document.getElementById('back-to-official');
+    back.style.display = '';
+    back.href = `/official/id/${encodeURIComponent(S.official.id)}`;
+  }
+}
+
+async function loadPromise() {
+  const { data: p, error: perr } = await supabase
+    .from('official_promises')
+    .select('id,official_id,promise_title,promise_detail,promise_source,promise_date,promise_category,status,progress_percent,evidence_url,evidence_note,last_updated,created_at')
+    .eq('id', promiseId)
+    .single();
+  if (perr || !p) {
+    document.getElementById('promise-title').textContent = 'Promise not found';
+    document.getElementById('promise-detail').innerHTML = '<div style="color:var(--muted);">This promise does not exist or is not publicly available.</div>';
+    document.getElementById('opinions-list').innerHTML = '<div class="empty">—</div>';
+    return;
+  }
+  S.promise = p;
+
+  const { data: o, error: oerr } = await supabase
+    .from('officials')
+    .select('id,full_name,role,photo_url,states(name)')
+    .eq('id', p.official_id)
+    .limit(1);
+  if (!oerr && Array.isArray(o) && o[0]) S.official = o[0];
+
+  renderPromise();
+}
+
+async function loadSentiment() {
+  const { data, error } = await supabase
+    .from('promise_public_sentiment')
+    .select('promise_id,total_reviews,supports,contradicts,sentiment_score')
+    .eq('promise_id', promiseId)
+    .limit(1);
+  if (error) return;
+  const row = Array.isArray(data) && data[0] ? data[0] : null;
+  const score = row?.sentiment_score;
+  document.getElementById('sentiment-score').textContent = (typeof score === 'number' && Number.isFinite(score)) ? `${Math.round(score)}` : '—';
+  document.getElementById('sentiment-supports').textContent = `${Number(row?.supports || 0)}`;
+  document.getElementById('sentiment-contradicts').textContent = `${Number(row?.contradicts || 0)}`;
+  document.getElementById('sentiment-total').textContent = `${Number(row?.total_reviews || 0)}`;
+}
+
+async function loadOpinionsList() {
+  const { data, error } = await supabase
+    .from('promise_opinions')
+    .select('stance,comment,created_at')
+    .eq('promise_id', promiseId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) {
+    document.getElementById('opinions-list').innerHTML = '<div class="empty">Unable to load community notes right now.</div>';
+    return;
+  }
+  const rows = (data || []).filter((r) => r && String(r.comment || '').trim());
+  if (!rows.length) {
+    document.getElementById('opinions-list').innerHTML = '<div class="empty">No community notes yet.</div>';
+    return;
+  }
+  document.getElementById('opinions-list').innerHTML = rows.map((r) => `
+    <div class="review-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;margin-bottom:.5rem;">
+        <span class="status-badge ${r.stance==='supports'?'s-verified':'s-rejected'}">${r.stance}</span>
+        <span style="font-size:.72rem;color:var(--muted);">${new Date(r.created_at).toLocaleString()}</span>
+      </div>
+      <div style="font-size:.9rem;line-height:1.7;">${escapeHtml(r.comment || '')}</div>
+    </div>
+  `).join('');
+}
+
+window.submitOpinion = async () => {
+  if (!S.stance) { showToast('Pick Supports or Contradicts first.', 'error'); return; }
+  const btn = document.getElementById('submit-opinion-btn');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Submitting...';
+  let deviceHash = null;
+  try { deviceHash = await getDeviceHash({ promise_id: promiseId }); } catch {}
+  if (!deviceHash) {
+    showToast('Unable to generate device identity. Try again.', 'error');
+    btn.disabled = false;
+    btn.textContent = original;
+    return;
+  }
+
+  const comment = document.getElementById('opinion-comment').value.trim() || null;
+  const payload = {
+    promise_id: promiseId,
+    device_hash: deviceHash,
+    anon_id: getAnonId(),
+    stance: S.stance,
+    comment,
+  };
+
+  const { error } = await supabase.from('promise_opinions').insert(payload);
+  if (error) {
+    const msg = String(error.message || '').toLowerCase();
+    if (msg.includes('duplicate') || msg.includes('unique')) {
+      showToast('You already reviewed this promise from this device.', 'error');
+    } else {
+      showToast('Unable to submit opinion right now.', 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = original;
+    return;
+  }
+  showToast('Opinion submitted. Thank you.');
+  document.getElementById('opinion-comment').value = '';
+  btn.textContent = 'Submitted';
+  await Promise.all([loadSentiment(), loadOpinionsList()]);
+};
+
+function wireNav() {
+  const toggle = document.getElementById('nav-toggle');
+  const links = document.getElementById('nav-links');
+  if (!toggle || !links) return;
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+}
+
+wireNav();
+await loadPromise();
+await Promise.all([loadSentiment(), loadOpinionsList()]);
+</script>
+</body>
+</html>

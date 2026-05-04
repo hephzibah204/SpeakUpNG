@@ -298,6 +298,17 @@
           <div style="text-align:right;">
             <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Mandate Score</div>
             <div id="mandate-score" style="font-size:1.8rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
+            <div style="display:flex;gap:.9rem;justify-content:flex-end;margin-top:.45rem;flex-wrap:wrap;">
+              <div style="text-align:right;">
+                <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Public Sentiment</div>
+                <div id="mandate-public-score" style="font-size:1rem;font-weight:800;color:var(--white);font-family:Syne,sans-serif;line-height:1.1;">—</div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem;">Reviews: <span id="mandate-public-count">—</span></div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Final Score</div>
+                <div id="mandate-final-score" style="font-size:1rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1.1;">—</div>
+              </div>
+            </div>
           </div>
           <select id="mandate-filter" class="form-control" style="max-width:140px;padding:.4rem;" onchange="renderMandate()">
             <option value="">All Promises</option>
@@ -605,6 +616,7 @@ let anonOn = true, reportAnonOn = true, mainStar = 0, catStars = {}, alreadyRate
 let reviewPage = 1; const reviewsPerPage = 10;
 let allReviews = [];
 let mandateScoreRow = null;
+let mandatePublicRow = null;
 let mandatePromises = [];
 
 function average(nums) {
@@ -1190,14 +1202,21 @@ function renderAbout() {
 
 async function loadMandate() {
   mandateScoreRow = null;
+  mandatePublicRow = null;
   mandatePromises = [];
   const sumEl = document.getElementById('mandate-summary');
   const scoreEl = document.getElementById('mandate-score');
+  const pubEl = document.getElementById('mandate-public-score');
+  const pubCountEl = document.getElementById('mandate-public-count');
+  const finalEl = document.getElementById('mandate-final-score');
   const gridEl = document.getElementById('mandate-grid');
   if (!sumEl || !scoreEl || !gridEl) return;
 
   sumEl.textContent = 'Loading...';
   scoreEl.textContent = '—';
+  if (pubEl) pubEl.textContent = '—';
+  if (pubCountEl) pubCountEl.textContent = '—';
+  if (finalEl) finalEl.textContent = '—';
   gridEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   const scoreRes = await supabase
@@ -1207,9 +1226,16 @@ async function loadMandate() {
     .limit(1);
   if (!scoreRes.error && Array.isArray(scoreRes.data) && scoreRes.data[0]) mandateScoreRow = scoreRes.data[0];
 
+  const pubRes = await supabase
+    .from('official_public_sentiment')
+    .select('official_id,total_reviews,public_sentiment_score')
+    .eq('official_id', officialId)
+    .limit(1);
+  if (!pubRes.error && Array.isArray(pubRes.data) && pubRes.data[0]) mandatePublicRow = pubRes.data[0];
+
   const promisesRes = await supabase
     .from('official_promises')
-    .select('id,promise_title,promise_category,status,progress_percent,evidence_url')
+    .select('id,promise_title,promise_detail,promise_category,status,progress_percent,evidence_url')
     .eq('official_id', officialId)
     .order('last_updated', { ascending: false })
     .limit(300);
@@ -1227,9 +1253,23 @@ async function loadMandate() {
   const b = Number(mandateScoreRow?.broken || 0);
   const d = Number(mandateScoreRow?.disputed || 0);
   const s = mandateScoreRow?.mandate_score;
+  const prc = Number(mandatePublicRow?.total_reviews || 0);
+  const ps = mandatePublicRow?.public_sentiment_score;
+  const weight = 0.15 * Math.min(1, prc / 50);
 
   sumEl.textContent = total ? `${total} promises · fulfilled ${f} · in progress ${ip} · broken ${b}${d ? ` · disputed ${d}` : ''}` : 'No promises yet.';
   scoreEl.textContent = (typeof s === 'number' && Number.isFinite(s)) ? `${Math.round(s)}` : '—';
+  if (pubEl) pubEl.textContent = (typeof ps === 'number' && Number.isFinite(ps)) ? `${Math.round(ps)}` : '—';
+  if (pubCountEl) pubCountEl.textContent = `${prc || 0}`;
+  if (finalEl) {
+    const base = (typeof s === 'number' && Number.isFinite(s)) ? s : null;
+    const sent = (typeof ps === 'number' && Number.isFinite(ps)) ? ps : null;
+    if (base === null) finalEl.textContent = '—';
+    else {
+      const blended = (sent === null) ? base : ((1 - weight) * base + weight * sent);
+      finalEl.textContent = `${Math.round(blended)}`;
+    }
+  }
   renderMandate();
 }
 
@@ -1261,15 +1301,18 @@ window.renderMandate = () => {
     const prog = Number.isFinite(Number(p.progress_percent)) ? Math.max(0, Math.min(100, Number(p.progress_percent))) : 0;
     const icon = catIcons[p.promise_category] || '📝';
     const statusColor = p.status === 'fulfilled' ? 'var(--green-light)' : p.status === 'broken' ? '#e57368' : p.status === 'in_progress' ? '#e8a020' : 'var(--muted)';
+    const detail = String(p.promise_detail || '').trim();
+    const snip = detail ? (detail.length > 160 ? `${detail.slice(0, 160)}…` : detail) : '';
 
     return `
-    <div class="promise-card fade-up">
+    <div class="promise-card fade-up" style="cursor:pointer;" onclick="openPromise('${p.id}')">
       <div class="promise-header">
         <span class="promise-icon">${icon}</span>
         <span class="status-badge s-${p.status}" style="font-size:.6rem;">${p.status}</span>
       </div>
       <div class="promise-title">${escapeHtml(p.promise_title || '')}</div>
       <div class="promise-meta">${p.promise_category}</div>
+      ${snip ? `<div style="font-size:.82rem;line-height:1.6;color:rgba(255,255,255,.85);margin-top:.45rem;">${escapeHtml(snip)}</div>` : ''}
       
       <div class="promise-progress-wrap">
         <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:.3rem;">
@@ -1281,9 +1324,16 @@ window.renderMandate = () => {
         </div>
       </div>
 
-      ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="promise-link">View Evidence →</a>` : ''}
+      ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="promise-link" onclick="event.stopPropagation()">View Evidence →</a>` : ''}
+      <a href="/promise?id=${encodeURIComponent(p.id)}" class="promise-link" style="margin-top:.5rem;" onclick="event.stopPropagation()">Full details & review →</a>
     </div>`;
   }).join('');
+
+window.openPromise = (promiseId) => {
+  const id = String(promiseId || '').trim();
+  if (!id) return;
+  window.location.href = `/promise?id=${encodeURIComponent(id)}`;
+};
 
   // AI Summary Logic
   if (mandatePromises.length > 3) {
