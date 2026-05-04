@@ -279,6 +279,24 @@
           <div id="bio-text" style="font-size:.9rem;line-height:1.8;color:var(--white);"></div>
         </div>
       </div>
+      <div id="career-section" style="margin-top:1.2rem;display:none;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem;">Career</div>
+          <div id="career-list"></div>
+        </div>
+      </div>
+      <div id="education-section" style="margin-top:1.2rem;display:none;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem;">Education</div>
+          <div id="education-list"></div>
+        </div>
+      </div>
+      <div id="achievements-section" style="margin-top:1.2rem;display:none;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;">
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.6rem;">Achievements</div>
+          <div id="achievements-list"></div>
+        </div>
+      </div>
       <div id="social-section" style="margin-top:1.2rem;display:none;">
         <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;">
           <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.8rem;">Links</div>
@@ -618,6 +636,10 @@ let allReviews = [];
 let mandateScoreRow = null;
 let mandatePublicRow = null;
 let mandatePromises = [];
+let careerRows = [];
+let educationRows = [];
+let achievementRows = [];
+let enrichedLoading = false;
 
 function average(nums) {
   const vals = (nums || []).map(Number).filter((v) => Number.isFinite(v) && v > 0);
@@ -886,6 +908,7 @@ async function loadOfficial() {
   loadReviews();
   loadTrend();
   renderAbout();
+  loadEnrichedProfile();
   loadMandate();
   loadReports();
   document.getElementById('rate-cta').style.display = 'flex';
@@ -925,6 +948,123 @@ function renderHero() {
     <button class="btn btn-ghost" onclick="shareWhatsApp()">🟢 WhatsApp</button>
     <button class="btn btn-ghost" onclick="shareProfile()">↗ Share</button>
   `;
+}
+
+function renderEnrichedProfile() {
+  const careerSec = document.getElementById('career-section');
+  const eduSec = document.getElementById('education-section');
+  const achSec = document.getElementById('achievements-section');
+  const careerEl = document.getElementById('career-list');
+  const eduEl = document.getElementById('education-list');
+  const achEl = document.getElementById('achievements-list');
+  if (!careerSec || !eduSec || !achSec || !careerEl || !eduEl || !achEl) return;
+
+  if (enrichedLoading) {
+    if (!careerRows.length) { careerSec.style.display = 'block'; careerEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>'; }
+    if (!educationRows.length) { eduSec.style.display = 'block'; eduEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>'; }
+    if (!achievementRows.length) { achSec.style.display = 'block'; achEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>'; }
+    return;
+  }
+
+  if (!careerRows.length) {
+    careerSec.style.display = 'none';
+  } else {
+    careerSec.style.display = 'block';
+    careerEl.innerHTML = careerRows.map((r) => {
+      const title = escapeHtml(r.role_title || '');
+      const org = r.organisation ? ` · <span style="color:rgba(255,255,255,.85)">${escapeHtml(r.organisation)}</span>` : '';
+      const sy = Number(r.start_year || 0) || null;
+      const ey = Number(r.end_year || 0) || null;
+      const years = (sy || ey)
+        ? `<span style="color:var(--muted);font-size:.82rem;">${escapeHtml(String(sy || ''))}${(sy || ey) ? '–' : ''}${escapeHtml(String(ey || (r.is_current ? 'Present' : '')))}</span>`
+        : '';
+      return `
+        <div style="padding:.75rem 0;border-top:1px solid rgba(255,255,255,.06);">
+          <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="font-weight:700;">${title}${org}</div>
+            ${years}
+          </div>
+          ${r.category ? `<div style="margin-top:.25rem;font-size:.8rem;color:var(--muted);text-transform:capitalize;">${escapeHtml(r.category)}</div>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  if (!educationRows.length) {
+    eduSec.style.display = 'none';
+  } else {
+    eduSec.style.display = 'block';
+    eduEl.innerHTML = educationRows.map((r) => {
+      const inst = escapeHtml(r.institution || '—');
+      const degree = r.degree ? ` · ${escapeHtml(r.degree)}` : '';
+      const field = r.field ? ` (${escapeHtml(r.field)})` : '';
+      const year = Number(r.year || 0) ? `<span style="color:var(--muted);font-size:.82rem;">${escapeHtml(String(r.year))}</span>` : '';
+      return `
+        <div style="padding:.75rem 0;border-top:1px solid rgba(255,255,255,.06);">
+          <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="font-weight:700;">${inst}${degree}${field}</div>
+            ${year}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  if (!achievementRows.length) {
+    achSec.style.display = 'none';
+  } else {
+    achSec.style.display = 'block';
+    achEl.innerHTML = achievementRows.map((r) => {
+      const title = escapeHtml(r.title || '');
+      const year = Number(r.year || 0) ? `<span style="color:var(--muted);font-size:.82rem;">${escapeHtml(String(r.year))}</span>` : '';
+      const desc = r.description ? `<div style="margin-top:.35rem;font-size:.9rem;line-height:1.7;color:rgba(255,255,255,.88);">${escapeHtml(r.description)}</div>` : '';
+      const url = sanitizeUrl(r.evidence_url);
+      const link = url ? `<div style="margin-top:.45rem;"><a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);font-size:.82rem;">Evidence →</a></div>` : '';
+      const cat = r.category ? `<div style="margin-top:.25rem;font-size:.8rem;color:var(--muted);">${escapeHtml(r.category)}</div>` : '';
+      return `
+        <div style="padding:.75rem 0;border-top:1px solid rgba(255,255,255,.06);">
+          <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="font-weight:700;">${title}</div>
+            ${year}
+          </div>
+          ${cat}
+          ${desc}
+          ${link}
+        </div>`;
+    }).join('');
+  }
+}
+
+async function loadEnrichedProfile() {
+  if (!officialId) return;
+  enrichedLoading = true;
+  renderEnrichedProfile();
+
+  const [careerRes, eduRes, achRes] = await Promise.all([
+    supabase
+      .from('official_career_history')
+      .select('role_title,organisation,start_year,end_year,is_current,category')
+      .eq('official_id', officialId)
+      .order('start_year', { ascending: false })
+      .limit(200),
+    supabase
+      .from('official_education')
+      .select('institution,degree,field,year')
+      .eq('official_id', officialId)
+      .order('year', { ascending: false })
+      .limit(200),
+    supabase
+      .from('official_achievements')
+      .select('title,description,year,category,evidence_url,verified')
+      .eq('official_id', officialId)
+      .order('year', { ascending: false })
+      .limit(200),
+  ]);
+
+  if (!careerRes.error && Array.isArray(careerRes.data)) careerRows = careerRes.data.filter(Boolean);
+  if (!eduRes.error && Array.isArray(eduRes.data)) educationRows = eduRes.data.filter(Boolean);
+  if (!achRes.error && Array.isArray(achRes.data)) achievementRows = achRes.data.filter(Boolean);
+
+  enrichedLoading = false;
+  renderEnrichedProfile();
 }
 
 // ── SCORE CARD ──
