@@ -238,6 +238,61 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="reverify-modal" onclick="if(event.target===this && !reverifyIsRunning) closeReverifyModal()">
+    <div class="modal" style="max-width:780px;">
+      <div class="modal-header">
+        <h2>🔁 Bulk Re-Verify</h2>
+        <button class="modal-close" onclick="if(!reverifyIsRunning) closeReverifyModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="reverify-status" style="font-weight:600;margin-bottom:.5rem;">Ready.</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem;">Runs AI verification across promises and can optionally apply the suggested status/progress.</div>
+
+        <div class="form-grid" style="margin-bottom:1rem;">
+          <div class="span2">
+            <label class="form-label">Target Group</label>
+            <select class="form-control" id="reverify-group">
+              <option value="current_filter">Use current filter</option>
+              <option value="governors">Governors</option>
+              <option value="house_of_assembly">House of Assembly</option>
+              <option value="national_assembly">National Assembly</option>
+              <option value="president">President</option>
+              <option value="agency">Agencies</option>
+              <option value="all">All officials</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Promise Filter</label>
+            <select class="form-control" id="reverify-promise-filter">
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="fulfilled">Fulfilled</option>
+              <option value="broken">Broken</option>
+              <option value="disputed">Disputed</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Apply</label>
+            <select class="form-control" id="reverify-apply">
+              <option value="suggest_only">Suggest only</option>
+              <option value="apply_all">Apply AI suggestions</option>
+              <option value="apply_if_evidence">Apply only if evidence URL exists</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="reverify-progress"></div></div>
+        <div class="bulk-log" id="reverify-log"></div>
+
+        <div style="display:flex;gap:1rem;justify-content:flex-end;">
+          <button class="btn" id="reverify-stop-btn" onclick="stopReverify()" disabled>Stop</button>
+          <button class="btn btn-green" id="reverify-start-btn" onclick="startReverify()">Start</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="promise-modal" onclick="if(event.target===this)closePromiseModal()">
     <div class="modal" style="max-width:720px;">
       <div class="modal-header">
@@ -366,6 +421,10 @@
       <div>
         <label class="form-label">&nbsp;</label>
         <button class="btn-bulk" id="bulk-ap-btn" onclick="openBulkModal()" title="Run AI on multiple officials sequentially">⚡ Bulk Auto-Populate</button>
+      </div>
+      <div>
+        <label class="form-label">&nbsp;</label>
+        <button class="btn-bulk" onclick="openReverifyModal()" title="Re-verify promises with AI and optionally apply updates">🔁 Bulk Re-Verify</button>
       </div>
       <div>
         <label class="form-label">&nbsp;</label>
@@ -703,6 +762,8 @@
       el('verify-modal-body').innerHTML = `<div class="loading"><div class="spinner"></div></div><p style="text-align:center;margin-top:1rem;color:var(--muted);">Analyzing progress for: <br><strong>${p.promise_title}</strong></p>`;
 
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) throw new Error('Not authenticated');
         const res = await fetch('/api/verify-promise-progress.php', {
           method: 'POST',
           headers: {
@@ -731,7 +792,7 @@
           ${v.evidence_url ? `<div style="font-size:.78rem;margin-bottom:1rem;">Source: <a href="${v.evidence_url}" target="_blank" style="color:var(--green-light);word-break:break-all;">${v.evidence_url}</a></div>` : ''}
           <div style="display:flex;gap:.8rem;">
             <button class="btn btn-green btn-sm" style="flex:1;" onclick="applyVerification('${p.id}', '${v.suggested_status}', ${v.suggested_progress_percent}, '${v.evidence_url || ''}')">Apply Suggestion</button>
-            <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="el('verify-modal').style.display='none'">Dismiss</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="el('verify-modal').classList.remove('open')">Dismiss</button>
           </div>
         `;
       } catch (e) {
@@ -749,9 +810,173 @@
       const { error } = await supabase.from('official_promises').update(payload).eq('id', id);
       if (error) { showToast('Update failed.', 'error'); return; }
       
-      el('verify-modal').style.display = 'none';
+      el('verify-modal').classList.remove('open');
       await loadPromises();
       showToast('Promise updated with AI verification! ✓');
+    };
+
+    window.openReverifyModal = () => {
+      reverifyShouldStop = false;
+      reverifyIsRunning = false;
+      el('reverify-modal').classList.add('open');
+      el('reverify-progress').style.width = '0%';
+      el('reverify-log').innerHTML = '';
+      el('reverify-start-btn').disabled = false;
+      el('reverify-stop-btn').disabled = true;
+      el('reverify-status').textContent = 'Ready.';
+    };
+
+    window.closeReverifyModal = () => {
+      if (!reverifyIsRunning) el('reverify-modal').classList.remove('open');
+    };
+
+    window.stopReverify = () => {
+      reverifyShouldStop = true;
+      const logEl = el('reverify-log');
+      const div = document.createElement('div');
+      div.innerHTML = '<span style="color:var(--gold);">Stopping after current item...</span>';
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    function reverifyLog(msg) {
+      const logEl = el('reverify-log');
+      const div = document.createElement('div');
+      div.innerHTML = msg;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    window.startReverify = async () => {
+      if (reverifyIsRunning) return;
+      const group = (el('reverify-group')?.value || 'current_filter').trim();
+      const statusFilter = (el('reverify-promise-filter')?.value || 'all').trim();
+      const applyMode = (el('reverify-apply')?.value || 'suggest_only').trim();
+
+      let targets = [];
+      if (group === 'current_filter') targets = [...filteredOfficialsAll];
+      else if (group === 'all') targets = [...officials];
+      else targets = officials.filter((o) => groupMatches(o, group));
+
+      if (!targets.length) { showToast('No officials found for that selection.', 'error'); return; }
+
+      if (applyMode !== 'suggest_only') {
+        const ok = confirm('This will update promises in the database. Continue?');
+        if (!ok) return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) { showToast('You must be logged in as admin.', 'error'); return; }
+
+      reverifyIsRunning = true;
+      reverifyShouldStop = false;
+      el('reverify-start-btn').disabled = true;
+      el('reverify-stop-btn').disabled = false;
+      el('reverify-status').textContent = `Preparing ${targets.length} official(s)…`;
+      reverifyLog(`Started bulk re-verify: ${escapeHtml(group)} · ${targets.length} officials`);
+
+      let totalPromises = 0;
+      let processed = 0;
+      let applied = 0;
+      let suggested = 0;
+      let errors = 0;
+
+      for (let i = 0; i < targets.length; i++) {
+        if (reverifyShouldStop) break;
+        const o = targets[i];
+        el('reverify-status').textContent = `Loading promises (${i + 1}/${targets.length}): ${o.full_name}`;
+
+        const { data: plist, error: perr } = await supabase
+          .from('official_promises')
+          .select('id,promise_title,status,progress_percent,evidence_url')
+          .eq('official_id', o.id)
+          .order('last_updated', { ascending: false })
+          .limit(500);
+        if (perr) {
+          errors++;
+          reverifyLog(`<span style="color:var(--red);">Error loading promises for ${escapeHtml(o.full_name)}: ${escapeHtml(perr.message || 'failed')}</span>`);
+          continue;
+        }
+
+        const promisesToCheck = (plist || []).filter((p) => p?.id && p?.promise_title && (statusFilter === 'all' || String(p.status || '') === statusFilter));
+        if (!promisesToCheck.length) {
+          reverifyLog(`No promises to verify: ${escapeHtml(o.full_name)}`);
+          continue;
+        }
+
+        totalPromises += promisesToCheck.length;
+
+        for (let j = 0; j < promisesToCheck.length; j++) {
+          if (reverifyShouldStop) break;
+          const p = promisesToCheck[j];
+          processed++;
+          el('reverify-progress').style.width = `${Math.min(100, Math.round((processed / Math.max(1, totalPromises)) * 100))}%`;
+          el('reverify-status').textContent = `Verifying (${processed}/${totalPromises}): ${o.full_name} — ${p.promise_title}`;
+
+          try {
+            const res = await fetch('/api/verify-promise-progress.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({
+                promise_id: p.id,
+                official_name: o.full_name,
+                promise_title: p.promise_title
+              })
+            });
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data?.ok) throw new Error(data?.error || 'Verification failed');
+
+            const v = data.verification || {};
+            const nextStatus = String(v.suggested_status || '').trim();
+            const nextPct = Number(v.suggested_progress_percent);
+            const nextEvidence = v.evidence_url ? String(v.evidence_url) : '';
+            const summary = String(v.ai_summary || '').trim();
+
+            if (!nextStatus || !Number.isFinite(nextPct)) {
+              suggested++;
+              reverifyLog(`<span style="color:var(--gold);">No clear suggestion:</span> ${escapeHtml(o.full_name)} — ${escapeHtml(p.promise_title)}`);
+            } else {
+              const willApply = applyMode === 'apply_all' || (applyMode === 'apply_if_evidence' && !!nextEvidence);
+              if (willApply) {
+                const payload = {
+                  status: nextStatus,
+                  progress_percent: Math.max(0, Math.min(100, Math.round(nextPct))),
+                  evidence_url: nextEvidence || null,
+                  last_updated: new Date().toISOString()
+                };
+                const { error: uerr } = await supabase.from('official_promises').update(payload).eq('id', p.id);
+                if (uerr) throw uerr;
+                applied++;
+                reverifyLog(`<span style="color:var(--green-light);">Applied:</span> ${escapeHtml(o.full_name)} — ${escapeHtml(p.promise_title)} → ${escapeHtml(nextStatus)} (${Math.round(nextPct)}%)`);
+              } else {
+                suggested++;
+                reverifyLog(`<span style="color:var(--green-light);">Suggested:</span> ${escapeHtml(o.full_name)} — ${escapeHtml(p.promise_title)} → ${escapeHtml(nextStatus)} (${Math.round(nextPct)}%)${nextEvidence ? ` · <a href="${nextEvidence}" target="_blank" style="color:var(--green-light);">evidence</a>` : ''}`);
+              }
+              if (summary) {
+                reverifyLog(`<span style="color:var(--muted);font-size:.82rem;">${escapeHtml(summary)}</span>`);
+              }
+            }
+          } catch (e) {
+            errors++;
+            reverifyLog(`<span style="color:var(--red);">Error:</span> ${escapeHtml(o.full_name)} — ${escapeHtml(p.promise_title)} (${escapeHtml(e.message || 'failed')})`);
+          }
+
+          if (!reverifyShouldStop) await new Promise((r) => setTimeout(r, 600));
+        }
+      }
+
+      reverifyIsRunning = false;
+      el('reverify-stop-btn').disabled = true;
+      el('reverify-start-btn').disabled = false;
+      el('reverify-progress').style.width = totalPromises ? '100%' : '0%';
+      el('reverify-status').textContent = 'Finished.';
+      reverifyLog(`<strong>Done.</strong> Promises checked: ${processed}. Applied: ${applied}. Suggested: ${suggested}. Errors: ${errors}.`);
+
+      if (selectedOfficialId) await loadPromises();
+      showToast(`Re-verify complete. Applied ${applied} updates.`, 'success');
     };
 
     window.runExtraction = async () => {
@@ -1051,6 +1276,8 @@
     let bulkShouldStop = false;
     let tplIsRunning = false;
     let tplShouldStop = false;
+    let reverifyIsRunning = false;
+    let reverifyShouldStop = false;
 
     function bulkCatChip(cat) {
       const id = `bulk-cat-${cat}`;
