@@ -89,7 +89,7 @@
     /* ── RESPONSIVE ADMIN ── */
     .admin-search-grid {
       display: grid;
-      grid-template-columns: 1fr 220px auto auto auto;
+      grid-template-columns: 1fr 220px 220px auto auto auto auto;
       align-items: end;
       gap: 1rem;
     }
@@ -98,12 +98,17 @@
         grid-template-columns: 1fr 1fr;
       }
       .admin-search-grid > div:nth-child(1),
-      .admin-search-grid > div:nth-child(2) {
+      .admin-search-grid > div:nth-child(2),
+      .admin-search-grid > div:nth-child(3) {
         grid-column: span 1;
       }
       .admin-search-grid > div:nth-child(3),
       .admin-search-grid > div:nth-child(4),
       .admin-search-grid > div:nth-child(5) {
+        grid-column: span 2;
+      }
+      .admin-search-grid > div:nth-child(6),
+      .admin-search-grid > div:nth-child(7) {
         grid-column: span 2;
       }
       .btn-bulk, .btn-auto-pop, .btn-green {
@@ -149,6 +154,65 @@
         <div style="display:flex;gap:1rem;justify-content:flex-end;">
           <button class="btn" id="bulk-stop-btn" onclick="stopBulkAp()" disabled>Stop</button>
           <button class="btn btn-green" id="bulk-start-btn" onclick="startBulkAp()">Start Bulk Process</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="tpl-modal" onclick="if(event.target===this && !tplIsRunning) closeTplModal()">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <h2>📌 Bulk Template Populate</h2>
+        <button class="modal-close" onclick="if(!tplIsRunning) closeTplModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="tpl-status" style="font-weight:600;margin-bottom:.5rem;">Ready.</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem;">Adds baseline mandate promises for the selected group. Only missing template items are inserted to avoid duplicates.</div>
+
+        <div class="form-grid" style="margin-bottom:1rem;">
+          <div class="span2">
+            <label class="form-label">Template Group</label>
+            <select class="form-control" id="tpl-group">
+              <option value="governors">Governors</option>
+              <option value="house_of_assembly">House of Assembly</option>
+              <option value="national_assembly">National Assembly</option>
+              <option value="president">President</option>
+              <option value="agency">Agencies</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Officials</label>
+            <select class="form-control" id="tpl-target">
+              <option value="filtered">Use current filter</option>
+              <option value="all_group">All in group</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Mode</label>
+            <select class="form-control" id="tpl-mode">
+              <option value="missing_only">Add missing template items</option>
+              <option value="only_if_empty">Only if no promises yet</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="padding:1rem;border:1px solid var(--border);margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="font-weight:700;">Categories</div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+              <button class="btn btn-sm" onclick="tplSelectAllCats(true)">Select All</button>
+              <button class="btn btn-sm" onclick="tplSelectAllCats(false)">Clear</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-top:.6rem;" id="tpl-cats"></div>
+        </div>
+
+        <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="tpl-progress"></div></div>
+        <div class="bulk-log" id="tpl-log"></div>
+
+        <div style="display:flex;gap:1rem;justify-content:flex-end;">
+          <button class="btn" id="tpl-stop-btn" onclick="stopTpl()" disabled>Stop</button>
+          <button class="btn btn-green" id="tpl-start-btn" onclick="startTpl()">Start</button>
         </div>
       </div>
     </div>
@@ -263,6 +327,21 @@
       <div>
         <label class="form-label">Select</label>
         <select class="form-control" id="official-select" onchange="onPickOfficial()"></select>
+      </div>
+      <div>
+        <label class="form-label">Group</label>
+        <select class="form-control" id="group-filter" onchange="filterOfficials()">
+          <option value="all">All</option>
+          <option value="governors">Governors</option>
+          <option value="house_of_assembly">House of Assembly</option>
+          <option value="national_assembly">National Assembly</option>
+          <option value="president">President</option>
+          <option value="agency">Agencies</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">&nbsp;</label>
+        <button class="btn-bulk" onclick="openTplModal()" title="Insert baseline mandate templates for a group">📌 Bulk Templates</button>
       </div>
       <div>
         <label class="form-label">&nbsp;</label>
@@ -384,6 +463,7 @@
     import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat } from './js/admin-common.js';
 
     let officials = [];
+    let filteredOfficialsAll = [];
     let filteredOfficials = [];
     let selectedOfficialId = '';
     let selectedOfficial = null;
@@ -410,7 +490,8 @@
         return;
       }
       officials = data || [];
-      filteredOfficials = officials.slice(0);
+      filteredOfficialsAll = officials.slice(0);
+      filteredOfficials = filteredOfficialsAll.slice(0, 200);
       renderOfficialSelect();
     }
 
@@ -424,11 +505,26 @@
 
     window.filterOfficials = () => {
       const q = (el('official-search').value || '').trim().toLowerCase();
-      filteredOfficials = officials.filter((o) => {
+      const group = (el('group-filter')?.value || 'all').trim();
+      const isGov = (o) => String(o?.tier || '') === 'state_executive' && /governor/.test(String(o?.role || '').toLowerCase()) && !/deputy/.test(String(o?.role || '').toLowerCase());
+      const isHoa = (o) => String(o?.tier || '') === 'state_legislature' || /house of assembly|state assembly/.test(String(o?.role || '').toLowerCase());
+      const isNatAsm = (o) => String(o?.tier || '') === 'federal_legislature' || /senate|house of representatives|national assembly/.test(String(o?.role || '').toLowerCase());
+      const isPresident = (o) => String(o?.tier || '') === 'federal_executive' && /president/.test(String(o?.role || '').toLowerCase());
+      const isAgency = (o) => String(o?.tier || '').includes('agency');
+
+      filteredOfficialsAll = officials.filter((o) => {
         const n = String(o.full_name || '').toLowerCase();
         const r = String(o.role || '').toLowerCase();
-        return !q || n.includes(q) || r.includes(q);
-      }).slice(0, 200);
+        const matchQ = !q || n.includes(q) || r.includes(q);
+        if (!matchQ) return false;
+        if (group === 'governors') return isGov(o);
+        if (group === 'house_of_assembly') return isHoa(o);
+        if (group === 'national_assembly') return isNatAsm(o);
+        if (group === 'president') return isPresident(o);
+        if (group === 'agency') return isAgency(o);
+        return true;
+      });
+      filteredOfficials = filteredOfficialsAll.slice(0, 200);
       renderOfficialSelect();
     };
 
@@ -933,16 +1029,18 @@
     // ── BULK AUTO-POPULATE ──
     let bulkIsRunning = false;
     let bulkShouldStop = false;
+    let tplIsRunning = false;
+    let tplShouldStop = false;
 
     window.openBulkModal = () => {
-      if (!filteredOfficials || !filteredOfficials.length) {
+      if (!filteredOfficialsAll || !filteredOfficialsAll.length) {
         showToast('No officials found in current filter.', 'error');
         return;
       }
       bulkShouldStop = false;
       bulkIsRunning = false;
       el('bulk-modal').style.display = 'flex';
-      el('bulk-status').textContent = `Ready to process ${filteredOfficials.length} official(s).`;
+      el('bulk-status').textContent = `Ready to process ${filteredOfficialsAll.length} official(s).`;
       el('bulk-progress').style.width = '0%';
       el('bulk-log').innerHTML = '';
       el('bulk-start-btn').disabled = false;
@@ -976,7 +1074,7 @@
       el('bulk-start-btn').disabled = true;
       el('bulk-stop-btn').disabled = false;
 
-      const officialsToProcess = [...filteredOfficials];
+      const officialsToProcess = [...filteredOfficialsAll];
       const total = officialsToProcess.length;
       let processed = 0;
       let skipped = 0;
@@ -1128,6 +1226,225 @@
       
       logBulk(`<strong>Done.</strong> Processed: ${processed}. Skipped: ${skipped}. Promises imported: ${imported}. Errors: ${errors}.`);
       showToast(`Bulk processing complete. Imported ${imported} promises.`, 'success');
+    };
+
+    const TPL_CATEGORIES = ['Infrastructure','Education','Health','Security','Economy','Governance','Agriculture','Technology','Other'];
+    const TPL = {
+      governors: [
+        { title: 'Improve primary healthcare access and staffing across the state', category: 'Health' },
+        { title: 'Upgrade and maintain key roads and bridges statewide', category: 'Infrastructure' },
+        { title: 'Improve public school learning outcomes through teacher support and facilities', category: 'Education' },
+        { title: 'Strengthen community security coordination and emergency response', category: 'Security' },
+        { title: 'Support MSMEs and job creation through skills and enterprise programmes', category: 'Economy' },
+        { title: 'Increase transparency in budgeting and project delivery reporting', category: 'Governance' },
+        { title: 'Expand agriculture value chains and farmer support services', category: 'Agriculture' },
+        { title: 'Digitize key citizen services and reduce processing times', category: 'Technology' },
+      ],
+      house_of_assembly: [
+        { title: 'Hold regular public hearings and publish committee reports', category: 'Governance' },
+        { title: 'Strengthen oversight of MDAs through budget and performance reviews', category: 'Governance' },
+        { title: 'Improve constituency engagement and publish constituency updates', category: 'Governance' },
+        { title: 'Advance legislation supporting education and school safety', category: 'Education' },
+        { title: 'Advance legislation supporting primary healthcare and PHC funding', category: 'Health' },
+        { title: 'Advance legislation supporting security and public safety coordination', category: 'Security' },
+      ],
+      national_assembly: [
+        { title: 'Strengthen oversight of federal MDAs through hearings and published reports', category: 'Governance' },
+        { title: 'Improve transparency in budgeting, procurement, and project tracking', category: 'Governance' },
+        { title: 'Advance legislation supporting education and skills development', category: 'Education' },
+        { title: 'Advance legislation supporting healthcare access and financing', category: 'Health' },
+        { title: 'Advance legislation supporting national security and public safety', category: 'Security' },
+        { title: 'Advance legislation supporting economic growth and job creation', category: 'Economy' },
+      ],
+      president: [
+        { title: 'Improve national security outcomes through coordinated reforms and operations', category: 'Security' },
+        { title: 'Stabilize the economy and reduce inflation pressures through policy actions', category: 'Economy' },
+        { title: 'Improve electricity supply and reliability through sector reforms and investment', category: 'Infrastructure' },
+        { title: 'Improve access to quality healthcare and strengthen primary health systems', category: 'Health' },
+        { title: 'Improve education outcomes and skills development nationwide', category: 'Education' },
+        { title: 'Strengthen governance, transparency, and anti-corruption enforcement', category: 'Governance' },
+      ],
+      agency: [
+        { title: 'Publish service standards, timelines, and complaint channels for citizens', category: 'Governance' },
+        { title: 'Improve service delivery performance tracking and publish periodic reports', category: 'Governance' },
+        { title: 'Digitize key workflows to reduce delays and improve accountability', category: 'Technology' },
+      ],
+    };
+
+    function tplCatChip(cat) {
+      const id = `tpl-cat-${cat}`;
+      return `<label class="source-chip" style="cursor:pointer;user-select:none;"><input type="checkbox" id="${id}" checked style="margin-right:6px;vertical-align:middle;">${cat}</label>`;
+    }
+
+    function renderTplCats() {
+      const wrap = el('tpl-cats');
+      if (!wrap) return;
+      wrap.innerHTML = TPL_CATEGORIES.map((c) => tplCatChip(c)).join('');
+    }
+
+    window.tplSelectAllCats = (on) => {
+      TPL_CATEGORIES.forEach((c) => {
+        const cb = el(`tpl-cat-${c}`);
+        if (cb) cb.checked = !!on;
+      });
+    };
+
+    function tplSelectedCats() {
+      return TPL_CATEGORIES.filter((c) => el(`tpl-cat-${c}`)?.checked);
+    }
+
+    function tplLog(msg) {
+      const logEl = el('tpl-log');
+      const div = document.createElement('div');
+      div.innerHTML = msg;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function groupMatches(o, group) {
+      const role = String(o?.role || '').toLowerCase();
+      const tier = String(o?.tier || '').toLowerCase();
+      if (group === 'governors') return tier === 'state_executive' && /governor/.test(role) && !/deputy/.test(role);
+      if (group === 'house_of_assembly') return tier === 'state_legislature' || /house of assembly|state assembly/.test(role);
+      if (group === 'national_assembly') return tier === 'federal_legislature' || /senate|house of representatives|national assembly/.test(role);
+      if (group === 'president') return tier === 'federal_executive' && /president/.test(role);
+      if (group === 'agency') return tier.includes('agency');
+      return true;
+    }
+
+    window.openTplModal = () => {
+      renderTplCats();
+      tplShouldStop = false;
+      tplIsRunning = false;
+      el('tpl-modal').style.display = 'flex';
+      el('tpl-progress').style.width = '0%';
+      el('tpl-log').innerHTML = '';
+      el('tpl-start-btn').disabled = false;
+      el('tpl-stop-btn').disabled = true;
+      el('tpl-status').textContent = 'Ready.';
+    };
+
+    window.closeTplModal = () => {
+      if (!tplIsRunning) el('tpl-modal').style.display = 'none';
+    };
+
+    window.stopTpl = () => {
+      tplShouldStop = true;
+      tplLog('<span style="color:var(--gold);">Stopping after current item...</span>');
+    };
+
+    window.startTpl = async () => {
+      if (tplIsRunning) return;
+      const group = (el('tpl-group')?.value || 'governors').trim();
+      const targetMode = (el('tpl-target')?.value || 'filtered').trim();
+      const mode = (el('tpl-mode')?.value || 'missing_only').trim();
+      const cats = tplSelectedCats();
+      const template = (TPL[group] || []).filter((t) => cats.includes(t.category));
+
+      if (!template.length) { showToast('Select at least one category.', 'error'); return; }
+
+      let targets = [];
+      if (targetMode === 'all_group') {
+        targets = officials.filter((o) => groupMatches(o, group));
+      } else {
+        targets = filteredOfficialsAll.filter((o) => groupMatches(o, group));
+      }
+
+      if (!targets.length) { showToast('No officials found for that selection.', 'error'); return; }
+
+      tplIsRunning = true;
+      tplShouldStop = false;
+      el('tpl-start-btn').disabled = true;
+      el('tpl-stop-btn').disabled = false;
+      el('tpl-status').textContent = `Preparing ${targets.length} official(s)…`;
+      tplLog(`Started template populate: ${escapeHtml(group)} · ${targets.length} officials · ${template.length} items`);
+
+      const ids = targets.map((o) => o.id).filter(Boolean);
+      const nowIso = new Date().toISOString();
+
+      const existingBy = new Map();
+      try {
+        const { data, error } = await supabase
+          .from('official_promises')
+          .select('official_id,promise_title,promise_category')
+          .in('official_id', ids)
+          .limit(5000);
+        if (error) throw error;
+        (data || []).forEach((r) => {
+          const oid = r.official_id;
+          if (!oid) return;
+          const key = `${String(r.promise_category || '').toLowerCase()}|${String(r.promise_title || '').toLowerCase()}`.trim();
+          if (!existingBy.has(oid)) existingBy.set(oid, new Set());
+          existingBy.get(oid).add(key);
+        });
+      } catch (e) {
+        tplLog(`<span style="color:var(--red);">Failed loading existing promises: ${escapeHtml(e.message || 'error')}</span>`);
+      }
+
+      let processed = 0;
+      let inserted = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (let i = 0; i < targets.length; i++) {
+        if (tplShouldStop) break;
+        const o = targets[i];
+        processed++;
+        el('tpl-progress').style.width = `${Math.round((processed / targets.length) * 100)}%`;
+        el('tpl-status').textContent = `Processing ${processed}/${targets.length}: ${o.full_name}`;
+
+        try {
+          if (mode === 'only_if_empty') {
+            const { count, error: countErr } = await supabase
+              .from('official_promises')
+              .select('*', { count: 'exact', head: true })
+              .eq('official_id', o.id);
+            if (countErr) throw countErr;
+            if (count > 0) { skipped++; tplLog(`Skipped: ${escapeHtml(o.full_name)} (already has promises)`); continue; }
+          }
+
+          const existingSet = existingBy.get(o.id) || new Set();
+          const rows = template
+            .map((t) => {
+              const k = `${String(t.category || '').toLowerCase()}|${String(t.title || '').toLowerCase()}`.trim();
+              if (existingSet.has(k)) return null;
+              existingSet.add(k);
+              return {
+                official_id: o.id,
+                promise_title: t.title,
+                promise_detail: null,
+                promise_category: t.category,
+                status: 'pending',
+                progress_percent: 0,
+                promise_date: null,
+                promise_source: 'template',
+                evidence_url: null,
+                verified_by: 'admin',
+                last_updated: nowIso,
+              };
+            })
+            .filter(Boolean);
+
+          if (!rows.length) { skipped++; tplLog(`No changes: ${escapeHtml(o.full_name)}`); continue; }
+
+          const { error: insErr } = await supabase.from('official_promises').insert(rows);
+          if (insErr) throw insErr;
+          inserted += rows.length;
+          tplLog(`<span style="color:var(--green-light);">Inserted ${rows.length} for ${escapeHtml(o.full_name)}</span>`);
+        } catch (e) {
+          errors++;
+          tplLog(`<span style="color:var(--red);">Error: ${escapeHtml(o.full_name)} — ${escapeHtml(e.message || 'failed')}</span>`);
+        }
+
+        if (i < targets.length - 1 && !tplShouldStop) await new Promise((r) => setTimeout(r, 400));
+      }
+
+      tplIsRunning = false;
+      el('tpl-stop-btn').disabled = true;
+      el('tpl-start-btn').disabled = false;
+      el('tpl-status').textContent = 'Finished.';
+      tplLog(`<strong>Done.</strong> Processed: ${processed}. Inserted: ${inserted}. Skipped: ${skipped}. Errors: ${errors}.`);
+      showToast(`Template populate complete. Inserted ${inserted} promises.`, 'success');
     };
 
     await loadOfficials();
