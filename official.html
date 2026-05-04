@@ -287,50 +287,43 @@
       </div>
     </div>
 
+    <!-- MANDATE TAB -->
     <div id="tab-mandate" style="display:none;">
-      <div style="display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;">
         <div>
-          <div style="font-weight:800;font-size:1.1rem;">Mandate Scorecard</div>
-          <div style="color:var(--muted);font-size:.88rem;margin-top:.2rem;" id="mandate-summary"></div>
+          <h3 style="font-family:Syne,sans-serif;font-weight:800;margin:0;">Mandate Scorecard</h3>
+          <div id="mandate-summary" style="font-size:.82rem;color:var(--muted);margin-top:.3rem;"></div>
         </div>
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.8rem 1rem;min-width:180px;text-align:right;">
-          <div style="color:var(--muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;">Mandate Score</div>
-    <div id="tab-mandate" class="profile-tab-content fade-up" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:1rem;">
-          <div>
-            <h3 style="font-family:Syne,sans-serif;font-weight:800;margin:0;">Mandate Scorecard</h3>
-            <div id="mandate-summary" style="font-size:.82rem;color:var(--muted);margin-top:.3rem;"></div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div style="text-align:right;">
+            <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Mandate Score</div>
+            <div id="mandate-score" style="font-size:1.8rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
           </div>
-          <div style="display:flex;align-items:center;gap:1rem;">
-            <div style="text-align:right;">
-              <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Mandate Score</div>
-              <div id="mandate-score" style="font-size:1.8rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
-            </div>
-            <select id="mandate-filter" class="form-control" style="max-width:140px;padding:.4rem;" onchange="renderMandate()">
-              <option value="">All Promises</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="fulfilled">Fulfilled</option>
-              <option value="broken">Broken</option>
-              <option value="disputed">Disputed</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="mandate-ai-summary" class="ai-box" style="display:none;margin-bottom:1.5rem;">
-          <div style="display:flex;gap:.8rem;align-items:flex-start;">
-            <div style="font-size:1.2rem;">🤖</div>
-            <div>
-              <div style="font-size:.7rem;color:var(--green-light);font-weight:700;text-transform:uppercase;margin-bottom:.3rem;letter-spacing:.05em;">AI Performance Analysis</div>
-              <div id="mandate-ai-text" style="font-size:.88rem;line-height:1.6;color:var(--white);"></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="mandate-grid" class="promise-grid">
-          <div class="loading"><div class="spinner"></div></div>
+          <select id="mandate-filter" class="form-control" style="max-width:140px;padding:.4rem;" onchange="renderMandate()">
+            <option value="">All Promises</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="fulfilled">Fulfilled</option>
+            <option value="broken">Broken</option>
+            <option value="disputed">Disputed</option>
+          </select>
         </div>
       </div>
+
+      <div id="mandate-ai-summary" class="ai-box" style="display:none;margin-bottom:1.5rem;">
+        <div style="display:flex;gap:.8rem;align-items:flex-start;">
+          <div style="font-size:1.2rem;">🤖</div>
+          <div>
+            <div style="font-size:.7rem;color:var(--green-light);font-weight:700;text-transform:uppercase;margin-bottom:.3rem;letter-spacing:.05em;">AI Performance Analysis</div>
+            <div id="mandate-ai-text" style="font-size:.88rem;line-height:1.6;color:var(--white);"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="mandate-grid" class="promise-grid">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
 
     <!-- REPORTS TAB -->
     <div id="tab-reports" style="display:none;">
@@ -1200,12 +1193,12 @@ async function loadMandate() {
   mandatePromises = [];
   const sumEl = document.getElementById('mandate-summary');
   const scoreEl = document.getElementById('mandate-score');
-  const tableEl = document.getElementById('mandate-table');
-  if (!sumEl || !scoreEl || !tableEl) return;
+  const gridEl = document.getElementById('mandate-grid');
+  if (!sumEl || !scoreEl || !gridEl) return;
 
   sumEl.textContent = 'Loading...';
   scoreEl.textContent = '—';
-  tableEl.innerHTML = '<tr><td colspan="5"><div class="empty">Loading...</div></td></tr>';
+  gridEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   const scoreRes = await supabase
     .from('official_mandate_scores')
@@ -1221,15 +1214,10 @@ async function loadMandate() {
     .order('last_updated', { ascending: false })
     .limit(300);
   if (!promisesRes.error && Array.isArray(promisesRes.data)) mandatePromises = promisesRes.data;
-  if (promisesRes.error) {
-    sumEl.textContent = 'Mandate data not available.';
-    tableEl.innerHTML = `<tr><td colspan="5"><div class="empty">Unable to load promises (${escapeHtml(promisesRes.error.message || 'error')}).</div></td></tr>`;
-    return;
-  }
 
   if ((scoreRes.error && promisesRes.error) || (!mandateScoreRow && !mandatePromises.length)) {
     sumEl.textContent = 'Scorecard not yet available for this official.';
-    tableEl.innerHTML = '<tr><td colspan="5"><div class="empty">No promises yet.</div></td></tr>';
+    gridEl.innerHTML = '<div class="empty" style="width:100%;">No promises yet.</div>';
     return;
   }
 
