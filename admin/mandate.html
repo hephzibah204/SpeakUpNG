@@ -89,27 +89,13 @@
     /* ── RESPONSIVE ADMIN ── */
     .admin-search-grid {
       display: grid;
-      grid-template-columns: 1fr 220px 220px auto auto auto auto;
+      grid-template-columns: 1fr 220px 220px;
       align-items: end;
       gap: 1rem;
     }
     @media (max-width: 992px) {
       .admin-search-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-      .admin-search-grid > div:nth-child(1),
-      .admin-search-grid > div:nth-child(2),
-      .admin-search-grid > div:nth-child(3) {
-        grid-column: span 1;
-      }
-      .admin-search-grid > div:nth-child(3),
-      .admin-search-grid > div:nth-child(4),
-      .admin-search-grid > div:nth-child(5) {
-        grid-column: span 2;
-      }
-      .admin-search-grid > div:nth-child(6),
-      .admin-search-grid > div:nth-child(7) {
-        grid-column: span 2;
+        grid-template-columns: 1fr;
       }
       .btn-bulk, .btn-auto-pop, .btn-green {
         width: 100%;
@@ -332,11 +318,11 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="verify-modal" style="display:none;align-items:center;justify-content:center;z-index:2000;">
+  <div class="modal-overlay" id="verify-modal" style="z-index:2000;" onclick="if(event.target===this)el('verify-modal').classList.remove('open')">
     <div class="modal" style="max-width:500px;">
       <div class="modal-header">
         <h2>🔍 AI Verification</h2>
-        <button class="modal-close" onclick="el('verify-modal').style.display='none'">✕</button>
+        <button class="modal-close" onclick="el('verify-modal').classList.remove('open')">✕</button>
       </div>
       <div class="modal-body" id="verify-modal-body">
         <div class="loading"><div class="spinner"></div></div>
@@ -640,11 +626,11 @@
       el('p-evidence-url').value = '';
       el('p-evidence-note').value = '';
       el('p-verified-by').value = 'ai_agent';
-      el('promise-modal').style.display = 'flex';
+      el('promise-modal').classList.add('open');
     };
 
     window.closePromiseModal = () => {
-      el('promise-modal').style.display = 'none';
+      el('promise-modal').classList.remove('open');
     };
 
     window.editPromise = (id) => {
@@ -662,7 +648,7 @@
       el('p-evidence-url').value = p.evidence_url || '';
       el('p-evidence-note').value = p.evidence_note || '';
       el('p-verified-by').value = p.verified_by || 'ai_agent';
-      el('promise-modal').style.display = 'flex';
+      el('promise-modal').classList.add('open');
     };
 
     window.savePromise = async () => {
@@ -713,7 +699,7 @@
       const official = officials.find(o => o.id === selectedOfficialId);
       if (!official) return;
 
-      el('verify-modal').style.display = 'flex';
+      el('verify-modal').classList.add('open');
       el('verify-modal-body').innerHTML = `<div class="loading"><div class="spinner"></div></div><p style="text-align:center;margin-top:1rem;color:var(--muted);">Analyzing progress for: <br><strong>${p.promise_title}</strong></p>`;
 
       try {
@@ -1096,7 +1082,7 @@
       renderBulkCats();
       bulkShouldStop = false;
       bulkIsRunning = false;
-      el('bulk-modal').style.display = 'flex';
+      el('bulk-modal').classList.add('open');
       el('bulk-status').textContent = `Ready to process ${filteredOfficialsAll.length} official(s).`;
       el('bulk-progress').style.width = '0%';
       el('bulk-log').innerHTML = '';
@@ -1106,7 +1092,7 @@
 
     window.closeBulkModal = () => {
       if (!bulkIsRunning) {
-        el('bulk-modal').style.display = 'none';
+        el('bulk-modal').classList.remove('open');
         if (selectedOfficialId) loadPromises(); // refresh table if they processed the currently selected guy
       }
     };
@@ -1420,7 +1406,7 @@
       renderTplCats();
       tplShouldStop = false;
       tplIsRunning = false;
-      el('tpl-modal').style.display = 'flex';
+      el('tpl-modal').classList.add('open');
       el('tpl-progress').style.width = '0%';
       el('tpl-log').innerHTML = '';
       el('tpl-start-btn').disabled = false;
@@ -1429,7 +1415,7 @@
     };
 
     window.closeTplModal = () => {
-      if (!tplIsRunning) el('tpl-modal').style.display = 'none';
+      if (!tplIsRunning) el('tpl-modal').classList.remove('open');
     };
 
     window.stopTpl = () => {
