@@ -145,7 +145,41 @@
       </div>
       <div class="modal-body">
         <div id="bulk-status" style="font-weight:600;margin-bottom:.5rem;">Ready to process.</div>
-        <div style="font-size:.8rem;color:var(--muted);">This will auto-fetch context, extract promises, and save them for officials in the current filter who do NOT already have promises.</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem;">Auto-fetches context, extracts promises, and saves them for the selected group.</div>
+
+        <div class="form-grid" style="margin-bottom:1rem;">
+          <div class="span2">
+            <label class="form-label">Target Group</label>
+            <select class="form-control" id="bulk-group">
+              <option value="current_filter">Use current filter</option>
+              <option value="governors">Governors</option>
+              <option value="house_of_assembly">House of Assembly</option>
+              <option value="national_assembly">National Assembly</option>
+              <option value="president">President</option>
+              <option value="agency">Agencies</option>
+              <option value="all">All officials</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Existing Promises</label>
+            <select class="form-control" id="bulk-existing">
+              <option value="skip_existing">Skip if already has promises</option>
+              <option value="add_missing">Add new (avoid duplicates)</option>
+              <option value="replace_existing">Replace (delete then regenerate)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="padding:1rem;border:1px solid var(--border);margin-bottom:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div style="font-weight:700;">Categories</div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+              <button class="btn btn-sm" onclick="bulkSelectAllCats(true)">Select All</button>
+              <button class="btn btn-sm" onclick="bulkSelectAllCats(false)">Clear</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-top:.6rem;" id="bulk-cats"></div>
+        </div>
         
         <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="bulk-progress"></div></div>
         
@@ -1032,11 +1066,34 @@
     let tplIsRunning = false;
     let tplShouldStop = false;
 
+    function bulkCatChip(cat) {
+      const id = `bulk-cat-${cat}`;
+      return `<label class="source-chip" style="cursor:pointer;user-select:none;"><input type="checkbox" id="${id}" checked style="margin-right:6px;vertical-align:middle;">${cat}</label>`;
+    }
+
+    function renderBulkCats() {
+      const wrap = el('bulk-cats');
+      if (!wrap) return;
+      wrap.innerHTML = TPL_CATEGORIES.map((c) => bulkCatChip(c)).join('');
+    }
+
+    window.bulkSelectAllCats = (on) => {
+      TPL_CATEGORIES.forEach((c) => {
+        const cb = el(`bulk-cat-${c}`);
+        if (cb) cb.checked = !!on;
+      });
+    };
+
+    function bulkSelectedCats() {
+      return TPL_CATEGORIES.filter((c) => el(`bulk-cat-${c}`)?.checked);
+    }
+
     window.openBulkModal = () => {
       if (!filteredOfficialsAll || !filteredOfficialsAll.length) {
         showToast('No officials found in current filter.', 'error');
         return;
       }
+      renderBulkCats();
       bulkShouldStop = false;
       bulkIsRunning = false;
       el('bulk-modal').style.display = 'flex';
@@ -1074,7 +1131,22 @@
       el('bulk-start-btn').disabled = true;
       el('bulk-stop-btn').disabled = false;
 
-      const officialsToProcess = [...filteredOfficialsAll];
+      const bulkGroup = (el('bulk-group')?.value || 'current_filter').trim();
+      const existingMode = (el('bulk-existing')?.value || 'skip_existing').trim();
+      const cats = bulkSelectedCats();
+      if (!cats.length) {
+        showToast('Select at least one category.', 'error');
+        bulkIsRunning = false;
+        el('bulk-start-btn').disabled = false;
+        el('bulk-stop-btn').disabled = true;
+        return;
+      }
+
+      let officialsToProcess = [];
+      if (bulkGroup === 'current_filter') officialsToProcess = [...filteredOfficialsAll];
+      else if (bulkGroup === 'all') officialsToProcess = [...officials];
+      else officialsToProcess = officials.filter((o) => groupMatches(o, bulkGroup));
+
       const total = officialsToProcess.length;
       let processed = 0;
       let skipped = 0;
@@ -1102,23 +1174,43 @@
         el('bulk-progress').style.width = `${pct}%`;
         el('bulk-status').textContent = `Processing ${processed} of ${total}: ${o.full_name}...`;
 
-        // 1. Check if official already has promises
+        let existingCount = 0;
+        let existingSet = null;
         try {
-          const { count, error: countErr } = await supabase
-            .from('official_promises')
-            .select('*', { count: 'exact', head: true })
-            .eq('official_id', o.id);
-            
-          if (countErr) throw countErr;
-          
-          if (count > 0) {
-            skipped++;
-            logBulk(`Skipped: ${escapeHtml(o.full_name)} (Already has ${count} promises)`);
-            continue; // Skip to next official
+          if (existingMode === 'skip_existing' || existingMode === 'replace_existing') {
+            const { count, error: countErr } = await supabase
+              .from('official_promises')
+              .select('*', { count: 'exact', head: true })
+              .eq('official_id', o.id);
+            if (countErr) throw countErr;
+            existingCount = Number(count || 0);
+            if (existingMode === 'skip_existing' && existingCount > 0) {
+              skipped++;
+              logBulk(`Skipped: ${escapeHtml(o.full_name)} (Already has ${existingCount} promises)`);
+              continue;
+            }
+            if (existingMode === 'replace_existing' && existingCount > 0) {
+              const { error: delErr } = await supabase.from('official_promises').delete().eq('official_id', o.id);
+              if (delErr) throw delErr;
+              logBulk(`<span style="color:var(--gold);">Cleared ${existingCount} existing promises for ${escapeHtml(o.full_name)}.</span>`);
+              existingCount = 0;
+            }
+          } else if (existingMode === 'add_missing') {
+            const { data, error: exErr } = await supabase
+              .from('official_promises')
+              .select('promise_title,promise_category')
+              .eq('official_id', o.id)
+              .limit(2000);
+            if (exErr) throw exErr;
+            existingSet = new Set();
+            (data || []).forEach((r) => {
+              const k = `${String(r.promise_category || '').toLowerCase()}|${String(r.promise_title || '').toLowerCase()}`.trim();
+              if (k) existingSet.add(k);
+            });
           }
         } catch (err) {
           errors++;
-          logBulk(`<span style="color:var(--red);">Error checking DB for ${escapeHtml(o.full_name)}: ${err.message}</span>`);
+          logBulk(`<span style="color:var(--red);">Error checking DB for ${escapeHtml(o.full_name)}: ${escapeHtml(err.message || 'failed')}</span>`);
           continue;
         }
 
@@ -1160,7 +1252,7 @@
             `For each promise, return a JSON object with these fields:`,
             `- promise_title: a short, specific headline (max 80 chars)`,
             `- promise_detail: the original or paraphrased full commitment`,
-            `- promise_category: one of [Infrastructure, Education, Health, Security, Economy, Governance, Agriculture, Technology, Other]`,
+            `- promise_category: one of [${cats.join(', ')}]`,
             `- measurability: high | medium | low`,
             `- promise_source: guess the source (manifesto | speech | press_release | inauguration | other)`,
             `Return ONLY a valid JSON array. No preamble, no markdown fences.`
@@ -1198,13 +1290,25 @@
                 verified_by: 'ai_agent',
                 last_updated: new Date().toISOString(),
               }))
-              .filter((r) => r.promise_title);
+              .filter((r) => {
+                if (!r.promise_title) return false;
+                if (!cats.includes(r.promise_category)) return false;
+                if (existingMode === 'add_missing' && existingSet) {
+                  const k = `${String(r.promise_category || '').toLowerCase()}|${String(r.promise_title || '').toLowerCase()}`.trim();
+                  if (existingSet.has(k)) return false;
+                  existingSet.add(k);
+                }
+                return true;
+              });
 
             if (rows.length > 0) {
               const { error: insertErr } = await supabase.from('official_promises').insert(rows);
               if (insertErr) throw insertErr;
               imported += rows.length;
               logBulk(`<span style="color:var(--green-light);">Saved ${rows.length} promises for ${escapeHtml(o.full_name)}.</span>`);
+            } else {
+              skipped++;
+              logBulk(`No new promises to save for ${escapeHtml(o.full_name)}.`);
             }
           }
         } catch (err) {
