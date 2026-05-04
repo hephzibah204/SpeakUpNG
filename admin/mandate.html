@@ -1011,7 +1011,7 @@
       };
       if (!payload.promise_title) { showToast('Missing title.', 'error'); return; }
       const { error } = await supabase.from('official_promises').insert(payload);
-      if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
+      if (error) { showToast(`Import failed: ${error.message || 'error'}`, 'error'); return; }
       showToast('Imported.', 'success');
       await loadPromises();
     };
@@ -1035,7 +1035,7 @@
         .filter((r) => r.promise_title);
       if (!rows.length) return;
       const { error } = await supabase.from('official_promises').insert(rows);
-      if (error) { showToast('Import failed. Check RLS/policies.', 'error'); return; }
+      if (error) { showToast(`Import failed: ${error.message || 'error'}`, 'error'); return; }
       showToast(`Imported ${rows.length} promises.`, 'success');
       
       // Clear the list after successful import

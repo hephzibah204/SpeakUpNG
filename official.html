@@ -1221,6 +1221,11 @@ async function loadMandate() {
     .order('last_updated', { ascending: false })
     .limit(300);
   if (!promisesRes.error && Array.isArray(promisesRes.data)) mandatePromises = promisesRes.data;
+  if (promisesRes.error) {
+    sumEl.textContent = 'Mandate data not available.';
+    tableEl.innerHTML = `<tr><td colspan="5"><div class="empty">Unable to load promises (${escapeHtml(promisesRes.error.message || 'error')}).</div></td></tr>`;
+    return;
+  }
 
   if ((scoreRes.error && promisesRes.error) || (!mandateScoreRow && !mandatePromises.length)) {
     sumEl.textContent = 'Scorecard not yet available for this official.';
