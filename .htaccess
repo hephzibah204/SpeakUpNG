@@ -100,7 +100,7 @@ RewriteRule ^(index|leaderboard|polls|official|blog|news|agencies)/?$ public/$1.
 
 # Extensionless admin pages
 RewriteCond %{DOCUMENT_ROOT}/admin/$1.html -f
-RewriteRule ^admin/(login|dashboard|content|officials|mandate|profiles|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
+RewriteRule ^admin/(login|dashboard|content|officials|governors|mandate|profiles|ratings|reports|polls|alerts|ai-manager)/?$ admin/$1.html [L]
 
 # Generic extensionless HTML fallback (supports nested paths)
 RewriteCond %{DOCUMENT_ROOT}/$1.html -f

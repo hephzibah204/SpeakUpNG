@@ -93,6 +93,34 @@
           <label class="form-label">Official Website</label>
           <input type="url" class="form-control" id="f-website" placeholder="https://...">
         </div>
+        <div>
+          <label class="form-label">Instagram</label>
+          <input type="text" class="form-control" id="f-instagram" placeholder="@handle">
+        </div>
+        <div>
+          <label class="form-label">TikTok</label>
+          <input type="text" class="form-control" id="f-tiktok" placeholder="@handle">
+        </div>
+        <div class="span2">
+          <label class="form-label">Facebook (URL)</label>
+          <input type="url" class="form-control" id="f-facebook" placeholder="https://facebook.com/...">
+        </div>
+        <div class="span2">
+          <label class="form-label">YouTube (URL)</label>
+          <input type="url" class="form-control" id="f-youtube" placeholder="https://youtube.com/...">
+        </div>
+        <div class="span2">
+          <label class="form-label">LinkedIn (URL)</label>
+          <input type="url" class="form-control" id="f-linkedin" placeholder="https://linkedin.com/in/...">
+        </div>
+        <div>
+          <label class="form-label">Contact Email</label>
+          <input type="email" class="form-control" id="f-email" placeholder="office@...">
+        </div>
+        <div>
+          <label class="form-label">Contact Phone</label>
+          <input type="tel" class="form-control" id="f-phone" placeholder="+234...">
+        </div>
       </div>
       <button class="submit-btn" id="save-official-btn" onclick="saveOfficial()">Save Official</button>
     </div>
@@ -198,7 +226,7 @@ async function loadStates() {
 
 async function loadOfficials() {
   const { data, error } = await supabase.from('officials')
-    .select('id,full_name,common_name,role,tier,party,status,rating_avg,rating_count,report_count,office_start,photo_url,bio,social_twitter,website,states(id,name),state_id')
+    .select('id,full_name,common_name,role,tier,party,status,rating_avg,rating_count,report_count,office_start,photo_url,bio,social_twitter,website,social_instagram,social_facebook,social_youtube,social_linkedin,social_tiktok,contact_email,contact_phone,states(id,name),state_id')
     .order('full_name');
   if (error) {
     document.getElementById('officials-body').innerHTML = '<tr><td colspan="8"><div class="empty">Unable to load officials.</div></td></tr>';
@@ -273,7 +301,7 @@ window.goPage=(p)=>{page=p;render();};
 window.openAddModal = () => {
   editingId = null;
   document.getElementById('modal-title').textContent='Add Official';
-  ['name','common','party','role','tier','status','start','photo','bio','twitter','website'].forEach(f=>{
+  ['name','common','party','role','tier','status','start','photo','bio','twitter','website','instagram','facebook','youtube','linkedin','tiktok','email','phone'].forEach(f=>{
     const el=document.getElementById('f-'+f); if(el) el.value = f==='status'?'active':'';
   });
   document.getElementById('f-state').value='';
@@ -298,6 +326,13 @@ window.openEditModal = (id) => {
   document.getElementById('f-bio').value = o.bio||'';
   document.getElementById('f-twitter').value = o.social_twitter||'';
   document.getElementById('f-website').value = o.website||'';
+  document.getElementById('f-instagram').value = o.social_instagram||'';
+  document.getElementById('f-facebook').value = o.social_facebook||'';
+  document.getElementById('f-youtube').value = o.social_youtube||'';
+  document.getElementById('f-linkedin').value = o.social_linkedin||'';
+  document.getElementById('f-tiktok').value = o.social_tiktok||'';
+  document.getElementById('f-email').value = o.contact_email||'';
+  document.getElementById('f-phone').value = o.contact_phone||'';
   updateAgencyHints();
   document.getElementById('official-modal').classList.add('open');
 };
@@ -337,6 +372,13 @@ window.autoFillProfile = async () => {
     if (p.bio) document.getElementById('f-bio').value = p.bio;
     if (p.social_twitter) document.getElementById('f-twitter').value = p.social_twitter;
     if (p.website) document.getElementById('f-website').value = p.website;
+    if (p.social_instagram) document.getElementById('f-instagram').value = p.social_instagram;
+    if (p.social_facebook) document.getElementById('f-facebook').value = p.social_facebook;
+    if (p.social_youtube) document.getElementById('f-youtube').value = p.social_youtube;
+    if (p.social_linkedin) document.getElementById('f-linkedin').value = p.social_linkedin;
+    if (p.social_tiktok) document.getElementById('f-tiktok').value = p.social_tiktok;
+    if (p.contact_email) document.getElementById('f-email').value = p.contact_email;
+    if (p.contact_phone) document.getElementById('f-phone').value = p.contact_phone;
     if (p.office_start) document.getElementById('f-start').value = p.office_start;
     if (p.photo_url) document.getElementById('f-photo').value = p.photo_url;
     
@@ -369,6 +411,13 @@ window.saveOfficial = async () => {
     bio: document.getElementById('f-bio').value.trim()||null,
     social_twitter: document.getElementById('f-twitter').value.trim()||null,
     website: document.getElementById('f-website').value.trim()||null,
+    social_instagram: document.getElementById('f-instagram').value.trim()||null,
+    social_facebook: document.getElementById('f-facebook').value.trim()||null,
+    social_youtube: document.getElementById('f-youtube').value.trim()||null,
+    social_linkedin: document.getElementById('f-linkedin').value.trim()||null,
+    social_tiktok: document.getElementById('f-tiktok').value.trim()||null,
+    contact_email: document.getElementById('f-email').value.trim()||null,
+    contact_phone: document.getElementById('f-phone').value.trim()||null,
   };
   let error;
   if (editingId) { ({error} = await supabase.from('officials').update(payload).eq('id',editingId)); }

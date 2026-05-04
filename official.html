@@ -1181,7 +1181,14 @@ function renderAbout() {
 
   const links = [];
   if (o.social_twitter) links.push(`<a href="https://twitter.com/${o.social_twitter.replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">🐦 Twitter / X</a>`);
+  if (o.social_instagram) links.push(`<a href="https://instagram.com/${String(o.social_instagram).replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">📷 Instagram</a>`);
+  if (o.social_tiktok) links.push(`<a href="https://tiktok.com/@${String(o.social_tiktok).replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">🎵 TikTok</a>`);
   if (o.website) links.push(`<a href="${o.website}" target="_blank" class="btn btn-ghost btn-sm">🌐 Official Website</a>`);
+  if (o.social_facebook) links.push(`<a href="${o.social_facebook}" target="_blank" class="btn btn-ghost btn-sm">📘 Facebook</a>`);
+  if (o.social_youtube) links.push(`<a href="${o.social_youtube}" target="_blank" class="btn btn-ghost btn-sm">▶ YouTube</a>`);
+  if (o.social_linkedin) links.push(`<a href="${o.social_linkedin}" target="_blank" class="btn btn-ghost btn-sm">💼 LinkedIn</a>`);
+  if (o.contact_email) links.push(`<a href="mailto:${o.contact_email}" class="btn btn-ghost btn-sm">✉ Email</a>`);
+  if (o.contact_phone) links.push(`<a href="tel:${String(o.contact_phone).replace(/\\s+/g,'')}" class="btn btn-ghost btn-sm">☎ Phone</a>`);
   if (links.length) {
     document.getElementById('social-section').style.display='block';
     document.getElementById('social-links').innerHTML = links.join('');

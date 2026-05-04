@@ -31,6 +31,7 @@ export function sidebarHTML(activePage, userEmail) {
     { id:'dashboard',   icon:'📊', label:'Dashboard',    href:'/admin/dashboard' },
     { id:'content',     icon:'📝', label:'Content (CMS)', href:'/admin/content' },
     { id:'officials',   icon:'👤', label:'Officials',     href:'/admin/officials' },
+    { id:'governors',   icon:'🏛️', label:'Governors',     href:'/admin/governors' },
     { id:'mandate',     icon:'📌', label:'Mandate',       href:'/admin/mandate' },
     { id:'profiles',    icon:'🧾', label:'Profiles',      href:'/admin/profiles' },
     { id:'ratings',     icon:'⭐', label:'Ratings',       href:'/admin/ratings' },

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Governors — evote.ng Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="admin-main">
+    <div class="admin-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div class="admin-title">Governors</div>
+        <div class="admin-sub">Bulk-fill profile photos, websites, and social handles. Uses Wikidata for fast sourcing and fills only missing fields.</div>
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+        <button class="btn btn-green btn-sm" id="btn-autofill">Autofill Missing</button>
+        <button class="btn btn-ghost btn-sm" id="btn-export">Export SQL</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:1rem;border:1px solid var(--border);">
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+          <input id="q" class="form-control" placeholder="Search name/state…" style="min-width:240px;max-width:360px;">
+          <select id="missing-filter" class="form-control" style="max-width:240px;">
+            <option value="any">Show all</option>
+            <option value="missing_photo">Missing photo</option>
+            <option value="missing_website">Missing website</option>
+            <option value="missing_social">Missing socials</option>
+          </select>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);" id="count">—</div>
+      </div>
+      <div style="margin-top:.8rem;font-size:.78rem;color:var(--muted);" id="status"></div>
+    </div>
+
+    <div class="admin-table-wrap" style="margin-top:1rem;">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Governor</th>
+            <th>State</th>
+            <th>Photo</th>
+            <th>Website</th>
+            <th>Socials</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section" style="margin-top:1rem;">
+      <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;">
+        <div style="font-weight:700;">SQL Export</div>
+        <button class="btn btn-ghost btn-sm" id="btn-copy">Copy</button>
+      </div>
+      <textarea class="form-control" id="sql-out" style="margin-top:.6rem;min-height:220px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;" placeholder="Click Export SQL to generate update statements..."></textarea>
+    </div>
+  </div>
+
+  <script type="module">
+  import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, adminApiJson } from './js/admin-common.js';
+
+  const session = await requireAuth();
+  document.getElementById('sidebar-mount').innerHTML = sidebarHTML('governors', session.user.email);
+  wireSignOut();
+
+  const $ = (id) => document.getElementById(id);
+  const state = { rows: [] };
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function socialSummary(o) {
+    const parts = [];
+    if (o.social_twitter) parts.push('X');
+    if (o.social_instagram) parts.push('IG');
+    if (o.social_tiktok) parts.push('TT');
+    if (o.social_facebook) parts.push('FB');
+    if (o.social_youtube) parts.push('YT');
+    if (o.social_linkedin) parts.push('IN');
+    return parts.length ? parts.join(' · ') : '—';
+  }
+
+  function hasSocial(o) {
+    return Boolean(o.social_twitter || o.social_instagram || o.social_tiktok || o.social_facebook || o.social_youtube || o.social_linkedin);
+  }
+
+  function matchesFilter(o) {
+    const q = String($('q').value || '').toLowerCase();
+    const mf = String($('missing-filter').value || 'any');
+    const hay = `${o.full_name || ''} ${o.states?.name || ''}`.toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (mf === 'missing_photo' && o.photo_url) return false;
+    if (mf === 'missing_website' && o.website) return false;
+    if (mf === 'missing_social' && hasSocial(o)) return false;
+    return true;
+  }
+
+  function render() {
+    const list = state.rows.filter(matchesFilter);
+    $('count').textContent = `${list.length} / ${state.rows.length}`;
+    if (!list.length) {
+      $('rows').innerHTML = '<tr><td colspan="6"><div class="empty">No results.</div></td></tr>';
+      return;
+    }
+    $('rows').innerHTML = list.map((o) => {
+      const st = o.states?.name || '—';
+      const photo = o.photo_url ? `<a href="${esc(o.photo_url)}" target="_blank" style="color:var(--green-light);">View</a>` : '—';
+      const web = o.website ? `<a href="${esc(o.website)}" target="_blank" style="color:var(--green-light);">Open</a>` : '—';
+      return `
+        <tr>
+          <td style="font-weight:600;">${esc(o.full_name)}</td>
+          <td style="color:var(--muted);">${esc(st)}</td>
+          <td>${photo}</td>
+          <td>${web}</td>
+          <td style="color:var(--muted);">${esc(socialSummary(o))}</td>
+          <td>
+            <div class="action-btns">
+              <a class="action-btn action-edit" href="/admin/officials" target="_blank" style="text-decoration:none;">Edit</a>
+              <button class="action-btn" data-id="${o.id}">Autofill</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    $('rows').querySelectorAll('button[data-id]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const o = state.rows.find((r) => r.id === id);
+        if (!o) return;
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          await autofillOne(o);
+          render();
+          showToast('Updated.');
+        } catch (e) {
+          showToast(e?.message || 'Autofill failed', 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Autofill';
+        }
+      });
+    });
+  }
+
+  async function load() {
+    $('rows').innerHTML = '<tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>';
+    $('status').textContent = '';
+    const { data, error } = await supabase
+      .from('officials')
+      .select('id,full_name,role,tier,photo_url,website,social_twitter,social_instagram,social_facebook,social_youtube,social_linkedin,social_tiktok,contact_email,contact_phone,states(name),state_id')
+      .eq('status', 'active')
+      .eq('tier', 'state_executive')
+      .ilike('role', '%governor%')
+      .not('role', 'ilike', '%deputy%')
+      .order('full_name')
+      .limit(300);
+    if (error) {
+      $('rows').innerHTML = '<tr><td colspan="6"><div class="empty">Unable to load governors.</div></td></tr>';
+      showToast(error.message, 'error');
+      return;
+    }
+    state.rows = data || [];
+    render();
+  }
+
+  async function autofillOne(o) {
+    const res = await adminApiJson('/api/fetch-official-profile.php', {
+      method: 'POST',
+      body: { name: o.full_name }
+    });
+    const p = res?.profile || {};
+    const payload = {};
+    const setIfMissing = (k, v) => {
+      const cur = o[k];
+      if ((cur === null || cur === undefined || String(cur).trim() === '') && v) payload[k] = v;
+    };
+    setIfMissing('photo_url', p.photo_url);
+    setIfMissing('website', p.website);
+    setIfMissing('social_twitter', p.social_twitter);
+    setIfMissing('social_instagram', p.social_instagram);
+    setIfMissing('social_facebook', p.social_facebook);
+    setIfMissing('social_youtube', p.social_youtube);
+    setIfMissing('social_linkedin', p.social_linkedin);
+    setIfMissing('social_tiktok', p.social_tiktok);
+    setIfMissing('contact_email', p.contact_email);
+    setIfMissing('contact_phone', p.contact_phone);
+    if (!Object.keys(payload).length) return;
+
+    payload.profile_updated_at = new Date().toISOString();
+    const { error } = await supabase.from('officials').update(payload).eq('id', o.id);
+    if (error) throw error;
+    Object.assign(o, payload);
+  }
+
+  function sqlEscape(s) {
+    return String(s || '').replace(/'/g, "''");
+  }
+
+  function sqlVal(s) {
+    const v = String(s || '').trim();
+    return v ? `'${sqlEscape(v)}'` : 'null';
+  }
+
+  function exportSql() {
+    const lines = [];
+    lines.push('begin;');
+    lines.push('');
+    state.rows.forEach((o) => {
+      const sets = [];
+      if (o.photo_url) sets.push(`photo_url = ${sqlVal(o.photo_url)}`);
+      if (o.website) sets.push(`website = ${sqlVal(o.website)}`);
+      if (o.social_twitter) sets.push(`social_twitter = ${sqlVal(o.social_twitter)}`);
+      if (o.social_instagram) sets.push(`social_instagram = ${sqlVal(o.social_instagram)}`);
+      if (o.social_tiktok) sets.push(`social_tiktok = ${sqlVal(o.social_tiktok)}`);
+      if (o.social_facebook) sets.push(`social_facebook = ${sqlVal(o.social_facebook)}`);
+      if (o.social_youtube) sets.push(`social_youtube = ${sqlVal(o.social_youtube)}`);
+      if (o.social_linkedin) sets.push(`social_linkedin = ${sqlVal(o.social_linkedin)}`);
+      if (o.contact_email) sets.push(`contact_email = ${sqlVal(o.contact_email)}`);
+      if (o.contact_phone) sets.push(`contact_phone = ${sqlVal(o.contact_phone)}`);
+      if (!sets.length) return;
+      lines.push('update public.officials set');
+      lines.push('  ' + sets.join(',\n  ') + ',');
+      lines.push('  profile_updated_at = now()');
+      lines.push(`where id = '${sqlEscape(o.id)}';`);
+      lines.push('');
+    });
+    lines.push('commit;');
+    $('sql-out').value = lines.join('\n');
+  }
+
+  $('q').addEventListener('input', render);
+  $('missing-filter').addEventListener('change', render);
+  $('btn-refresh').addEventListener('click', load);
+  $('btn-export').addEventListener('click', exportSql);
+  $('btn-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('sql-out').value || ''); showToast('Copied.'); } catch { showToast('Copy failed', 'error'); }
+  });
+
+  $('btn-autofill').addEventListener('click', async () => {
+    const list = state.rows.filter((o) => !o.photo_url || !o.website || !hasSocial(o));
+    if (!list.length) { showToast('Nothing to autofill.'); return; }
+    $('btn-autofill').disabled = true;
+    $('status').textContent = `Autofilling ${list.length} governors…`;
+    let ok = 0;
+    let fail = 0;
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      $('status').textContent = `Autofilling ${i + 1}/${list.length}: ${o.full_name}`;
+      try {
+        await autofillOne(o);
+        ok++;
+      } catch {
+        fail++;
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    $('btn-autofill').disabled = false;
+    $('status').textContent = `Done. Updated ${ok}. Failed ${fail}.`;
+    render();
+  });
+
+  await load();
+  </script>
+</body>
+</html>
+

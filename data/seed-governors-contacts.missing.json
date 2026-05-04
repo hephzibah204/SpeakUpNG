@@ -1,0 +1,185 @@
+{
+    "version": 1,
+    "missing": [
+        {
+            "state": "Abia",
+            "name": "Alex Otti",
+            "qid": ""
+        },
+        {
+            "state": "Adamawa",
+            "name": "Ahmadu Umaru Fintiri",
+            "qid": ""
+        },
+        {
+            "state": "Akwa Ibom",
+            "name": "Umo Eno",
+            "qid": "Q117222421"
+        },
+        {
+            "state": "Anambra",
+            "name": "Charles Soludo",
+            "qid": "Q3511696"
+        },
+        {
+            "state": "Bauchi",
+            "name": "Bala Muhammed",
+            "qid": "Q4849691"
+        },
+        {
+            "state": "Bayelsa",
+            "name": "Douye Diri",
+            "qid": ""
+        },
+        {
+            "state": "Benue",
+            "name": "Hyacinth Alia",
+            "qid": "Q117234043"
+        },
+        {
+            "state": "Borno",
+            "name": "Babagana Zulum",
+            "qid": ""
+        },
+        {
+            "state": "Cross River",
+            "name": "Bassey Otu",
+            "qid": ""
+        },
+        {
+            "state": "Delta",
+            "name": "Sheriff Oborevwori",
+            "qid": "Q106764158"
+        },
+        {
+            "state": "Ebonyi",
+            "name": "Francis Nwifuru",
+            "qid": ""
+        },
+        {
+            "state": "Edo",
+            "name": "Monday Okpebholo",
+            "qid": ""
+        },
+        {
+            "state": "Ekiti",
+            "name": "Biodun Oyebanji",
+            "qid": "Q112628913"
+        },
+        {
+            "state": "Enugu",
+            "name": "Peter Mbah",
+            "qid": ""
+        },
+        {
+            "state": "Gombe",
+            "name": "Muhammad Inuwa Yahaya",
+            "qid": ""
+        },
+        {
+            "state": "Imo",
+            "name": "Hope Uzodinma",
+            "qid": ""
+        },
+        {
+            "state": "Jigawa",
+            "name": "Umar Namadi",
+            "qid": ""
+        },
+        {
+            "state": "Kaduna",
+            "name": "Uba Sani",
+            "qid": ""
+        },
+        {
+            "state": "Kano",
+            "name": "Abba Kabir Yusuf",
+            "qid": "Q91908076"
+        },
+        {
+            "state": "Katsina",
+            "name": "Dikko Umaru Radda",
+            "qid": "Q117219229"
+        },
+        {
+            "state": "Kebbi",
+            "name": "Nasir Idris",
+            "qid": "Q117828644"
+        },
+        {
+            "state": "Kogi",
+            "name": "Ahmed Usman Ododo",
+            "qid": "Q124394414"
+        },
+        {
+            "state": "Kwara",
+            "name": "AbdulRahman AbdulRazaq",
+            "qid": ""
+        },
+        {
+            "state": "Lagos",
+            "name": "Babajide Sanwo-Olu",
+            "qid": ""
+        },
+        {
+            "state": "Nasarawa",
+            "name": "Abdullahi Sule",
+            "qid": "Q62036561"
+        },
+        {
+            "state": "Niger",
+            "name": "Mohammed Umar Bago",
+            "qid": ""
+        },
+        {
+            "state": "Ogun",
+            "name": "Dapo Abiodun",
+            "qid": ""
+        },
+        {
+            "state": "Ondo",
+            "name": "Lucky Aiyedatiwa",
+            "qid": ""
+        },
+        {
+            "state": "Osun",
+            "name": "Ademola Adeleke",
+            "qid": ""
+        },
+        {
+            "state": "Oyo",
+            "name": "Seyi Makinde",
+            "qid": ""
+        },
+        {
+            "state": "Plateau",
+            "name": "Caleb Mutfwang",
+            "qid": "Q117256234"
+        },
+        {
+            "state": "Rivers",
+            "name": "Siminalayi Fubara",
+            "qid": "Q115680348"
+        },
+        {
+            "state": "Sokoto",
+            "name": "Ahmad Aliyu",
+            "qid": "Q90422389"
+        },
+        {
+            "state": "Taraba",
+            "name": "Agbu Kefas",
+            "qid": "Q115702062"
+        },
+        {
+            "state": "Yobe",
+            "name": "Mai Mala Buni",
+            "qid": ""
+        },
+        {
+            "state": "Zamfara",
+            "name": "Dauda Lawal",
+            "qid": ""
+        }
+    ]
+}
