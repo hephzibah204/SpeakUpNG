@@ -116,6 +116,11 @@
             <label class="form-label">SUPABASE_ANON_KEY</label>
             <input class="form-control" id="s-supabase-anon" type="password" placeholder="sb_publishable_...">
           </div>
+          <div class="form-group">
+            <label class="form-label">SUPABASE_SERVICE_ROLE_KEY</label>
+            <input class="form-control" id="s-supabase-service" type="password" placeholder="sb_service_role_...">
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;" id="st-supabase-service">—</div>
+          </div>
         </div>
       </div>
 
@@ -267,10 +272,12 @@ async function loadSettingsStatus() {
     const st = await adminApiJson('/api/admin-secrets.php');
     document.getElementById('st-openrouter').textContent = st.openrouter_configured ? `Configured · Model: ${st.openrouter_model || '—'}` : 'Not configured';
     document.getElementById('st-supabase').textContent = st.supabase_configured ? `Configured (${st.supabase_source || '—'})` : 'Not configured';
+    document.getElementById('st-supabase-service').textContent = st.has_service_key ? 'Service key configured' : 'Service key not configured';
     document.getElementById('s-openrouter-model').value = st.openrouter_model || 'openai/gpt-4o-mini';
   } catch (e) {
     document.getElementById('st-openrouter').textContent = 'Unable to load';
     document.getElementById('st-supabase').textContent = 'Unable to load';
+    document.getElementById('st-supabase-service').textContent = 'Unable to load';
   }
 }
 
@@ -287,6 +294,7 @@ document.getElementById('settings-save')?.addEventListener('click', async () => 
   const model = String(document.getElementById('s-openrouter-model')?.value || '').trim();
   const sbUrl = String(document.getElementById('s-supabase-url')?.value || '').trim();
   const sbAnon = String(document.getElementById('s-supabase-anon')?.value || '').trim();
+  const sbService = String(document.getElementById('s-supabase-service')?.value || '').trim();
   const emailsRaw = String(document.getElementById('s-admin-emails')?.value || '').trim();
   const admin_emails = emailsRaw ? emailsRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
 
@@ -295,14 +303,17 @@ document.getElementById('settings-save')?.addEventListener('click', async () => 
   if (model) body.openrouter_model = model;
   if (sbUrl) body.supabase_url = sbUrl;
   if (sbAnon) body.supabase_anon_key = sbAnon;
+  if (sbService) body.supabase_service_role_key = sbService;
   if (admin_emails.length) body.admin_emails = admin_emails;
 
   try {
     await adminApiJson('/api/admin-secrets.php', { method: 'POST', body });
     const keyEl = document.getElementById('s-openrouter-key');
     const sbAnonEl = document.getElementById('s-supabase-anon');
+    const sbServiceEl = document.getElementById('s-supabase-service');
     if (keyEl) keyEl.value = '';
     if (sbAnonEl) sbAnonEl.value = '';
+    if (sbServiceEl) sbServiceEl.value = '';
     showToast('Saved.');
     await loadSettingsStatus();
   } catch (e) {

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Intel — evote.ng Admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div id="sidebar-mount"></div>
+<div class="toast" id="toast"></div>
+
+<div class="admin-main">
+  <div class="admin-header">
+    <div class="admin-title">News Intel</div>
+    <div class="admin-sub">Ingest RSS sources, moderate items, and audit changes.</div>
+  </div>
+
+  <div class="card" style="padding:1rem;border:1px solid var(--border);margin-bottom:1.2rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;">Ingestion</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;" id="ingest-status">Refresh every 15 minutes via cron; manual runs available here.</div>
+      </div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <button class="btn btn-green btn-sm" id="btn-run">Run ingest now</button>
+        <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh lists</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:1.2rem;">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.7rem;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Moderation Queue</div>
+          <div style="font-size:.78rem;color:var(--muted);">Pending items require approval to appear publicly.</div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;">
+          <select id="status-filter" class="form-control" style="padding:.35rem .6rem;max-width:160px;">
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <input id="q" class="form-control" placeholder="Search title…" style="padding:.35rem .6rem;max-width:220px;">
+        </div>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Item</th><th>Status</th><th>Time</th><th>Actions</th></tr></thead>
+          <tbody id="items"><tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.7rem;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Sources</div>
+          <div style="font-size:.78rem;color:var(--muted);">RSS-only in this build.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-add">Add source</button>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Source</th><th>Tier</th><th>Active</th></tr></thead>
+          <tbody id="sources"><tr><td colspan="3"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="source-modal" style="display:none;" onclick="if(event.target===this)closeSourceModal()">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <h2>News Source</h2>
+      <button class="modal-close" onclick="closeSourceModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input class="form-control" id="src-name" placeholder="BBC News">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Home URL</label>
+        <input class="form-control" id="src-home" placeholder="https://example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">RSS Feed URL</label>
+        <input class="form-control" id="src-feed" placeholder="https://example.com/feed/">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Credibility Tier</label>
+          <select class="form-control" id="src-tier">
+            <option value="tier1">Tier 1</option>
+            <option value="tier2">Tier 2</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Active</label>
+          <select class="form-control" id="src-active">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;">
+        <button class="btn btn-ghost" onclick="closeSourceModal()">Cancel</button>
+        <button class="btn btn-green" id="src-save">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, sidebarHTML, wireSignOut, adminApiJson, supabase, showToast } from './js/admin-common.js';
+
+const session = await requireAuth();
+document.getElementById('sidebar-mount').innerHTML = sidebarHTML('news-intel', session?.user?.email);
+wireSignOut();
+
+let sources = [];
+let items = [];
+let editingSourceId = null;
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function timeAgo(ts) {
+  const d = (Date.now() - new Date(ts)) / 1000;
+  if (!Number.isFinite(d) || d < 0) return '';
+  if (d < 60) return 'Just now';
+  if (d < 3600) return Math.floor(d/60)+'m ago';
+  if (d < 86400) return Math.floor(d/3600)+'h ago';
+  return Math.floor(d/86400)+'d ago';
+}
+
+async function loadSources() {
+  const { data, error } = await supabase
+    .from('news_sources')
+    .select('id,name,home_url,credibility_tier,is_active,feed_url')
+    .order('is_active', { ascending: false })
+    .order('credibility_tier', { ascending: true })
+    .order('name', { ascending: true });
+  if (error) throw error;
+  sources = data || [];
+  renderSources();
+}
+
+async function loadItems() {
+  const status = String(document.getElementById('status-filter')?.value || 'pending');
+  const q = String(document.getElementById('q')?.value || '').trim().toLowerCase();
+  let query = supabase
+    .from('news_items')
+    .select('id,title,url,published_at,created_at,moderation_status,source_id,news_sources(name,credibility_tier)')
+    .eq('moderation_status', status)
+    .order('published_at', { ascending: false })
+    .limit(50);
+  const { data, error } = await query;
+  if (error) throw error;
+  items = (data || []).filter((it) => !q || String(it.title || '').toLowerCase().includes(q));
+  renderItems();
+}
+
+function tierBadge(tier) {
+  const t = String(tier || 'tier2');
+  const style = t === 'tier1' ? 'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25);'
+    : t === 'blocked' ? 'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25);'
+    : 'background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.25);';
+  const label = t === 'tier1' ? 'Tier 1' : t === 'blocked' ? 'Blocked' : 'Tier 2';
+  return `<span style="${style};border-radius:999px;padding:2px 8px;font-size:.72rem;">${label}</span>`;
+}
+
+function statusBadge(st) {
+  const s = String(st || 'pending');
+  const style = s === 'approved' ? 'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25);'
+    : s === 'rejected' ? 'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25);'
+    : 'background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.25);';
+  return `<span style="${style};border-radius:999px;padding:2px 8px;font-size:.72rem;">${esc(s)}</span>`;
+}
+
+function renderSources() {
+  const mount = document.getElementById('sources');
+  if (!sources.length) {
+    mount.innerHTML = '<tr><td colspan="3"><div class="empty">No sources configured.</div></td></tr>';
+    return;
+  }
+  mount.innerHTML = sources.map((s) => {
+    return `<tr style="cursor:pointer;" onclick="window.editSource('${s.id}')">
+      <td>
+        <div style="font-size:.85rem;font-weight:700;">${esc(s.name)}</div>
+        <div style="font-size:.74rem;color:var(--muted);word-break:break-all;">${esc(s.feed_url)}</div>
+      </td>
+      <td>${tierBadge(s.credibility_tier)}</td>
+      <td>${s.is_active ? 'Yes' : 'No'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderItems() {
+  const mount = document.getElementById('items');
+  if (!items.length) {
+    mount.innerHTML = '<tr><td colspan="4"><div class="empty">No items found.</div></td></tr>';
+    return;
+  }
+  mount.innerHTML = items.map((it) => {
+    const srcName = it.news_sources?.name || 'Source';
+    const tier = it.news_sources?.credibility_tier || 'tier2';
+    const when = it.published_at || it.created_at;
+    return `<tr>
+      <td style="max-width:520px;">
+        <div style="font-size:.85rem;font-weight:700;line-height:1.35;">${esc(it.title)}</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.35rem;">
+          <span style="font-size:.74rem;color:var(--muted);">${esc(srcName)}</span>
+          ${tierBadge(tier)}
+          <a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer" style="font-size:.74rem;color:var(--green-light);">Open →</a>
+        </div>
+      </td>
+      <td>${statusBadge(it.moderation_status)}</td>
+      <td style="color:var(--muted);font-size:.78rem;white-space:nowrap;">${timeAgo(when)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-green btn-sm" onclick="event.stopPropagation();window.setStatus('${it.id}','approved')">Approve</button>
+        <button class="btn btn-ghost btn-sm" style="border-color:rgba(239,68,68,.3);color:#ef4444;" onclick="event.stopPropagation();window.setStatus('${it.id}','rejected')">Reject</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function setStatus(itemId, status) {
+  const reason = prompt(`Reason for ${status}:`);
+  if (!reason) return;
+  try {
+    await adminApiJson('/api/news-admin.php', { method: 'POST', body: { action: 'set_item_status', item_id: itemId, status, reason } });
+    showToast('Updated.');
+    await loadItems();
+  } catch (e) {
+    showToast(e?.message || 'Update failed', 'error');
+  }
+}
+
+function openSourceModal() {
+  const m = document.getElementById('source-modal');
+  if (m) m.style.display = 'flex';
+}
+function closeSourceModal() {
+  const m = document.getElementById('source-modal');
+  if (m) m.style.display = 'none';
+  editingSourceId = null;
+  document.getElementById('src-name').value = '';
+  document.getElementById('src-home').value = '';
+  document.getElementById('src-feed').value = '';
+  document.getElementById('src-tier').value = 'tier2';
+  document.getElementById('src-active').value = 'true';
+}
+
+async function saveSource() {
+  const name = String(document.getElementById('src-name')?.value || '').trim();
+  const home_url = String(document.getElementById('src-home')?.value || '').trim();
+  const feed_url = String(document.getElementById('src-feed')?.value || '').trim();
+  const credibility_tier = String(document.getElementById('src-tier')?.value || 'tier2');
+  const is_active = String(document.getElementById('src-active')?.value || 'true') === 'true';
+  try {
+    await adminApiJson('/api/news-admin.php', { method: 'POST', body: { action: 'upsert_source', id: editingSourceId, name, home_url, feed_url, credibility_tier, is_active } });
+    showToast('Saved.');
+    closeSourceModal();
+    await loadSources();
+  } catch (e) {
+    showToast(e?.message || 'Save failed', 'error');
+  }
+}
+
+async function runIngest() {
+  const btn = document.getElementById('btn-run');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await adminApiJson('/api/news-admin.php', { method: 'POST', body: { action: 'run_ingest' } });
+    const msg = `Ingest complete: ${res.rows_written || 0} written (${res.total_seen || 0} seen).`;
+    document.getElementById('ingest-status').textContent = msg;
+    showToast(msg);
+    await loadItems();
+  } catch (e) {
+    showToast(e?.message || 'Ingest failed', 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+window.setStatus = setStatus;
+window.closeSourceModal = closeSourceModal;
+window.editSource = (id) => {
+  const s = sources.find((x) => x.id === id);
+  if (!s) return;
+  editingSourceId = id;
+  document.getElementById('src-name').value = s.name || '';
+  document.getElementById('src-home').value = s.home_url || '';
+  document.getElementById('src-feed').value = s.feed_url || '';
+  document.getElementById('src-tier').value = s.credibility_tier || 'tier2';
+  document.getElementById('src-active').value = s.is_active ? 'true' : 'false';
+  openSourceModal();
+};
+
+document.getElementById('btn-add')?.addEventListener('click', () => { editingSourceId = null; openSourceModal(); });
+document.getElementById('src-save')?.addEventListener('click', saveSource);
+document.getElementById('btn-run')?.addEventListener('click', runIngest);
+document.getElementById('btn-refresh')?.addEventListener('click', async () => { await loadSources(); await loadItems(); });
+document.getElementById('status-filter')?.addEventListener('change', loadItems);
+document.getElementById('q')?.addEventListener('input', () => { clearTimeout(window.__qT); window.__qT = setTimeout(loadItems, 250); });
+
+await loadSources();
+await loadItems();
+</script>
+</body>
+</html>

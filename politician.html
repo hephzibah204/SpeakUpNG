@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politician Profile - evote.ng</title>
+  <meta name="description" id="meta-description" content="View profile and news coverage for a prominent Nigerian politician on evote.ng.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="/politician" id="canonical-link">
+  <meta property="og:type" content="profile">
+  <meta property="og:site_name" content="evote.ng">
+  <meta property="og:locale" content="en_NG">
+  <meta property="og:title" id="og-title" content="Politician Profile - evote.ng">
+  <meta property="og:description" id="og-description" content="View profile and news coverage for a prominent Nigerian politician on evote.ng.">
+  <meta property="og:image" id="og-image" content="/images/logo.png">
+  <meta property="og:url" id="og-url" content="/politician">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" id="twitter-title" content="Politician Profile - evote.ng">
+  <meta name="twitter:description" id="twitter-description" content="View profile and news coverage for a prominent Nigerian politician on evote.ng.">
+  <meta name="twitter:image" id="twitter-image" content="/images/logo.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .hero{background:linear-gradient(180deg, rgba(0,135,81,.08) 0%, transparent 100%);border-bottom:1px solid var(--border);padding:2.2rem 0 1.6rem;}
+    .top{display:flex;gap:1.6rem;align-items:flex-start;flex-wrap:wrap;}
+    .avatar{width:110px;height:110px;border-radius:20px;flex-shrink:0;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+    .name{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.5rem, 3.5vw, 2.2rem);line-height:1.15;margin-bottom:.35rem;}
+    .sub{color:var(--muted);font-size:1rem;margin-bottom:.8rem;}
+    .pills{display:flex;gap:.5rem;flex-wrap:wrap;}
+    .pill{border-radius:999px;padding:2px 10px;font-size:.72rem;border:1px solid var(--border);background:rgba(255,255,255,.05);}
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin:1.4rem 0 1.2rem;}
+    .tab{padding:.75rem 1.2rem;font-size:.88rem;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:'DM Sans',sans-serif;}
+    .tab.active{color:var(--green-light);border-bottom-color:var(--green-light);} 
+    .tab:hover:not(.active){color:var(--white);} 
+    .cardx{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;}
+    @media (max-width:640px){.avatar{width:84px;height:84px;font-size:1.5rem;}.tab{padding:.65rem .9rem;font-size:.82rem;}}
+  </style>
+  <script>
+    (function setCanonicalMeta(){
+      var canonical=document.getElementById('canonical-link');
+      var ogUrl=document.getElementById('og-url');
+      var current=window.location.origin+window.location.pathname;
+      if(canonical) canonical.href=current;
+      if(ogUrl) ogUrl.setAttribute('content', current);
+    })();
+  </script>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link show-mobile">Officials</a>
+      <a href="/agencies" class="nav-link">Agencies</a>
+      <a href="/leaderboard" class="nav-link">Rankings</a>
+      <a href="/polls" class="nav-link">Polls</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/news" class="nav-link">News</a>
+      <a href="/politicians" class="nav-link">Politicians</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="container">
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">
+        <a href="/politicians" style="color:var(--muted);">Politicians</a> <span style="margin:0 .4rem;">›</span>
+        <span id="breadcrumb">Loading...</span>
+      </div>
+      <div class="top">
+        <div class="avatar" id="avatar"><div class="loading"><div class="spinner"></div></div></div>
+        <div style="flex:1;min-width:240px;">
+          <div class="name" id="name"></div>
+          <div class="sub" id="sub"></div>
+          <div class="pills" id="pills"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="container" style="max-width:980px;">
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('about', this)">About</button>
+        <button class="tab" onclick="showTab('news', this)">In The News</button>
+      </div>
+
+      <div id="tab-about" class="cardx">
+        <div id="bio" style="color:var(--off);line-height:1.75;"></div>
+      </div>
+
+      <div id="tab-news" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.8rem;">
+          <div>
+            <div style="font-family:Syne,sans-serif;font-weight:800;">In The News</div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">Chronological feed from verified sources. Updates every ~15 minutes.</div>
+          </div>
+          <button class="btn btn-ghost" style="padding:.45rem .8rem;" onclick="loadNews(true)">Refresh</button>
+        </div>
+        <div id="news-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <strong>evote.ng</strong> — Follow the governance timeline<br>
+    <a href="/" style="color:var(--green-light);">Officials</a> ·
+    <a href="/politicians" style="color:var(--green-light);">Politicians</a> ·
+    <a href="/news" style="color:var(--green-light);">News</a>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const politicianId = params.get('id');
+    const slug = params.get('slug');
+
+    function esc(s){return String(s||'').replace(/[&<>"']/g,(c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
+    function sanitizeUrl(url){
+      const s=String(url||'').trim();
+      if(!s) return '';
+      try{const u=new URL(s, window.location.origin); if(!/^https?:$/.test(u.protocol)) return ''; return u.href;}catch{return '';}
+    }
+    function initials(name){
+      const parts=String(name||'').trim().split(/\s+/).filter(Boolean);
+      return parts.slice(0,2).map((p)=>p[0]).join('').toUpperCase();
+    }
+    function timeAgo(ts){
+      const d=(Date.now()-new Date(ts))/1000;
+      if(!Number.isFinite(d)||d<0) return '';
+      if(d<60) return 'Just now';
+      if(d<3600) return Math.floor(d/60)+'m ago';
+      if(d<86400) return Math.floor(d/3600)+'h ago';
+      return Math.floor(d/86400)+'d ago';
+    }
+    function sentimentMeta(score){
+      const v=Number(score);
+      if(!Number.isFinite(v)) return { label:'Neutral', color:'var(--muted)' };
+      if(v>=0.35) return { label:`Positive (${v.toFixed(2)})`, color:'#22c55e' };
+      if(v<=-0.35) return { label:`Negative (${v.toFixed(2)})`, color:'#ef4444' };
+      return { label:`Neutral (${v.toFixed(2)})`, color:'#f59e0b' };
+    }
+    function credibilityMeta(tier){
+      const t=String(tier||'tier2');
+      if(t==='tier1') return { label:'Tier 1', style:'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25);' };
+      if(t==='blocked') return { label:'Blocked', style:'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25);' };
+      return { label:'Tier 2', style:'background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.25);' };
+    }
+
+    let pol = null;
+    async function loadProfile(){
+      if(!politicianId){
+        document.getElementById('name').textContent = 'Politician not found';
+        document.getElementById('breadcrumb').textContent = 'Unknown';
+        document.getElementById('bio').textContent = 'Missing id.';
+        return;
+      }
+      const { data, error } = await supabase
+        .from('politicians')
+        .select('id,full_name,common_name,party,aspiration_title,bio,photo_url')
+        .eq('id', politicianId)
+        .limit(1);
+      if(error || !data || !data.length){
+        document.getElementById('name').textContent = 'Politician not found';
+        document.getElementById('breadcrumb').textContent = 'Unknown';
+        document.getElementById('bio').textContent = 'Unable to load profile.';
+        return;
+      }
+      pol = data[0];
+      const nm = pol.common_name || pol.full_name;
+      document.title = nm + ' - Politician Profile | evote.ng';
+      const desc = 'Profile and news coverage for ' + nm + ' on evote.ng.';
+      document.getElementById('meta-description')?.setAttribute('content', desc);
+      document.getElementById('og-title')?.setAttribute('content', document.title);
+      document.getElementById('twitter-title')?.setAttribute('content', document.title);
+      document.getElementById('og-description')?.setAttribute('content', desc);
+      document.getElementById('twitter-description')?.setAttribute('content', desc);
+
+      document.getElementById('breadcrumb').textContent = nm;
+      document.getElementById('name').textContent = nm;
+      document.getElementById('sub').textContent = (pol.aspiration_title || 'Politician') + ' · ' + (pol.party || '');
+      document.getElementById('pills').innerHTML = `<span class="pill">Party: ${esc(pol.party || '')}</span>`;
+      document.getElementById('bio').textContent = pol.bio || 'No bio yet.';
+      document.getElementById('avatar').innerHTML = pol.photo_url ? `<img alt="${esc(nm)}" src="${esc(pol.photo_url)}">` : esc(initials(nm));
+    }
+
+    window.showTab = (tab, btn) => {
+      ['about','news'].forEach((t)=>{ document.getElementById(`tab-${t}`).style.display = t===tab ? 'block' : 'none'; });
+      document.querySelectorAll('.tab').forEach((b)=>b.classList.remove('active'));
+      btn.classList.add('active');
+      if (tab === 'news') loadNews(false);
+    };
+
+    let newsLoaded = false;
+    function renderNews(items){
+      const mount = document.getElementById('news-list');
+      if(!mount) return;
+      if(!items.length){ mount.innerHTML = '<div class="empty">No matching news items found yet. Check back later.</div>'; return; }
+      mount.innerHTML = items.map((it)=>{
+        const src = it.news_sources?.name || 'Source';
+        const tier = credibilityMeta(it.news_sources?.credibility_tier);
+        const s = sentimentMeta(it.sentiment_score);
+        const when = it.published_at || it.created_at;
+        const topic = it.topic ? `<span class="pill" style="background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--white);">${esc(it.topic)}</span>` : '';
+        return `
+          <div class="card" style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;">
+              <div style="min-width:0;">
+                <div style="font-size:.92rem;font-weight:800;line-height:1.35;">${esc(it.title || '')}</div>
+                <div style="margin-top:.45rem;font-size:.82rem;color:var(--muted);line-height:1.7;">${esc(it.summary || '')}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end;">
+                <span style="${tier.style};border-radius:999px;padding:2px 8px;font-size:.72rem;">${tier.label}</span>
+                <span style="font-size:.72rem;color:var(--muted);white-space:nowrap;">${esc(timeAgo(when))}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.75rem;">
+              <span style="font-size:.72rem;color:var(--muted);">${esc(src)}</span>
+              ${topic}
+              <span style="font-size:.72rem;color:${s.color};">${esc(s.label)}</span>
+              <a href="${sanitizeUrl(it.url) || '#'}" target="_blank" rel="noopener noreferrer" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.loadNews = async (force) => {
+      if (newsLoaded && !force) return;
+      const mount = document.getElementById('news-list');
+      if (!mount) return;
+      mount.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      try {
+        let items = [];
+        if (politicianId) {
+          const { data, error } = await supabase
+            .from('news_profile_matches')
+            .select('confidence,news_items(id,title,url,published_at,created_at,summary,sentiment_score,topic,news_sources(name,credibility_tier))')
+            .eq('profile_type', 'politician')
+            .eq('profile_id', politicianId)
+            .order('confidence', { ascending: false })
+            .limit(80);
+          if (error) throw error;
+          items = (data || []).map((r) => r?.news_items).filter(Boolean);
+          items.sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime());
+          items = items.slice(0, 25);
+        }
+        renderNews(items);
+        newsLoaded = true;
+      } catch (e) {
+        mount.innerHTML = `<div class="empty">Unable to load news. ${esc(e?.message || '')}</div>`;
+      }
+    };
+
+    await loadProfile();
+  </script>
+</body>
+</html>
+

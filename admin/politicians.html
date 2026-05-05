@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politicians — evote.ng Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="sidebar-mount"></div>
+  <div class="toast" id="toast"></div>
+
+  <div class="admin-main">
+    <div class="admin-header">
+      <div class="admin-title">Non-Office Politicians</div>
+      <div class="admin-sub">Manage prominent aspirants and public figures. Priority controls ordering on the public list.</div>
+    </div>
+
+    <div class="card" style="padding:1rem;border:1px solid var(--border);margin-bottom:1.2rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <select id="party-filter" class="form-control" style="padding:.35rem .6rem;max-width:180px;">
+            <option value="">All parties</option>
+          </select>
+          <select id="active-filter" class="form-control" style="padding:.35rem .6rem;max-width:160px;">
+            <option value="active">Active</option>
+            <option value="all">All</option>
+          </select>
+          <input id="q" class="form-control" placeholder="Search name…" style="padding:.35rem .6rem;max-width:240px;">
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+          <button class="btn btn-green btn-sm" id="btn-add">Add politician</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Politician</th>
+            <th>Party</th>
+            <th>Priority</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pol-modal" style="display:none;" onclick="if(event.target===this)closePolModal()">
+    <div class="modal" style="max-width:760px;">
+      <div class="modal-header">
+        <h2>Politician</h2>
+        <button class="modal-close" onclick="closePolModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Full name</label>
+          <input class="form-control" id="pol-full" placeholder="Peter Gregory Obi">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group">
+            <label class="form-label">Common name</label>
+            <input class="form-control" id="pol-common" placeholder="Peter Obi">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Party (code)</label>
+            <input class="form-control" id="pol-party" placeholder="LP">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Aspiration title</label>
+          <input class="form-control" id="pol-title" placeholder="Presidential Aspirant">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bio</label>
+          <textarea class="form-control" id="pol-bio" rows="4" placeholder="Short bio shown publicly"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group">
+            <label class="form-label">Photo URL (optional)</label>
+            <input class="form-control" id="pol-photo" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority (higher first)</label>
+            <input class="form-control" id="pol-priority" type="number" value="0">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group">
+            <label class="form-label">Aliases (comma separated)</label>
+            <input class="form-control" id="pol-aliases" placeholder="Mr Peter Obi, H.E. Peter Obi">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Active</label>
+            <select class="form-control" id="pol-active">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:1.2rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost" id="pol-delete" style="border-color:rgba(239,68,68,.3);color:#ef4444;display:none;">Delete</button>
+          <div style="display:flex;gap:.6rem;">
+            <button class="btn btn-ghost" onclick="closePolModal()">Cancel</button>
+            <button class="btn btn-green" id="pol-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, sidebarHTML, wireSignOut, adminApiJson, supabase, showToast } from './js/admin-common.js';
+
+    const session = await requireAuth();
+    document.getElementById('sidebar-mount').innerHTML = sidebarHTML('politicians', session?.user?.email);
+    wireSignOut();
+
+    let all = [];
+    let editingId = null;
+
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    function openPolModal() {
+      const m = document.getElementById('pol-modal');
+      if (m) m.style.display = 'flex';
+    }
+    function closePolModal() {
+      const m = document.getElementById('pol-modal');
+      if (m) m.style.display = 'none';
+      editingId = null;
+      document.getElementById('pol-full').value = '';
+      document.getElementById('pol-common').value = '';
+      document.getElementById('pol-party').value = '';
+      document.getElementById('pol-title').value = '';
+      document.getElementById('pol-bio').value = '';
+      document.getElementById('pol-photo').value = '';
+      document.getElementById('pol-priority').value = '0';
+      document.getElementById('pol-aliases').value = '';
+      document.getElementById('pol-active').value = 'true';
+      const del = document.getElementById('pol-delete');
+      if (del) del.style.display = 'none';
+    }
+    window.closePolModal = closePolModal;
+
+    function partyOptions(rows) {
+      const parties = Array.from(new Set((rows || []).map((r) => String(r.party || '').trim()).filter(Boolean))).sort();
+      const sel = document.getElementById('party-filter');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">All parties</option>' + parties.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      sel.value = cur;
+    }
+
+    function filtered() {
+      const q = String(document.getElementById('q')?.value || '').trim().toLowerCase();
+      const party = String(document.getElementById('party-filter')?.value || '').trim();
+      const activeMode = String(document.getElementById('active-filter')?.value || 'active');
+      return (all || []).filter((r) => {
+        if (activeMode !== 'all' && !r.is_active) return false;
+        if (party && String(r.party || '').trim() !== party) return false;
+        if (!q) return true;
+        const name = String(r.full_name || '').toLowerCase();
+        const common = String(r.common_name || '').toLowerCase();
+        return name.includes(q) || common.includes(q);
+      });
+    }
+
+    function render() {
+      const rows = filtered().slice().sort((a, b) => (b.priority || 0) - (a.priority || 0) || String(a.full_name||'').localeCompare(String(b.full_name||'')));
+      const mount = document.getElementById('rows');
+      if (!rows.length) {
+        mount.innerHTML = '<tr><td colspan="5"><div class="empty">No politicians found.</div></td></tr>';
+        return;
+      }
+      mount.innerHTML = rows.map((p) => {
+        return `<tr>
+          <td style="cursor:pointer;" onclick="window.editPol('${p.id}')">
+            <div style="font-size:.85rem;font-weight:800;">${esc(p.full_name)}</div>
+            <div style="font-size:.74rem;color:var(--muted);">${esc(p.common_name || '')}</div>
+          </td>
+          <td>${esc(p.party || '')}</td>
+          <td>${esc(p.priority ?? 0)}</td>
+          <td>${p.is_active ? 'Yes' : 'No'}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();window.editPol('${p.id}')">Edit</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function load() {
+      const { data, error } = await supabase
+        .from('politicians')
+        .select('id,full_name,common_name,party,aspiration_title,bio,photo_url,aliases,social_links,priority,is_active,created_at')
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      all = data || [];
+      partyOptions(all);
+      render();
+    }
+
+    async function save() {
+      const full_name = String(document.getElementById('pol-full')?.value || '').trim();
+      const common_name = String(document.getElementById('pol-common')?.value || '').trim();
+      const party = String(document.getElementById('pol-party')?.value || '').trim().toUpperCase();
+      const aspiration_title = String(document.getElementById('pol-title')?.value || '').trim();
+      const bio = String(document.getElementById('pol-bio')?.value || '').trim();
+      const photo_url = String(document.getElementById('pol-photo')?.value || '').trim();
+      const priority = parseInt(String(document.getElementById('pol-priority')?.value || '0'), 10) || 0;
+      const is_active = String(document.getElementById('pol-active')?.value || 'true') === 'true';
+      const aliases = String(document.getElementById('pol-aliases')?.value || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      try {
+        await adminApiJson('/api/politicians-admin.php', {
+          method: 'POST',
+          body: { action: 'upsert', id: editingId, full_name, common_name, party, aspiration_title, bio, photo_url, priority, is_active, aliases, social_links: {} }
+        });
+        showToast('Saved.');
+        closePolModal();
+        await load();
+      } catch (e) {
+        showToast(e?.message || 'Save failed', 'error');
+      }
+    }
+
+    async function del() {
+      if (!editingId) return;
+      if (!confirm('Delete this politician?')) return;
+      try {
+        await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'delete', id: editingId } });
+        showToast('Deleted.');
+        closePolModal();
+        await load();
+      } catch (e) {
+        showToast(e?.message || 'Delete failed', 'error');
+      }
+    }
+
+    window.editPol = (id) => {
+      const p = (all || []).find((x) => x.id === id);
+      if (!p) return;
+      editingId = id;
+      document.getElementById('pol-full').value = p.full_name || '';
+      document.getElementById('pol-common').value = p.common_name || '';
+      document.getElementById('pol-party').value = p.party || '';
+      document.getElementById('pol-title').value = p.aspiration_title || '';
+      document.getElementById('pol-bio').value = p.bio || '';
+      document.getElementById('pol-photo').value = p.photo_url || '';
+      document.getElementById('pol-priority').value = String(p.priority ?? 0);
+      document.getElementById('pol-active').value = p.is_active ? 'true' : 'false';
+      const aliases = Array.isArray(p.aliases) ? p.aliases : [];
+      document.getElementById('pol-aliases').value = aliases.map((a) => String(a || '').trim()).filter(Boolean).join(', ');
+      const delBtn = document.getElementById('pol-delete');
+      if (delBtn) delBtn.style.display = '';
+      openPolModal();
+    };
+
+    document.getElementById('btn-add')?.addEventListener('click', () => { editingId = null; openPolModal(); });
+    document.getElementById('btn-refresh')?.addEventListener('click', load);
+    document.getElementById('pol-save')?.addEventListener('click', save);
+    document.getElementById('pol-delete')?.addEventListener('click', del);
+    document.getElementById('party-filter')?.addEventListener('change', render);
+    document.getElementById('active-filter')?.addEventListener('change', render);
+    document.getElementById('q')?.addEventListener('input', () => { clearTimeout(window.__pqT); window.__pqT = setTimeout(render, 150); });
+
+    await load();
+  </script>
+</body>
+</html>
+

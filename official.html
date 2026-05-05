@@ -224,6 +224,7 @@
       <button class="profile-tab active" onclick="showTab('reviews', this)">Reviews</button>
       <button class="profile-tab" onclick="showTab('trend', this)">Trend</button>
       <button class="profile-tab" onclick="showTab('about', this)">About</button>
+      <button class="profile-tab" onclick="showTab('news', this)">In The News</button>
       <button class="profile-tab" onclick="showTab('mandate', this)">Mandate</button>
       <button class="profile-tab" onclick="showTab('reports', this)">Reports <span id="reports-count" style="background:rgba(192,57,43,.2);color:#e57368;border-radius:4px;padding:1px 5px;font-size:.7rem;margin-left:.3rem;"></span></button>
     </div>
@@ -303,6 +304,18 @@
           <div id="social-links" style="display:flex;gap:.8rem;flex-wrap:wrap;"></div>
         </div>
       </div>
+    </div>
+
+    <!-- NEWS TAB -->
+    <div id="tab-news" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem;">
+        <div>
+          <div style="font-family:Syne,sans-serif;font-weight:800;">In The News</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">Chronological feed from verified sources. Updates every ~15 minutes.</div>
+        </div>
+        <button class="btn btn-ghost" style="padding:.45rem .8rem;" onclick="loadNews(true)">Refresh</button>
+      </div>
+      <div id="news-list"><div class="loading"><div class="spinner"></div></div></div>
     </div>
 
     <!-- MANDATE TAB -->
@@ -1558,11 +1571,118 @@ async function loadReports() {
 
 // ── TABS ──
 window.showTab = (tab, btn) => {
-  ['reviews','trend','about','mandate','reports'].forEach(t => {
+  ['reviews','trend','about','news','mandate','reports'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t===tab?'block':'none';
   });
   document.querySelectorAll('.profile-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  if (tab === 'news') loadNews(false);
+};
+
+let newsLoaded = false;
+function sentimentMeta(score) {
+  const v = Number(score);
+  if (!Number.isFinite(v)) return { label: 'Neutral', color: 'var(--muted)' };
+  if (v >= 0.35) return { label: `Positive (${v.toFixed(2)})`, color: '#22c55e' };
+  if (v <= -0.35) return { label: `Negative (${v.toFixed(2)})`, color: '#ef4444' };
+  return { label: `Neutral (${v.toFixed(2)})`, color: '#f59e0b' };
+}
+
+function credibilityMeta(tier) {
+  const t = String(tier || 'tier2');
+  if (t === 'tier1') return { label: 'Tier 1', style: 'background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25);' };
+  if (t === 'blocked') return { label: 'Blocked', style: 'background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25);' };
+  return { label: 'Tier 2', style: 'background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.25);' };
+}
+
+function renderNews(items) {
+  const mount = document.getElementById('news-list');
+  if (!mount) return;
+  if (!items.length) {
+    mount.innerHTML = '<div class="empty">No matching news items found yet. Check back later.</div>';
+    return;
+  }
+  mount.innerHTML = items.map((it) => {
+    const src = it.news_sources?.name || 'Source';
+    const tier = credibilityMeta(it.news_sources?.credibility_tier);
+    const s = sentimentMeta(it.sentiment_score);
+    const when = it.published_at || it.created_at;
+    const topic = it.topic ? `<span class="tag" style="background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--white);border-radius:999px;padding:2px 8px;font-size:.72rem;">${escapeHtml(it.topic)}</span>` : '';
+    return `
+      <div class="review-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;">
+          <div style="min-width:0;">
+            <div style="font-size:.92rem;font-weight:800;line-height:1.35;">${escapeHtml(it.title || '')}</div>
+            <div style="margin-top:.45rem;font-size:.82rem;color:var(--muted);line-height:1.7;">${escapeHtml(it.summary || '')}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end;">
+            <span style="${tier.style};border-radius:999px;padding:2px 8px;font-size:.72rem;">${tier.label}</span>
+            <span style="font-size:.72rem;color:var(--muted);white-space:nowrap;">${timeAgo(when)}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.75rem;">
+          <span style="font-size:.72rem;color:var(--muted);">${escapeHtml(src)}</span>
+          ${topic}
+          <span style="font-size:.72rem;color:${s.color};">${escapeHtml(s.label)}</span>
+          <a href="${sanitizeUrl(it.url) || '#'}" target="_blank" rel="noopener noreferrer" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.loadNews = async (force) => {
+  if (newsLoaded && !force) return;
+  const mount = document.getElementById('news-list');
+  if (!mount) return;
+  mount.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    let items = [];
+    if (officialId) {
+      const { data, error } = await supabase
+        .from('news_profile_matches')
+        .select('confidence,matched_terms,news_items(id,title,url,published_at,created_at,summary,sentiment_score,topic,news_sources(name,credibility_tier))')
+        .eq('profile_type', 'official')
+        .eq('profile_id', officialId)
+        .order('confidence', { ascending: false })
+        .limit(80);
+      if (error) throw error;
+      items = (data || []).map((r) => {
+        const it = r?.news_items;
+        if (!it || typeof it !== 'object') return null;
+        return { ...it, _match_confidence: r.confidence, _matched_terms: r.matched_terms };
+      }).filter(Boolean);
+      items = items.filter((it) => it.moderation_status ? it.moderation_status === 'approved' : true);
+      items.sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime());
+      items = items.slice(0, 25);
+    }
+
+    if (!items.length) {
+      const terms = [String(official?.full_name || '').trim(), String(official?.common_name || '').trim()].filter(Boolean);
+      if (terms.length) {
+        const or = terms
+          .flatMap((t) => [
+            `title.ilike.%${t.replace(/%/g, '')}%`,
+            `summary.ilike.%${t.replace(/%/g, '')}%`,
+          ])
+          .join(',');
+        const { data, error } = await supabase
+          .from('news_items')
+          .select('id,title,url,published_at,created_at,summary,sentiment_score,topic,news_sources(name,credibility_tier)')
+          .eq('moderation_status', 'approved')
+          .or(or)
+          .order('published_at', { ascending: false })
+          .limit(25);
+        if (error) throw error;
+        items = data || [];
+      }
+    }
+
+    renderNews(items);
+    newsLoaded = true;
+  } catch (e) {
+    mount.innerHTML = `<div class="empty">Unable to load news. ${escapeHtml(e?.message || '')}</div>`;
+  }
 };
 
 // ── RATE MODAL ──

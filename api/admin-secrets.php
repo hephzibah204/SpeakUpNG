@@ -127,6 +127,7 @@ function nr_write_secrets(array $data): void {
   $out = [
     'SUPABASE_URL' => (string)($data['SUPABASE_URL'] ?? ''),
     'SUPABASE_ANON_KEY' => (string)($data['SUPABASE_ANON_KEY'] ?? ''),
+    'SUPABASE_SERVICE_ROLE_KEY' => (string)($data['SUPABASE_SERVICE_ROLE_KEY'] ?? ''),
     'OPENROUTER_API_KEY' => (string)($data['OPENROUTER_API_KEY'] ?? ''),
     'OPENROUTER_MODEL' => (string)($data['OPENROUTER_MODEL'] ?? 'openai/gpt-4o-mini'),
     'ADMIN_EMAILS' => is_array($data['ADMIN_EMAILS'] ?? null) ? array_values(array_filter($data['ADMIN_EMAILS'], fn($e) => is_string($e) && trim($e) !== '')) : [],
@@ -157,6 +158,7 @@ if ($method === 'GET') {
     'openrouter_model' => (string)($secrets['OPENROUTER_MODEL'] ?? 'openai/gpt-4o-mini'),
     'supabase_configured' => ((string)($cfg['url'] ?? '') !== '' && (string)($cfg['anon'] ?? '') !== ''),
     'supabase_source' => (string)($cfg['source'] ?? ''),
+    'has_service_key' => ((string)($secrets['SUPABASE_SERVICE_ROLE_KEY'] ?? '') !== ''),
     'admin_emails_count' => is_array($secrets['ADMIN_EMAILS'] ?? null) ? count($secrets['ADMIN_EMAILS']) : 0,
   ]);
 }
@@ -175,10 +177,10 @@ if (isset($payload['openrouter_api_key']) && is_string($payload['openrouter_api_
 if (isset($payload['openrouter_model']) && is_string($payload['openrouter_model'])) $updates['OPENROUTER_MODEL'] = trim($payload['openrouter_model']);
 if (isset($payload['supabase_url']) && is_string($payload['supabase_url'])) $updates['SUPABASE_URL'] = trim($payload['supabase_url']);
 if (isset($payload['supabase_anon_key']) && is_string($payload['supabase_anon_key'])) $updates['SUPABASE_ANON_KEY'] = trim($payload['supabase_anon_key']);
+if (isset($payload['supabase_service_role_key']) && is_string($payload['supabase_service_role_key'])) $updates['SUPABASE_SERVICE_ROLE_KEY'] = trim($payload['supabase_service_role_key']);
 if (isset($payload['admin_emails']) && is_array($payload['admin_emails'])) $updates['ADMIN_EMAILS'] = $payload['admin_emails'];
 
 foreach ($updates as $k => $v) $existing[$k] = $v;
 
 nr_write_secrets($existing);
 nr_json(200, ['ok' => true]);
-

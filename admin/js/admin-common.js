@@ -32,6 +32,7 @@ export function sidebarHTML(activePage, userEmail) {
     { id:'content',     icon:'📝', label:'Content (CMS)', href:'/admin/content' },
     { id:'officials',   icon:'👤', label:'Officials',     href:'/admin/officials' },
     { id:'governors',   icon:'🏛️', label:'Governors',     href:'/admin/governors' },
+    { id:'politicians', icon:'🧑🏾‍⚖️', label:'Politicians',  href:'/admin/politicians' },
     { id:'mandate',     icon:'📌', label:'Mandate',       href:'/admin/mandate' },
     { id:'profiles',    icon:'🧾', label:'Profiles',      href:'/admin/profiles' },
     { id:'ratings',     icon:'⭐', label:'Ratings',       href:'/admin/ratings' },
@@ -41,6 +42,7 @@ export function sidebarHTML(activePage, userEmail) {
   const aiPages = [
     { id:'alerts',      icon:'🔔', label:'AI Alerts',     href:'/admin/alerts' },
     { id:'ai-manager',  icon:'🤖', label:'AI Manager',    href:'/admin/ai-manager' },
+    { id:'news-intel',  icon:'📰', label:'News Intel',    href:'/admin/news-intel' },
   ];
   return `
   <button class="mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>

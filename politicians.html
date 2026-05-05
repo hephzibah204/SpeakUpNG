@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prominent Politicians (Aspirants) | evote.ng</title>
+  <meta name="description" content="Explore prominent non-office politicians and aspirants in Nigeria. Filter by party and view their profile news and sentiment.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="/politicians" id="canonical-link">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="evote.ng">
+  <meta property="og:locale" content="en_NG">
+  <meta property="og:title" content="Prominent Politicians (Aspirants) | evote.ng">
+  <meta property="og:description" content="Explore prominent non-office politicians and aspirants in Nigeria.">
+  <meta property="og:image" content="/images/logo.png">
+  <meta property="og:url" content="/politicians" id="og-url">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Prominent Politicians (Aspirants) | evote.ng">
+  <meta name="twitter:description" content="Explore prominent non-office politicians and aspirants in Nigeria.">
+  <meta name="twitter:image" content="/images/logo.png">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .filters{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:1rem;}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin-top:1.2rem;}
+    .cardx{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;gap:.9rem;}
+    .avatar{width:56px;height:56px;border-radius:14px;flex-shrink:0;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+    .name{font-family:'Syne',sans-serif;font-weight:800;line-height:1.2;}
+    .meta{font-size:.78rem;color:var(--muted);margin-top:.15rem;}
+    .pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.72rem;border:1px solid var(--border);background:rgba(255,255,255,.05);}
+    .actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.65rem;}
+    @media (max-width: 980px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media (max-width: 640px){.grid{grid-template-columns:1fr;}.cardx{padding:.9rem;}}
+  </style>
+  <script>
+    (function setCanonicalMeta(){
+      var origin = window.location.origin || '';
+      var url = origin + '/politicians';
+      var canonical = document.getElementById('canonical-link');
+      var ogUrl = document.getElementById('og-url');
+      if (canonical) canonical.href = url;
+      if (ogUrl) ogUrl.setAttribute('content', url);
+    })();
+  </script>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link show-mobile">Officials</a>
+      <a href="/agencies" class="nav-link">Agencies</a>
+      <a href="/leaderboard" class="nav-link">Rankings</a>
+      <a href="/polls" class="nav-link">Polls</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/news" class="nav-link">News</a>
+      <a href="/politicians" class="nav-link active">Politicians</a>
+    </div>
+  </nav>
+
+  <div class="section">
+    <div class="container" style="max-width:980px;">
+      <div class="page-header">
+        <h1 class="page-title">Prominent Politicians (Aspirants)</h1>
+        <p class="page-sub">Browse notable public figures who are not currently in office. Filter by party and view their profiles.</p>
+        <div class="filters">
+          <select id="party" class="form-control" style="max-width:180px;padding:.45rem .6rem;">
+            <option value="">All parties</option>
+          </select>
+          <input id="q" class="form-control" placeholder="Search name…" style="max-width:260px;padding:.45rem .6rem;">
+          <button class="btn btn-ghost" id="refresh" style="padding:.45rem .8rem;">Refresh</button>
+        </div>
+      </div>
+
+      <div id="grid" class="grid" aria-live="polite">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+      <div id="empty" class="card" style="display:none;">
+        <div class="empty">No politicians found.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <strong>evote.ng</strong> — Follow the governance timeline<br>
+    <a href="/" style="color:var(--green-light);">Officials</a> ·
+    <a href="/polls" style="color:var(--green-light);">Polls</a> ·
+    <a href="/blog" style="color:var(--green-light);">Blog</a>
+  </footer>
+
+  <script type="module">
+    import { supabase } from './js/supabase-client.js';
+
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty');
+    const partySel = document.getElementById('party');
+    const qEl = document.getElementById('q');
+
+    let all = [];
+
+    function esc(s){return String(s||'').replace(/[&<>"']/g,(c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
+
+    function initials(name){
+      const parts = String(name||'').trim().split(/\s+/).filter(Boolean);
+      return parts.slice(0,2).map((p)=>p[0]).join('').toUpperCase();
+    }
+
+    function slugify(s){
+      return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,60);
+    }
+
+    function setPartyOptions(rows){
+      const parties = Array.from(new Set((rows||[]).map((r)=>String(r.party||'').trim()).filter(Boolean))).sort();
+      const cur = partySel.value;
+      partySel.innerHTML = '<option value="">All parties</option>' + parties.map((p)=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      partySel.value = cur;
+    }
+
+    function filtered(){
+      const party = String(partySel.value||'').trim();
+      const q = String(qEl.value||'').trim().toLowerCase();
+      return (all||[]).filter((p)=>{
+        if (party && String(p.party||'').trim() !== party) return false;
+        if (!q) return true;
+        return String(p.full_name||'').toLowerCase().includes(q) || String(p.common_name||'').toLowerCase().includes(q);
+      });
+    }
+
+    function render(){
+      const rows = filtered().slice().sort((a,b)=>(b.priority||0)-(a.priority||0) || String(a.full_name||'').localeCompare(String(b.full_name||'')));
+      if (!rows.length){
+        grid.innerHTML = '';
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+      grid.innerHTML = rows.map((p)=>{
+        const nm = p.common_name || p.full_name;
+        const slug = slugify(nm);
+        const href = '/politician/' + slug + '--' + encodeURIComponent(p.id);
+        return `
+          <div class="cardx card-hover">
+            <div class="avatar">${p.photo_url ? `<img alt="${esc(nm)}" src="${esc(p.photo_url)}">` : esc(initials(nm))}</div>
+            <div style="min-width:0;flex:1;">
+              <div class="name">${esc(nm)}</div>
+              <div class="meta">${esc(p.aspiration_title || 'Politician')} · <span class="pill">${esc(p.party || '')}</span></div>
+              <div class="actions">
+                <a class="btn btn-green btn-sm" href="${href}">View Profile</a>
+                <a class="btn btn-ghost btn-sm" href="/news" title="Politics feed">Politics News</a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function load(){
+      grid.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      const { data, error } = await supabase
+        .from('politicians')
+        .select('id,full_name,common_name,party,aspiration_title,bio,photo_url,priority')
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) {
+        grid.innerHTML = '<div class="empty">Unable to load politicians right now.</div>';
+        return;
+      }
+      all = data || [];
+      setPartyOptions(all);
+      render();
+    }
+
+    document.getElementById('refresh')?.addEventListener('click', load);
+    partySel.addEventListener('change', render);
+    qEl.addEventListener('input', () => { clearTimeout(window.__polQ); window.__polQ = setTimeout(render, 120); });
+
+    await load();
+  </script>
+</body>
+</html>
+
