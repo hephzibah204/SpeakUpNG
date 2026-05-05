@@ -271,16 +271,7 @@
     <div class="hero-eyebrow">🇳🇬 Civic Accountability Platform</div>
     <h1>Rate Every <em>Government Official</em> in Nigeria</h1>
     <p>From your local councillor to the President. Anonymous, transparent, and powered by citizens.</p>
-    <form class="top-search" id="top-search-form">
-      <input id="top-search-input" type="search" placeholder="Search officials or agencies by name, role, or state..." autocomplete="off">
-      <select id="top-search-type" aria-label="Search type">
-        <option value="all">All</option>
-        <option value="officials">Officials</option>
-        <option value="agencies">Agencies (Bodies)</option>
-        <option value="agency_heads">Agency Heads</option>
-      </select>
-      <button class="btn btn-green" type="submit">Search</button>
-    </form>
+
     <div class="hero-cta">
       <button class="btn btn-green btn-lg" onclick="document.getElementById('officials-section').scrollIntoView({behavior:'smooth'})">Start Rating ↓</button>
       <a href="/leaderboard" class="btn btn-ghost btn-lg">View Rankings</a>
@@ -357,8 +348,8 @@
     <!-- Filters row -->
     <div class="filter-row">
       <div class="search-wrap" style="flex:1;min-width:200px;margin:0;">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="search-input" placeholder="Search name, role, state...">
+        <span class="search-icon">??</span>
+        <input type="text" id="search-input" placeholder="Search officials & agencies (name, role, state, website)...">
       </div>
       <select id="state-filter">
         <option value="">All States</option>
@@ -832,7 +823,7 @@ async function loadOfficials() {
   let q = supabase.from('officials').select('*,states(name)').eq('status','active');
   if (S.tier) q = q.eq('tier', S.tier);
   if (S.state) q = q.eq('states.name', S.state);
-  const { data, error } = await q.limit(500);
+  const { data, error } = await q.limit(3000);
   if (error) {
     document.getElementById('officials-grid').innerHTML = `
       <div class="empty">
@@ -1091,7 +1082,17 @@ async function loadBestRatedSections() {
 function applyFilters() {
   let list = [...S.officials];
   const q = S.search.toLowerCase();
-  if (q) list = list.filter(o => o.full_name.toLowerCase().includes(q) || o.role.toLowerCase().includes(q) || (o.states?.name||'').toLowerCase().includes(q));
+  if (q) {
+    list = list.filter((o) => {
+      const name = String(o?.full_name || '').toLowerCase();
+      const common = String(o?.common_name || '').toLowerCase();
+      const role = String(o?.role || '').toLowerCase();
+      const state = String(o?.states?.name || '').toLowerCase();
+      const domain = domainFromUrl(String(o?.website || '')) || '';
+      const hay = `${name} ${common} ${role} ${state} ${domain}`.trim();
+      return hay.includes(q);
+    });
+  }
   if (S.state) list = list.filter(o => (o.states?.name||'') === S.state);
   const type = String(S.type || 'all');
   if (type === 'agencies') list = list.filter((o) => isAgencyBody(o));
@@ -1191,7 +1192,7 @@ function renderOfficials() {
   const start = (page-1)*perPage, end = start+perPage;
   const slice = filtered.slice(start, end);
 
-  document.getElementById('results-count').textContent = `${fmt(total)} official${total!==1?'s':''}`;
+  document.getElementById('results-count').textContent = `${fmt(total)} profile${total!==1?'s':''}`;
 
   if (!slice.length) { grid.innerHTML = '<div class="empty">No officials found. Try a different search.</div>'; renderPagination(0); return; }
 
@@ -1258,9 +1259,10 @@ document.querySelectorAll('#tier-tabs .tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#tier-tabs .tab').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
-    S.tier = btn.dataset.tier;
-    if (S.tier === 'federal_agency') S.type = 'agencies';
-    else if (S.tier) S.type = 'all';
+    S.tier = btn.dataset.tier || '';
+    if (!S.tier) S.type = 'all';
+    else if (S.tier === 'federal_agency') S.type = 'agencies';
+    else S.type = 'all';
     loadOfficials();
   });
 });
@@ -1273,30 +1275,6 @@ document.getElementById('search-input').addEventListener('input', e => {
 });
 document.getElementById('state-filter').addEventListener('change', e => { S.state = e.target.value; applyFilters(); });
 document.getElementById('sort-filter').addEventListener('change', e => { S.sort = e.target.value; applyFilters(); });
-
-// ── TOP SEARCH ──
-document.getElementById('top-search-form')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const q = (document.getElementById('top-search-input')?.value || '').trim();
-  const type = document.getElementById('top-search-type')?.value || 'all';
-
-  S.search = q;
-  S.type = type;
-  S.tier = '';
-  S.state = '';
-  S.page = 1;
-
-  const downSearch = document.getElementById('search-input');
-  if (downSearch) downSearch.value = q;
-  const downState = document.getElementById('state-filter');
-  if (downState) downState.value = '';
-
-  document.querySelectorAll('#tier-tabs .tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector('#tier-tabs .tab[data-tier=""]')?.classList.add('active');
-
-  await loadOfficials();
-  document.getElementById('officials-section')?.scrollIntoView({ behavior: 'smooth' });
-});
 
 // ── RATE MODAL ──
 window.openRateModal = async (id) => {
