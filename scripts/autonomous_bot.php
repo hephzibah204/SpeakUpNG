@@ -134,15 +134,21 @@ $officialsCreated = 0;
 
 foreach ($changes as $c) {
   if (!is_array($c) || empty($c['name'])) continue;
-  echo "\nProcessing: {$c['name']} ({$c['role'] ?? 'unknown role'})...\n";
+  $cName     = $c['name'];
+  $cRole     = $c['role'] ?? 'unknown role';
+  $cType     = $c['type'] ?? 'appointed';
+  $cSource   = $c['source_url'] ?? null;
+  $cHeadline = $c['news_headline'] ?? null;
+
+  echo "\nProcessing: {$cName} ({$cRole})...\n";
 
   // ── STEP 3: SAVE AS ALERT ────────────────────────
   $alert = [
-    'official_name' => $c['name'],
-    'new_role'      => $c['role'] ?? 'Unknown',
-    'change_type'   => $c['type'] ?? 'appointed',
-    'source'        => $c['source_url'] ?? null,
-    'headline'      => $c['news_headline'] ?? null,
+    'official_name' => $cName,
+    'new_role'      => $cRole,
+    'change_type'   => $cType,
+    'source'        => $cSource,
+    'headline'      => $cHeadline,
     'confidence'    => 'medium',
     'is_processed'  => false,
   ];
@@ -153,19 +159,19 @@ foreach ($changes as $c) {
   }
 
   // ── STEP 4: AUTO-CREATE OFFICIAL (if appointed) ──
-  if (($c['type'] ?? '') === 'appointed') {
-    $exists = supa_req('GET', 'officials?full_name=eq.' . urlencode($c['name']) . '&limit=1');
+  if ($cType === 'appointed') {
+    $exists = supa_req('GET', 'officials?full_name=eq.' . urlencode($cName) . '&limit=1');
     if (is_array($exists) && empty($exists)) {
       echo "  Creating new official profile...\n";
 
       // Generate a brief bio via AI
-      $bioPrompt = "Write a 2-sentence professional biography for {$c['name']}, who was recently appointed as {$c['role']} in Nigeria. Be factual and concise.";
+      $bioPrompt = "Write a 2-sentence professional biography for {$cName}, who was recently appointed as {$cRole} in Nigeria. Be factual and concise.";
       $bio = ai_chat('You are a Nigerian civic-tech writer.', $bioPrompt);
-      if (!$bio) $bio = "Recently appointed as {$c['role']}. Profile data being gathered.";
+      if (!$bio) $bio = "Recently appointed as {$cRole}. Profile data being gathered.";
 
       $newOff = [
-        'full_name' => $c['name'],
-        'role'      => $c['role'] ?? 'Government Official',
+        'full_name' => $cName,
+        'role'      => $cRole,
         'bio'       => $bio,
         'status'    => 'active',
       ];
@@ -189,3 +195,4 @@ echo "Changes Found:     " . count($changes) . "\n";
 echo "Alerts Created:    {$alertsCreated}\n";
 echo "Officials Created: {$officialsCreated}\n";
 echo "=========================================================\n";
+
