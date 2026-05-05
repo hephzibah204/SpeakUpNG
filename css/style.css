@@ -154,6 +154,7 @@ h1, h2, h3, h4 {
   border: 1px solid currentColor;
 }
 .s-pending { color: var(--muted); background: rgba(107,113,99,.1); }
+.s-unrated { color: var(--muted); background: rgba(255,255,255,.08); }
 .s-in_progress { color: #e8a020; background: rgba(232,160,32,.1); }
 .s-fulfilled { color: var(--green-light); background: rgba(0,179,104,.1); }
 .s-broken { color: #e57368; background: rgba(229,115,104,.1); }
@@ -574,4 +575,3 @@ select.form-control option { background: var(--card); }
 .s-fulfilled { color: var(--green-light); background: rgba(0,179,104,.1); }
 .s-broken { color: #e57368; background: rgba(229,115,104,.1); }
 .s-disputed { color: #e87720; background: rgba(232,119,32,.1); }
-

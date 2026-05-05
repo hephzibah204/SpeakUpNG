@@ -318,23 +318,22 @@
             <div id="mandate-score" style="font-size:1.8rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
             <div style="display:flex;gap:.9rem;justify-content:flex-end;margin-top:.45rem;flex-wrap:wrap;">
               <div style="text-align:right;">
-                <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Public Sentiment</div>
+                <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Total Votes</div>
                 <div id="mandate-public-score" style="font-size:1rem;font-weight:800;color:var(--white);font-family:Syne,sans-serif;line-height:1.1;">—</div>
-                <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem;">Reviews: <span id="mandate-public-count">—</span></div>
+                <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem;">Last activity: <span id="mandate-public-count">—</span></div>
               </div>
               <div style="text-align:right;">
-                <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Final Score</div>
+                <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Crowd Score</div>
                 <div id="mandate-final-score" style="font-size:1rem;font-weight:800;color:var(--green-light);font-family:Syne,sans-serif;line-height:1.1;">—</div>
               </div>
             </div>
           </div>
           <select id="mandate-filter" class="form-control" style="max-width:140px;padding:.4rem;" onchange="renderMandate()">
             <option value="">All Promises</option>
+            <option value="unrated">Unrated</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="fulfilled">Fulfilled</option>
-            <option value="broken">Broken</option>
-            <option value="disputed">Disputed</option>
           </select>
         </div>
       </div>
@@ -498,7 +497,7 @@
 </footer>
 
 <script type="module">
-import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt, scoreColor } from '/js/supabase-client.js';
+import { supabase, getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt, scoreColor, canonicalizeUrl } from '/js/supabase-client.js';
 import { getDeviceHash } from '/js/device-fingerprint.js';
 
 // ── GET ROUTE PARAMS (id or slug) ──
@@ -636,6 +635,7 @@ let allReviews = [];
 let mandateScoreRow = null;
 let mandatePublicRow = null;
 let mandatePromises = [];
+let mandateCompletionMap = {};
 let careerRows = [];
 let educationRows = [];
 let achievementRows = [];
@@ -679,12 +679,7 @@ function escapeHtml(value) {
 }
 
 function sanitizeUrl(url) {
-  if (!url) return '';
-  try {
-    const u = new URL(String(url), window.location.origin);
-    if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
-  } catch {}
-  return '';
+  return canonicalizeUrl(url);
 }
 
 function avatarImgStyle(tier) {
@@ -1329,10 +1324,14 @@ function renderAbout() {
   if (o.social_twitter) links.push(`<a href="https://twitter.com/${o.social_twitter.replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">🐦 Twitter / X</a>`);
   if (o.social_instagram) links.push(`<a href="https://instagram.com/${String(o.social_instagram).replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">📷 Instagram</a>`);
   if (o.social_tiktok) links.push(`<a href="https://tiktok.com/@${String(o.social_tiktok).replace('@','')}" target="_blank" class="btn btn-ghost btn-sm">🎵 TikTok</a>`);
-  if (o.website) links.push(`<a href="${o.website}" target="_blank" class="btn btn-ghost btn-sm">🌐 Official Website</a>`);
-  if (o.social_facebook) links.push(`<a href="${o.social_facebook}" target="_blank" class="btn btn-ghost btn-sm">📘 Facebook</a>`);
-  if (o.social_youtube) links.push(`<a href="${o.social_youtube}" target="_blank" class="btn btn-ghost btn-sm">▶ YouTube</a>`);
-  if (o.social_linkedin) links.push(`<a href="${o.social_linkedin}" target="_blank" class="btn btn-ghost btn-sm">💼 LinkedIn</a>`);
+  const w = sanitizeUrl(o.website);
+  if (w) links.push(`<a href="${w}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">🌐 Official Website</a>`);
+  const fb = sanitizeUrl(o.social_facebook);
+  if (fb) links.push(`<a href="${fb}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">📘 Facebook</a>`);
+  const yt = sanitizeUrl(o.social_youtube);
+  if (yt) links.push(`<a href="${yt}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">▶ YouTube</a>`);
+  const li = sanitizeUrl(o.social_linkedin);
+  if (li) links.push(`<a href="${li}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">💼 LinkedIn</a>`);
   if (o.contact_email) links.push(`<a href="mailto:${o.contact_email}" class="btn btn-ghost btn-sm">✉ Email</a>`);
   if (o.contact_phone) links.push(`<a href="tel:${String(o.contact_phone).replace(/\\s+/g,'')}" class="btn btn-ghost btn-sm">☎ Phone</a>`);
   if (links.length) {
@@ -1345,6 +1344,7 @@ async function loadMandate() {
   mandateScoreRow = null;
   mandatePublicRow = null;
   mandatePromises = [];
+  mandateCompletionMap = {};
   const sumEl = document.getElementById('mandate-summary');
   const scoreEl = document.getElementById('mandate-score');
   const pubEl = document.getElementById('mandate-public-score');
@@ -1361,18 +1361,22 @@ async function loadMandate() {
   gridEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
   const scoreRes = await supabase
-    .from('official_mandate_scores')
-    .select('official_id,total_promises,fulfilled,in_progress,broken,disputed,mandate_score')
+    .from('official_people_mandate_scores')
+    .select('official_id,total_promises,scored_promises,mandate_score,total_votes,last_vote_at')
     .eq('official_id', officialId)
     .limit(1);
-  if (!scoreRes.error && Array.isArray(scoreRes.data) && scoreRes.data[0]) mandateScoreRow = scoreRes.data[0];
-
-  const pubRes = await supabase
-    .from('official_public_sentiment')
-    .select('official_id,total_reviews,public_sentiment_score')
-    .eq('official_id', officialId)
-    .limit(1);
-  if (!pubRes.error && Array.isArray(pubRes.data) && pubRes.data[0]) mandatePublicRow = pubRes.data[0];
+  if (!scoreRes.error && Array.isArray(scoreRes.data) && scoreRes.data[0]) {
+    mandateScoreRow = scoreRes.data[0];
+  } else {
+    const legacyRes = await supabase
+      .from('official_mandate_scores')
+      .select('official_id,total_promises,mandate_score')
+      .eq('official_id', officialId)
+      .limit(1);
+    if (!legacyRes.error && Array.isArray(legacyRes.data) && legacyRes.data[0]) {
+      mandateScoreRow = { ...legacyRes.data[0], scored_promises: 0, total_votes: 0, last_vote_at: null };
+    }
+  }
 
   const promisesRes = await supabase
     .from('official_promises')
@@ -1382,6 +1386,18 @@ async function loadMandate() {
     .limit(300);
   if (!promisesRes.error && Array.isArray(promisesRes.data)) mandatePromises = promisesRes.data;
 
+  if (mandatePromises.length) {
+    const ids = mandatePromises.map((p) => p.id).filter(Boolean);
+    const compRes = await supabase
+      .from('promise_public_completion')
+      .select('promise_id,total_votes,yes_votes,no_votes,completion_score')
+      .in('promise_id', ids)
+      .limit(400);
+    if (!compRes.error && Array.isArray(compRes.data)) {
+      mandateCompletionMap = Object.fromEntries(compRes.data.map((r) => [r.promise_id, r]));
+    }
+  }
+
   if ((scoreRes.error && promisesRes.error) || (!mandateScoreRow && !mandatePromises.length)) {
     sumEl.textContent = 'Scorecard not yet available for this official.';
     gridEl.innerHTML = '<div class="empty" style="width:100%;">No promises yet.</div>';
@@ -1389,27 +1405,24 @@ async function loadMandate() {
   }
 
   const total = Number(mandateScoreRow?.total_promises || mandatePromises.length || 0);
-  const f = Number(mandateScoreRow?.fulfilled || 0);
-  const ip = Number(mandateScoreRow?.in_progress || 0);
-  const b = Number(mandateScoreRow?.broken || 0);
-  const d = Number(mandateScoreRow?.disputed || 0);
+  const scored = Number(mandateScoreRow?.scored_promises || 0);
+  const votes = Number(mandateScoreRow?.total_votes || 0);
   const s = mandateScoreRow?.mandate_score;
-  const prc = Number(mandatePublicRow?.total_reviews || 0);
-  const ps = mandatePublicRow?.public_sentiment_score;
-  const weight = 0.15 * Math.min(1, prc / 50);
+  const lastAt = mandateScoreRow?.last_vote_at;
 
-  sumEl.textContent = total ? `${total} promises · fulfilled ${f} · in progress ${ip} · broken ${b}${d ? ` · disputed ${d}` : ''}` : 'No promises yet.';
-  scoreEl.textContent = (typeof s === 'number' && Number.isFinite(s)) ? `${Math.round(s)}` : '—';
-  if (pubEl) pubEl.textContent = (typeof ps === 'number' && Number.isFinite(ps)) ? `${Math.round(ps)}` : '—';
-  if (pubCountEl) pubCountEl.textContent = `${prc || 0}`;
-  if (finalEl) {
-    const base = (typeof s === 'number' && Number.isFinite(s)) ? s : null;
-    const sent = (typeof ps === 'number' && Number.isFinite(ps)) ? ps : null;
-    if (base === null) finalEl.textContent = '—';
-    else {
-      const blended = (sent === null) ? base : ((1 - weight) * base + weight * sent);
-      finalEl.textContent = `${Math.round(blended)}`;
-    }
+  sumEl.textContent = total
+    ? ((votes || 0) ? `${total} promises · ${scored || 0} scored · ${votes || 0} votes` : `${total} promises · no citizen assessments yet`)
+    : 'No promises yet.';
+  scoreEl.textContent = (typeof s === 'number' && Number.isFinite(s)) ? `${Math.round(s)}%` : '—';
+  if (pubEl) pubEl.textContent = `${votes || 0}`;
+  if (pubCountEl) pubCountEl.textContent = lastAt ? new Date(lastAt).toLocaleDateString() : '—';
+  if (finalEl) finalEl.textContent = (typeof s === 'number' && Number.isFinite(s)) ? `${Math.round(s)}%` : '—';
+
+  const aiBox = document.getElementById('mandate-ai-summary');
+  const aiText = document.getElementById('mandate-ai-text');
+  if (aiBox && aiText) {
+    aiBox.style.display = 'block';
+    aiText.textContent = 'This score is people-powered. Each promise is assessed with a Yes/No question, and if Yes, citizens add a 0–100% completion estimate. AI verification can be shown per evidence link as advisory only.';
   }
   renderMandate();
 }
@@ -1418,7 +1431,24 @@ window.renderMandate = () => {
   const gridEl = document.getElementById('mandate-grid');
   if (!gridEl) return;
   const filter = (document.getElementById('mandate-filter')?.value || '').trim();
-  const list = mandatePromises.filter((p) => !filter || String(p.status || '') === filter);
+
+  function crowdStatus(score, votes) {
+    const v = Number(votes || 0);
+    const s = typeof score === 'number' && Number.isFinite(score) ? score : null;
+    if (!v || s === null) return 'unrated';
+    if (s >= 80) return 'fulfilled';
+    if (s >= 35) return 'in_progress';
+    return 'pending';
+  }
+
+  const list = mandatePromises
+    .map((p) => {
+      const r = mandateCompletionMap[p.id] || null;
+      const cs = (typeof r?.completion_score === 'number' && Number.isFinite(r.completion_score)) ? r.completion_score : null;
+      const tv = Number(r?.total_votes || 0);
+      return { ...p, _crowd_score: cs, _crowd_votes: tv, _crowd_status: crowdStatus(cs, tv) };
+    })
+    .filter((p) => !filter || p._crowd_status === filter);
   
   if (!list.length) {
     gridEl.innerHTML = '<div class="empty" style="width:100%;">No promises found.</div>';
@@ -1439,9 +1469,10 @@ window.renderMandate = () => {
 
   gridEl.innerHTML = list.map((p) => {
     const url = sanitizeUrl(p.evidence_url);
-    const prog = Number.isFinite(Number(p.progress_percent)) ? Math.max(0, Math.min(100, Number(p.progress_percent))) : 0;
+    const prog = (typeof p._crowd_score === 'number' && Number.isFinite(p._crowd_score)) ? Math.max(0, Math.min(100, p._crowd_score)) : null;
     const icon = catIcons[p.promise_category] || '📝';
-    const statusColor = p.status === 'fulfilled' ? 'var(--green-light)' : p.status === 'broken' ? '#e57368' : p.status === 'in_progress' ? '#e8a020' : 'var(--muted)';
+    const st = p._crowd_status;
+    const statusColor = st === 'fulfilled' ? 'var(--green-light)' : st === 'in_progress' ? '#e8a020' : st === 'pending' ? 'var(--muted)' : 'rgba(255,255,255,.45)';
     const detail = String(p.promise_detail || '').trim();
     const snip = detail ? (detail.length > 160 ? `${detail.slice(0, 160)}…` : detail) : '';
 
@@ -1449,7 +1480,7 @@ window.renderMandate = () => {
     <div class="promise-card fade-up" style="cursor:pointer;" onclick="openPromise('${p.id}')">
       <div class="promise-header">
         <span class="promise-icon">${icon}</span>
-        <span class="status-badge s-${p.status}" style="font-size:.6rem;">${p.status}</span>
+        <span class="status-badge s-${st}" style="font-size:.6rem;">${st}</span>
       </div>
       <div class="promise-title">${escapeHtml(p.promise_title || '')}</div>
       <div class="promise-meta">${p.promise_category}</div>
@@ -1457,11 +1488,15 @@ window.renderMandate = () => {
       
       <div class="promise-progress-wrap">
         <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:.3rem;">
-          <span style="color:var(--muted);">Progress</span>
-          <span style="font-weight:700;color:${statusColor}">${prog}%</span>
+          <span style="color:var(--muted);">Crowd completion</span>
+          <span style="font-weight:700;color:${statusColor}">${prog === null ? '—' : `${Math.round(prog)}%`}</span>
         </div>
         <div class="cat-bar-track" style="height:6px;background:rgba(255,255,255,.05);">
-          <div class="cat-bar-fill" style="width:${prog}%;background:${statusColor};"></div>
+          <div class="cat-bar-fill" style="width:${prog === null ? 0 : prog}%;background:${statusColor};"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.45rem;font-size:.72rem;color:var(--muted);">
+          <span>Votes: ${Number(p._crowd_votes || 0)}</span>
+          <span>Tap to assess →</span>
         </div>
       </div>
 

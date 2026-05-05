@@ -539,7 +539,8 @@
   </div>
 
   <script type="module">
-    import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat } from './js/admin-common.js';
+    import { supabase, requireAuth, sidebarHTML, wireSignOut, showToast, openRouterChat, canonicalizeUrl } from './js/admin-common.js';
+    import { sha256Hex } from '../js/device-fingerprint.js';
 
     let officials = [];
     let filteredOfficialsAll = [];
@@ -671,6 +672,37 @@
       return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
+    function aiVerdictFromSuggestedStatus(status) {
+      const s = String(status || '').trim();
+      if (s === 'fulfilled' || s === 'in_progress') return 'supports';
+      if (s === 'broken') return 'contradicts';
+      return 'unclear';
+    }
+
+    async function recordAiVerification(promiseId, verification, userId) {
+      const original = String(verification?.evidence_url || '').trim();
+      if (!original) return;
+      const canonical = canonicalizeUrl(original) || original;
+      const hash = await sha256Hex(canonical);
+      const payload = {
+        promise_id: promiseId,
+        evidence_original_url: original,
+        evidence_canonical_url: canonical,
+        evidence_url_hash: hash,
+        model: 'openrouter',
+        verdict: aiVerdictFromSuggestedStatus(verification?.suggested_status),
+        confidence: 0.6,
+        explanation: String(verification?.ai_summary || '').trim() || null,
+        created_by: userId || null,
+      };
+      const { error } = await supabase.from('promise_ai_verifications').insert(payload);
+      if (error) {
+        const msg = String(error.message || '').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('unique')) return;
+        showToast('AI verification log failed.', 'error');
+      }
+    }
+
     window.openAddPromise = () => {
       if (!selectedOfficialId) { showToast('Select an official first.', 'error'); return; }
       editingPromiseId = null;
@@ -780,6 +812,7 @@
         if (!data.ok) throw new Error(data.error || 'Verification failed');
 
         const v = data.verification;
+        await recordAiVerification(p.id, v, session.user.id);
         el('verify-modal-body').innerHTML = `
           <div style="background:rgba(255,255,255,.03);padding:1rem;border-radius:8px;border:1px solid var(--border);margin-bottom:1rem;">
             <div style="font-weight:600;margin-bottom:.5rem;color:var(--green-light);">AI Suggestion</div>

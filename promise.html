@@ -70,59 +70,77 @@
     <div class="card" style="margin-top:1.2rem;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
         <div>
-          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem;">Public Opinion</div>
-          <div style="font-size:.92rem;color:rgba(255,255,255,.9);line-height:1.6;">Help verify this promise. One review per device.</div>
+          <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem;">Citizen Completion Check</div>
+          <div style="font-size:.92rem;color:rgba(255,255,255,.9);line-height:1.6;">Answer the question below. One submission per device.</div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Sentiment Score</div>
-          <div id="sentiment-score" style="font-size:1.4rem;font-weight:900;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
+          <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Crowd Completion</div>
+          <div id="completion-score" style="font-size:1.4rem;font-weight:900;color:var(--green-light);font-family:Syne,sans-serif;line-height:1;">—</div>
           <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">
-            <span id="sentiment-supports">0</span> supports · <span id="sentiment-contradicts">0</span> contradicts · <span id="sentiment-total">0</span> total
+            <span id="completion-yes">0</span> yes · <span id="completion-no">0</span> no · <span id="completion-total">0</span> total
           </div>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr;gap:.8rem;margin-top:1rem;">
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-          <button class="btn" id="btn-supports" onclick="pickStance('supports')">✅ Supports</button>
-          <button class="btn" id="btn-contradicts" style="color:#e57368;border-color:#e5736844;" onclick="pickStance('contradicts')">❌ Contradicts</button>
+        <div>
+          <div style="font-size:.82rem;color:rgba(255,255,255,.9);font-weight:700;margin-bottom:.5rem;">Was this promise fulfilled?</div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            <button class="btn" id="btn-fulfilled-yes" onclick="pickFulfilled(true)">✅ Yes</button>
+            <button class="btn" id="btn-fulfilled-no" style="color:#e57368;border-color:#e5736844;" onclick="pickFulfilled(false)">❌ No</button>
+          </div>
         </div>
-        <textarea id="opinion-comment" class="form-control" rows="4" placeholder="Optional comment (what you know, links, context)…" style="resize:vertical;"></textarea>
-        <button class="submit-btn" id="submit-opinion-btn" onclick="submitOpinion()">Submit Opinion</button>
+
+        <div id="completion-percent-wrap" style="display:none;">
+          <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;">
+            <div style="font-size:.82rem;color:rgba(255,255,255,.9);font-weight:700;">How complete is it?</div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+              <input id="completion-percent" class="form-control" type="number" min="0" max="100" value="100" style="width:120px;" oninput="syncPercentFromNumber()">
+              <div style="color:var(--muted);font-size:.85rem;">%</div>
+            </div>
+          </div>
+          <input id="completion-range" type="range" min="0" max="100" value="100" style="width:100%;margin-top:.6rem;" oninput="syncPercentFromRange()">
+        </div>
+
+        <textarea id="assessment-comment" class="form-control" rows="4" placeholder="Optional note (what you know, context, links)…" style="resize:vertical;"></textarea>
+        <button class="submit-btn" id="submit-assessment-btn" onclick="submitAssessment()">Submit Assessment</button>
+        <div id="my-assessment" style="font-size:.82rem;color:var(--muted);"></div>
       </div>
     </div>
 
     <div class="card" style="margin-top:1.2rem;">
-      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.7rem;">Recent Community Notes</div>
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.7rem;">Recent Citizen Notes</div>
       <div id="opinions-list"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="card" style="margin-top:1.2rem;">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.7rem;">AI Verification (Advisory)</div>
+      <div id="ai-verifications"><div class="empty">—</div></div>
+    </div>
+
+    <div class="card" style="margin-top:1.2rem;">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.7rem;">Audit Trail</div>
+      <div id="audit-list"><div class="loading"><div class="spinner"></div></div></div>
     </div>
   </div>
 </div>
 
 <script type="module">
-import { supabase, getAnonId, showToast } from './js/supabase-client.js';
+import { supabase, getAnonId, showToast, canonicalizeUrl } from './js/supabase-client.js';
 import { getDeviceHash } from './js/device-fingerprint.js';
 
 const params = new URLSearchParams(window.location.search);
 const promiseId = (params.get('id') || '').trim();
 if (!promiseId) window.location.replace('/');
 
-const S = { stance: '', promise: null, official: null };
+const S = { promise: null, official: null, fulfilled: null, deviceHash: '', anonId: '' };
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
 
 function sanitizeUrl(url) {
-  const s = String(url || '').trim();
-  if (!s) return '';
-  try {
-    const u = new URL(s, window.location.origin);
-    if (!/^https?:$/.test(u.protocol)) return '';
-    return u.href;
-  } catch {
-    return '';
-  }
+  return canonicalizeUrl(url);
 }
 
 function statusBadgeClass(status) {
@@ -144,10 +162,27 @@ function fmtDate(d) {
   } catch { return ''; }
 }
 
-window.pickStance = (stance) => {
-  S.stance = stance;
-  document.getElementById('btn-supports').classList.toggle('btn-ghost', stance !== 'supports');
-  document.getElementById('btn-contradicts').classList.toggle('btn-ghost', stance !== 'contradicts');
+window.pickFulfilled = (yes) => {
+  S.fulfilled = !!yes;
+  document.getElementById('btn-fulfilled-yes').classList.toggle('btn-ghost', !S.fulfilled);
+  document.getElementById('btn-fulfilled-no').classList.toggle('btn-ghost', S.fulfilled);
+  document.getElementById('completion-percent-wrap').style.display = S.fulfilled ? '' : 'none';
+};
+
+window.syncPercentFromRange = () => {
+  const r = document.getElementById('completion-range');
+  const n = document.getElementById('completion-percent');
+  if (!r || !n) return;
+  n.value = String(r.value || '0');
+};
+
+window.syncPercentFromNumber = () => {
+  const r = document.getElementById('completion-range');
+  const n = document.getElementById('completion-percent');
+  if (!r || !n) return;
+  const v = Math.max(0, Math.min(100, Number(n.value || 0) || 0));
+  n.value = String(v);
+  r.value = String(v);
 };
 
 function renderPromise() {
@@ -209,88 +244,194 @@ async function loadPromise() {
   renderPromise();
 }
 
-async function loadSentiment() {
+async function loadCompletion() {
   const { data, error } = await supabase
-    .from('promise_public_sentiment')
-    .select('promise_id,total_reviews,supports,contradicts,sentiment_score')
+    .from('promise_public_completion')
+    .select('promise_id,total_votes,yes_votes,no_votes,completion_score')
     .eq('promise_id', promiseId)
     .limit(1);
   if (error) return;
   const row = Array.isArray(data) && data[0] ? data[0] : null;
-  const score = row?.sentiment_score;
-  document.getElementById('sentiment-score').textContent = (typeof score === 'number' && Number.isFinite(score)) ? `${Math.round(score)}` : '—';
-  document.getElementById('sentiment-supports').textContent = `${Number(row?.supports || 0)}`;
-  document.getElementById('sentiment-contradicts').textContent = `${Number(row?.contradicts || 0)}`;
-  document.getElementById('sentiment-total').textContent = `${Number(row?.total_reviews || 0)}`;
+  const score = row?.completion_score;
+  document.getElementById('completion-score').textContent = (typeof score === 'number' && Number.isFinite(score)) ? `${Math.round(score)}%` : '—';
+  document.getElementById('completion-yes').textContent = `${Number(row?.yes_votes || 0)}`;
+  document.getElementById('completion-no').textContent = `${Number(row?.no_votes || 0)}`;
+  document.getElementById('completion-total').textContent = `${Number(row?.total_votes || 0)}`;
 }
 
-async function loadOpinionsList() {
+async function loadMyAssessment() {
+  if (!S.deviceHash) return;
   const { data, error } = await supabase
-    .from('promise_opinions')
-    .select('stance,comment,created_at')
+    .from('promise_assessments')
+    .select('fulfilled,completion_percent,created_at')
+    .eq('promise_id', promiseId)
+    .eq('device_hash', S.deviceHash)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) return;
+  const row = Array.isArray(data) && data[0] ? data[0] : null;
+  if (!row) return;
+  document.getElementById('my-assessment').textContent = row.fulfilled
+    ? `Your device already submitted: Yes (${Number(row.completion_percent || 0)}%).`
+    : 'Your device already submitted: No.';
+}
+
+async function loadAssessmentsList() {
+  const { data, error } = await supabase
+    .from('promise_assessments')
+    .select('fulfilled,completion_percent,comment,created_at')
     .eq('promise_id', promiseId)
     .order('created_at', { ascending: false })
     .limit(20);
   if (error) {
-    document.getElementById('opinions-list').innerHTML = '<div class="empty">Unable to load community notes right now.</div>';
+    document.getElementById('opinions-list').innerHTML = '<div class="empty">Unable to load citizen notes right now.</div>';
     return;
   }
   const rows = (data || []).filter((r) => r && String(r.comment || '').trim());
   if (!rows.length) {
-    document.getElementById('opinions-list').innerHTML = '<div class="empty">No community notes yet.</div>';
+    document.getElementById('opinions-list').innerHTML = '<div class="empty">No citizen notes yet.</div>';
     return;
   }
-  document.getElementById('opinions-list').innerHTML = rows.map((r) => `
-    <div class="review-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;margin-bottom:.5rem;">
-        <span class="status-badge ${r.stance==='supports'?'s-verified':'s-rejected'}">${r.stance}</span>
-        <span style="font-size:.72rem;color:var(--muted);">${new Date(r.created_at).toLocaleString()}</span>
-      </div>
-      <div style="font-size:.9rem;line-height:1.7;">${escapeHtml(r.comment || '')}</div>
-    </div>
-  `).join('');
+  document.getElementById('opinions-list').innerHTML = rows.map((r) => {
+    const badge = r.fulfilled ? 's-verified' : 's-rejected';
+    const label = r.fulfilled ? `yes (${Number(r.completion_percent || 0)}%)` : 'no';
+    return `
+      <div class="review-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;margin-bottom:.5rem;">
+          <span class="status-badge ${badge}">${label}</span>
+          <span style="font-size:.72rem;color:var(--muted);">${new Date(r.created_at).toLocaleString()}</span>
+        </div>
+        <div style="font-size:.9rem;line-height:1.7;">${escapeHtml(r.comment || '')}</div>
+      </div>`;
+  }).join('');
 }
 
-window.submitOpinion = async () => {
-  if (!S.stance) { showToast('Pick Supports or Contradicts first.', 'error'); return; }
-  const btn = document.getElementById('submit-opinion-btn');
+async function loadAiVerifications() {
+  const box = document.getElementById('ai-verifications');
+  if (!box) return;
+  const { data, error } = await supabase
+    .from('promise_ai_verifications')
+    .select('model,verdict,confidence,evidence_canonical_url,created_at')
+    .eq('promise_id', promiseId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) {
+    box.innerHTML = '<div class="empty">Unable to load AI verification right now.</div>';
+    return;
+  }
+  const rows = (data || []).filter(Boolean);
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty">No AI verification has been recorded for this promise yet.</div>';
+    return;
+  }
+  box.innerHTML = rows.map((r) => {
+    const url = sanitizeUrl(r.evidence_canonical_url);
+    const conf = (typeof r.confidence === 'number' && Number.isFinite(r.confidence)) ? Math.round(r.confidence * 100) : null;
+    return `
+      <div class="review-card">
+        <div style="display:flex;justify-content:space-between;gap:.8rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:.35rem;">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            <span class="status-badge ${r.verdict === 'supports' ? 's-fulfilled' : r.verdict === 'contradicts' ? 's-broken' : 's-disputed'}">${escapeHtml(r.verdict)}</span>
+            <span style="font-size:.78rem;color:var(--muted);">${escapeHtml(r.model || '')}</span>
+            ${conf === null ? '' : `<span style="font-size:.78rem;color:var(--muted);">${conf}% confidence</span>`}
+          </div>
+          <span style="font-size:.72rem;color:var(--muted);">${new Date(r.created_at).toLocaleString()}</span>
+        </div>
+        ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);font-size:.86rem;">Evidence →</a>` : ''}
+      </div>`;
+  }).join('');
+}
+
+async function loadAuditTrail() {
+  const box = document.getElementById('audit-list');
+  if (!box) return;
+  const { data, error } = await supabase
+    .from('mandate_audit_events')
+    .select('event_type,record_table,actor_user_id,created_at,payload')
+    .eq('promise_id', promiseId)
+    .order('created_at', { ascending: false })
+    .limit(25);
+  if (error) {
+    box.innerHTML = '<div class="empty">Unable to load audit trail right now.</div>';
+    return;
+  }
+  const rows = (data || []).filter(Boolean);
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty">No audit events recorded yet.</div>';
+    return;
+  }
+  box.innerHTML = rows.map((r) => {
+    const actor = r.actor_user_id ? String(r.actor_user_id).slice(0, 8) : 'anon';
+    const payload = r.payload && typeof r.payload === 'object' ? r.payload : {};
+    let detail = '';
+    if (r.event_type === 'promise_assessment_insert') {
+      detail = payload.fulfilled ? `yes (${Number(payload.completion_percent || 0)}%)` : 'no';
+    } else if (r.event_type === 'promise_assessment_update') {
+      detail = payload.fulfilled_to ? `yes (${Number(payload.completion_to || 0)}%)` : 'no';
+    } else if (r.event_type === 'ai_verification_insert') {
+      detail = `${String(payload.verdict || '')} (${Math.round(Number(payload.confidence || 0) * 100)}%)`;
+    }
+    return `
+      <div style="padding:.7rem 0;border-top:1px solid rgba(255,255,255,.06);">
+        <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div style="font-weight:700;font-size:.86rem;">${escapeHtml(String(r.event_type || 'event'))}${detail ? ` · <span style=\"color:rgba(255,255,255,.85);font-weight:600;\">${escapeHtml(detail)}</span>` : ''}</div>
+          <div style="font-size:.72rem;color:var(--muted);">${new Date(r.created_at).toLocaleString()} · ${escapeHtml(actor)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.submitAssessment = async () => {
+  if (S.fulfilled === null) { showToast('Answer Yes or No first.', 'error'); return; }
+
+  const btn = document.getElementById('submit-assessment-btn');
   btn.disabled = true;
   const original = btn.textContent;
   btn.textContent = 'Submitting...';
-  let deviceHash = null;
-  try { deviceHash = await getDeviceHash({ promise_id: promiseId }); } catch {}
-  if (!deviceHash) {
-    showToast('Unable to generate device identity. Try again.', 'error');
-    btn.disabled = false;
-    btn.textContent = original;
-    return;
-  }
 
-  const comment = document.getElementById('opinion-comment').value.trim() || null;
-  const payload = {
-    promise_id: promiseId,
-    device_hash: deviceHash,
-    anon_id: getAnonId(),
-    stance: S.stance,
-    comment,
-  };
+  const comment = String(document.getElementById('assessment-comment').value || '').trim();
+  const completion = S.fulfilled
+    ? Math.max(0, Math.min(100, Number(document.getElementById('completion-percent').value || 0) || 0))
+    : null;
 
-  const { error } = await supabase.from('promise_opinions').insert(payload);
-  if (error) {
-    const msg = String(error.message || '').toLowerCase();
-    if (msg.includes('duplicate') || msg.includes('unique')) {
-      showToast('You already reviewed this promise from this device.', 'error');
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id || null;
+    const row = {
+      promise_id: promiseId,
+      user_id: userId,
+      device_hash: S.deviceHash,
+      anon_id: S.anonId,
+      fulfilled: S.fulfilled,
+      completion_percent: completion,
+      comment: comment || null,
+    };
+
+    if (userId) {
+      const { error } = await supabase
+        .from('promise_assessments')
+        .upsert(row, { onConflict: 'promise_id,user_id' });
+      if (error) throw error;
     } else {
-      showToast('Unable to submit opinion right now.', 'error');
+      const { error } = await supabase
+        .from('promise_assessments')
+        .insert(row);
+      if (error) throw error;
     }
+
+    showToast('Submitted. Thank you.', 'success');
+    await Promise.all([loadCompletion(), loadMyAssessment(), loadAssessmentsList(), loadAiVerifications(), loadAuditTrail()]);
+  } catch (e) {
+    const msg = String(e?.message || 'Submission failed');
+    if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+      showToast('Already submitted from this device.', 'error');
+    } else {
+      showToast(msg, 'error');
+    }
+  } finally {
     btn.disabled = false;
     btn.textContent = original;
-    return;
   }
-  showToast('Opinion submitted. Thank you.');
-  document.getElementById('opinion-comment').value = '';
-  btn.textContent = 'Submitted';
-  await Promise.all([loadSentiment(), loadOpinionsList()]);
 };
 
 function wireNav() {
@@ -303,9 +444,19 @@ function wireNav() {
   });
 }
 
+async function initIdentity() {
+  S.anonId = getAnonId();
+  try {
+    S.deviceHash = await getDeviceHash({ scope: 'promise_assessment_v1', promiseId });
+  } catch {
+    S.deviceHash = '';
+  }
+}
+
 wireNav();
+await initIdentity();
 await loadPromise();
-await Promise.all([loadSentiment(), loadOpinionsList()]);
+await Promise.all([loadCompletion(), loadMyAssessment(), loadAssessmentsList(), loadAiVerifications(), loadAuditTrail()]);
 </script>
 </body>
 </html>

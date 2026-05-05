@@ -1,7 +1,7 @@
 // admin-common.js — shared by all admin pages
 import { supabase } from '../../js/supabase-client.js';
 export { supabase };
-export { showToast, fmt, TIER_LABELS, TIER_COLORS, scoreColor } from '../../js/supabase-client.js';
+export { showToast, fmt, TIER_LABELS, TIER_COLORS, scoreColor, canonicalizeUrl } from '../../js/supabase-client.js';
 
 // ── AUTH GUARD ──
 export async function requireAuth() {

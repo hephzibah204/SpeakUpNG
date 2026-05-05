@@ -91,3 +91,69 @@ export function showToast(msg, type = 'success') {
 export function fmt(n) {
   return Number(n || 0).toLocaleString();
 }
+
+export function canonicalizeUrl(input) {
+  let s = String(input ?? '').trim();
+  if (!s) return '';
+
+  s = s
+    .replace(/^['"<\[]+/, '')
+    .replace(/[\]>'"\)\],\.]+$/, '')
+    .replace(/&amp;/gi, '&')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+  for (let i = 0; i < 2; i++) {
+    try {
+      const dec = decodeURIComponent(s);
+      if (dec === s) break;
+      s = dec;
+    } catch {
+      break;
+    }
+  }
+
+  if (/^www\./i.test(s)) s = `https://${s}`;
+  if (/^http:\/\/[^/]+/i.test(s)) {
+    s = s.replace(/^http:\/\//i, 'https://');
+  }
+
+  let u;
+  try {
+    u = new URL(s, window.location.origin);
+  } catch {
+    return '';
+  }
+
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+  u.hash = '';
+  u.username = '';
+  u.password = '';
+  u.hostname = u.hostname.toLowerCase();
+  if ((u.protocol === 'https:' && u.port === '443') || (u.protocol === 'http:' && u.port === '80')) u.port = '';
+
+  u.pathname = u.pathname
+    .replace(/\/+/g, '/')
+    .replace(/\s+/g, '%20');
+  if (u.pathname !== '/') u.pathname = u.pathname.replace(/\/+$/g, '');
+
+  const drop = new Set([
+    'fbclid','gclid','igshid','mc_cid','mc_eid','mkt_tok','yclid','gbraid','wbraid','_ga','_gid','_gl','ref','ref_src','source'
+  ]);
+  const kept = [];
+  u.searchParams.forEach((value, key) => {
+    const k = String(key || '').trim();
+    if (!k) return;
+    const kl = k.toLowerCase();
+    if (kl.startsWith('utm_')) return;
+    if (drop.has(kl)) return;
+    const v = String(value ?? '').trim();
+    if (!v) return;
+    kept.push([k, v]);
+  });
+  kept.sort((a, b) => (a[0] === b[0] ? a[1].localeCompare(b[1]) : a[0].localeCompare(b[0])));
+  u.search = '';
+  for (const [k, v] of kept) u.searchParams.append(k, v);
+
+  return u.toString();
+}
