@@ -103,7 +103,8 @@
   <strong>evote.ng</strong> — Follow the governance timeline<br>
   <a href="/" style="color:var(--green-light);">Officials</a> ·
   <a href="/polls" style="color:var(--green-light);">Polls</a> ·
-  <a href="/blog" style="color:var(--green-light);">Blog</a>
+  <a href="/blog" style="color:var(--green-light);">Blog</a> ·
+  <a href="/news-curated" style="color:var(--green-light);">Editorial</a>
 </footer>
 <script type="module">
   import { supabase } from './js/supabase-client.js';
@@ -154,11 +155,10 @@
   async function loadPoliticsFeed() {
     listEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading politics news...</div>';
 
-    const wanted = ['Punch Newspapers', 'Vanguard', 'The Nation', 'TheCable', 'Latest Nigerian News'];
+    // Dynamically fetch all active, non-blocked sources instead of hardcoding names
     const { data: srcs, error: srcErr } = await supabase
       .from('news_sources')
       .select('id,name')
-      .in('name', wanted)
       .eq('is_active', true);
     if (srcErr) throw srcErr;
     const ids = (srcs || []).map((s) => s.id).filter(Boolean);

@@ -1,7 +1,12 @@
 <?php
 /**
  * AI PROMISE VERIFICATION ENGINE
- * Searches the web for updates on a specific promise and returns an AI evaluation.
+ * Searches approved news items + web sources for updates on a specific promise
+ * and returns an AI evaluation.
+ *
+ * POST /api/verify-promise-progress.php
+ * Body: { promise_id, official_name, promise_title }
+ * Auth: Bearer token (Supabase session)
  */
 declare(strict_types=1);
 
@@ -21,6 +26,25 @@ function mc_read_bearer(): string {
   return '';
 }
 
+function mc_http_json(string $url, string $method, array $headers, ?string $body, int $timeoutSec = 25): array {
+  $hdrLines = [];
+  foreach ($headers as $k => $v) $hdrLines[] = $k . ': ' . $v;
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_URL, $url);
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+  curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, $hdrLines);
+  if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+  $resp = curl_exec($ch);
+  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $err = curl_error($ch);
+  curl_close($ch);
+  if ($resp === false) return ['ok' => false, 'code' => 0, 'json' => null, 'raw' => '', 'err' => $err ?: 'Request failed'];
+  $json = json_decode((string)$resp, true);
+  return ['ok' => $code >= 200 && $code < 300, 'code' => $code, 'json' => is_array($json) ? $json : null, 'raw' => (string)$resp];
+}
+
 // ── AUTH ──────────────────────────────────────────────
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
   mc_json(405, ['error' => 'Method not allowed']);
@@ -29,13 +53,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 $secretsPath = __DIR__ . '/../config/secrets.php';
 $secrets = [];
 if (is_file($secretsPath)) {
-  $secrets = require $secretsPath;
+  $data = require $secretsPath;
+  if (is_array($data)) $secrets = $data;
 }
 
-$supabaseUrl  = (string)($secrets['SUPABASE_URL'] ?? getenv('SUPABASE_URL'));
-$supabaseAnon = (string)($secrets['SUPABASE_ANON_KEY'] ?? getenv('SUPABASE_ANON_KEY'));
+$supabaseUrl   = (string)($secrets['SUPABASE_URL'] ?? getenv('SUPABASE_URL'));
+$supabaseAnon  = (string)($secrets['SUPABASE_ANON_KEY'] ?? getenv('SUPABASE_ANON_KEY'));
+$serviceKey    = (string)($secrets['SUPABASE_SERVICE_ROLE_KEY'] ?? getenv('SUPABASE_SERVICE_ROLE_KEY'));
 $openrouterKey = (string)($secrets['OPENROUTER_API_KEY'] ?? getenv('OPENROUTER_API_KEY'));
-$model = (string)($secrets['OPENROUTER_MODEL'] ?? getenv('OPENROUTER_MODEL')) ?: 'openai/gpt-4o-mini';
+$model         = (string)($secrets['OPENROUTER_MODEL'] ?? getenv('OPENROUTER_MODEL')) ?: 'openai/gpt-4o-mini';
 
 if (!$supabaseUrl || !$supabaseAnon) {
   mc_json(500, ['error' => 'Supabase auth not configured on server']);
@@ -44,75 +70,113 @@ if (!$supabaseUrl || !$supabaseAnon) {
 $token = mc_read_bearer();
 if ($token === '') mc_json(401, ['error' => 'Missing Authorization bearer token']);
 
-// Verify token (Simple session check)
-$ctx = stream_context_create(['http' => [
-  'method'        => 'GET',
-  'timeout'       => 10,
-  'header'        => "apikey: {$supabaseAnon}\r\nAuthorization: Bearer {$token}\r\nAccept: application/json",
-  'ignore_errors' => true,
-]]);
-$userRaw = @file_get_contents(rtrim((string)$supabaseUrl, '/') . '/auth/v1/user', false, $ctx);
-if (!$userRaw) mc_json(401, ['error' => 'Invalid or expired session']);
+// Verify token
+$userResp = mc_http_json(
+  rtrim($supabaseUrl, '/') . '/auth/v1/user',
+  'GET',
+  ['apikey' => $supabaseAnon, 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json'],
+  null,
+  12
+);
+if (!$userResp['ok'] || !is_array($userResp['json'])) {
+  mc_json(401, ['error' => 'Invalid or expired session']);
+}
 
 // ── PAYLOAD ───────────────────────────────────────────
 $raw = file_get_contents('php://input');
 $payload = $raw !== false ? json_decode($raw, true) : null;
-$promiseId = $payload['promise_id'] ?? '';
-$officialName = $payload['official_name'] ?? '';
-$promiseTitle = $payload['promise_title'] ?? '';
+$promiseId = (string)($payload['promise_id'] ?? '');
+$officialName = (string)($payload['official_name'] ?? '');
+$promiseTitle = (string)($payload['promise_title'] ?? '');
 
 if (!$promiseId || !$officialName || !$promiseTitle) {
   mc_json(400, ['error' => 'promise_id, official_name, and promise_title are required']);
 }
 
-// ── WEB SCRAPING ──────────────────────────────────────
-function mc_fetch_text(string $url, int $timeoutSec = 10): string {
-  $userAgent = 'Mozilla/5.0 (compatible; evote.ng-bot/1.0; +https://evote.ng)';
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-  curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
-  curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-  curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
-  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-  $resp = curl_exec($ch);
-  $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
-  if ($resp === false || $code < 200 || $code >= 400) return '';
-  return (string)$resp;
-}
-
-function mc_clean(string $html, int $maxChars = 3000): string {
-  $text = preg_replace('#<(script|style)[^>]*>.*?</\1>#si', ' ', $html) ?? $html;
-  $text = strip_tags((string)$text);
-  $text = (string)preg_replace('/\s{2,}/', ' ', $text);
-  return mb_strlen($text) > $maxChars ? mb_substr($text, 0, $maxChars) . '…' : $text;
-}
-
-// Search queries
-$queries = [
-  "{$officialName} \"{$promiseTitle}\" update",
-  "{$officialName} \"{$promiseTitle}\" commissioned",
-  "{$officialName} \"{$promiseTitle}\" progress news"
-];
-
+// ── EVIDENCE GATHERING ────────────────────────────────
+// Strategy: Search our own approved news items + news profile matches for context
+// This avoids Google scraping which gets blocked in production
 $contexts = [];
-foreach ($queries as $q) {
-  // Use Google Search (simulated via news sites or direct search proxy if available)
-  // For now, we hit generic search landing pages or news archives
-  $url = "https://www.google.com/search?q=" . urlencode($q);
-  $raw = mc_fetch_text($url);
-  if ($raw) $contexts[] = "=== SEARCH RESULTS FOR: {$q} ===\n" . mc_clean($raw);
+
+// Source 1: Search our own news items for mentions of the official or promise
+$useKey = $serviceKey !== '' ? $serviceKey : $supabaseAnon;
+$searchTerms = urlencode($officialName);
+$newsResp = mc_http_json(
+  rtrim($supabaseUrl, '/') . '/rest/v1/news_items?select=title,summary,url,published_at&moderation_status=eq.approved&is_politics=eq.true&or=(title.ilike.*' . $searchTerms . '*,summary.ilike.*' . $searchTerms . '*)&order=published_at.desc&limit=15',
+  'GET',
+  ['apikey' => $useKey, 'Authorization' => 'Bearer ' . $useKey, 'Accept' => 'application/json'],
+  null,
+  15
+);
+if ($newsResp['ok'] && is_array($newsResp['json']) && count($newsResp['json'])) {
+  $newsContext = "=== APPROVED NEWS ITEMS MENTIONING {$officialName} ===\n";
+  foreach ($newsResp['json'] as $item) {
+    $newsContext .= "- " . trim((string)($item['title'] ?? ''));
+    if (!empty($item['summary'])) $newsContext .= ": " . trim((string)$item['summary']);
+    if (!empty($item['url'])) $newsContext .= " (" . trim((string)$item['url']) . ")";
+    if (!empty($item['published_at'])) $newsContext .= " [" . substr((string)$item['published_at'], 0, 10) . "]";
+    $newsContext .= "\n";
+  }
+  $contexts[] = $newsContext;
+}
+
+// Source 2: Search news profile matches for this official
+$matchResp = mc_http_json(
+  rtrim($supabaseUrl, '/') . '/rest/v1/news_profile_matches?select=news_item_id,confidence,news_items(title,summary,url,published_at)&profile_type=eq.official&confidence=gte.0.7&order=created_at.desc&limit=10',
+  'GET',
+  ['apikey' => $useKey, 'Authorization' => 'Bearer ' . $useKey, 'Accept' => 'application/json'],
+  null,
+  15
+);
+if ($matchResp['ok'] && is_array($matchResp['json']) && count($matchResp['json'])) {
+  $matchContext = "=== NEWS ITEMS MATCHED TO OFFICIAL PROFILE ===\n";
+  foreach ($matchResp['json'] as $match) {
+    $ni = $match['news_items'] ?? [];
+    if (!is_array($ni) || empty($ni['title'])) continue;
+    $matchContext .= "- " . trim((string)$ni['title']);
+    if (!empty($ni['summary'])) $matchContext .= ": " . trim((string)$ni['summary']);
+    if (!empty($ni['url'])) $matchContext .= " (" . trim((string)$ni['url']) . ")";
+    $matchContext .= " [conf: " . round((float)($match['confidence'] ?? 0), 2) . "]\n";
+  }
+  $contexts[] = $matchContext;
+}
+
+// Source 3: Fetch Wikipedia for background context (reliable, not blocked)
+$wikiQuery = urlencode($officialName);
+$wikiResp = mc_http_json(
+  "https://en.wikipedia.org/w/api.php?action=query&titles={$wikiQuery}&prop=extracts&exintro=1&explaintext=1&redirects=1&format=json",
+  'GET',
+  ['Accept' => 'application/json', 'User-Agent' => 'evote.ng-bot/1.0 (+https://evote.ng)'],
+  null,
+  10
+);
+if ($wikiResp['ok'] && is_array($wikiResp['json'])) {
+  $pages = $wikiResp['json']['query']['pages'] ?? [];
+  foreach ($pages as $page) {
+    $extract = trim((string)($page['extract'] ?? ''));
+    if ($extract !== '' && strlen($extract) > 50) {
+      $contexts[] = "=== WIKIPEDIA: {$officialName} ===\n" . mb_substr($extract, 0, 2000);
+      break;
+    }
+  }
+}
+
+$contextText = implode("\n\n", $contexts);
+if (!$contextText) {
+  $contextText = "No web context found for {$officialName}. Use your training knowledge about Nigerian governance.";
 }
 
 // ── AI EVALUATION ─────────────────────────────────────
-$contextText = implode("\n\n", $contexts);
-$prompt = [
+if (!$openrouterKey) {
+  mc_json(500, ['error' => 'OpenRouter API key not configured']);
+}
+
+$prompt = implode("\n", [
   "You are a Nigerian civic-tech auditor. Evaluate the progress of this promise:",
   "Official: {$officialName}",
   "Promise: {$promiseTitle}",
   "",
-  "Here are recent search results and web context:",
+  "Here is relevant context from news and public sources:",
   $contextText,
   "",
   "Return a JSON object with:",
@@ -120,31 +184,36 @@ $prompt = [
   "- suggested_progress_percent: (number 0-100)",
   "- ai_summary: (2-3 sentences explaining the progress found)",
   "- evidence_url: (the most relevant news link found, or null)",
-  "Return ONLY the JSON object."
-];
-
-$chAi = curl_init();
-curl_setopt($chAi, CURLOPT_URL, "https://openrouter.ai/api/v1/chat/completions");
-curl_setopt($chAi, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($chAi, CURLOPT_POST, true);
-curl_setopt($chAi, CURLOPT_HTTPHEADER, [
-  "Authorization: Bearer {$openrouterKey}",
-  "Content-Type: application/json"
+  "Return ONLY the JSON object.",
 ]);
-curl_setopt($chAi, CURLOPT_POSTFIELDS, json_encode([
-  'model' => $model,
-  'messages' => [
-    ['role' => 'system', 'content' => 'Return only strict JSON.'],
-    ['role' => 'user', 'content' => implode("\n", $prompt)]
-  ]
-]));
 
-$aiRaw = curl_exec($chAi);
-curl_close($chAi);
+$aiResp = mc_http_json(
+  'https://openrouter.ai/api/v1/chat/completions',
+  'POST',
+  [
+    'Authorization' => 'Bearer ' . $openrouterKey,
+    'Content-Type' => 'application/json',
+    'Accept' => 'application/json',
+    'HTTP-Referer' => 'https://evote.ng',
+    'X-Title' => 'evote.ng Promise Verification',
+  ],
+  json_encode([
+    'model' => $model,
+    'messages' => [
+      ['role' => 'system', 'content' => 'Return only strict JSON.'],
+      ['role' => 'user', 'content' => $prompt],
+    ],
+    'temperature' => 0.2,
+    'max_tokens' => 400,
+  ]),
+  40
+);
 
-if (!$aiRaw) mc_json(500, ['error' => 'AI evaluation failed']);
-$aiJson = json_decode((string)$aiRaw, true);
-$content = $aiJson['choices'][0]['message']['content'] ?? '{}';
+if (!$aiResp['ok'] || !is_array($aiResp['json'])) {
+  mc_json(500, ['error' => 'AI evaluation failed']);
+}
+
+$content = (string)($aiResp['json']['choices'][0]['message']['content'] ?? '{}');
 $content = preg_replace('/^```json\s*|```\s*$/i', '', trim($content));
 $parsed = json_decode($content, true);
 

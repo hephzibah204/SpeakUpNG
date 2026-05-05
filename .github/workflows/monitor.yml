@@ -1,0 +1,78 @@
+name: "evote.ng — Daily News Ingest & Monitor"
+
+on:
+  schedule:
+    # Every 15 minutes during active hours (06:00-23:00 WAT = 05:00-22:00 UTC)
+    - cron: "*/15 5-22 * * *"
+  workflow_dispatch:
+    inputs:
+      run_mandate_repair:
+        description: "Also run mandate population + profile repair"
+        type: boolean
+        default: false
+
+env:
+  SITE_URL: "https://evote.ng"
+
+jobs:
+  news-ingest:
+    name: "📰 RSS News Ingest"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger news ingest
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ env.SITE_URL }}/api/news-admin.php" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Token: ${{ secrets.NEWS_CRON_TOKEN }}" \
+            -d '{"action":"run_ingest"}')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::News ingest failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "### 📰 News Ingest Results" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  mandate-repair:
+    name: "🩹 Mandate Population & Profile Repair"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_mandate_repair == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: curl, json, mbstring, simplexml
+
+      - name: Write secrets.php
+        run: |
+          cat > config/secrets.php << 'SECRETS_EOF'
+          <?php
+          return [
+            'SUPABASE_URL'              => '${{ secrets.SUPABASE_URL }}',
+            'SUPABASE_ANON_KEY'         => '${{ secrets.SUPABASE_ANON_KEY }}',
+            'SUPABASE_SERVICE_ROLE_KEY'  => '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}',
+            'NEWS_CRON_TOKEN'           => '${{ secrets.NEWS_CRON_TOKEN }}',
+            'OPENROUTER_API_KEY'        => '${{ secrets.OPENROUTER_API_KEY }}',
+            'OPENROUTER_MODEL'          => 'openai/gpt-4o-mini',
+          ];
+          SECRETS_EOF
+
+      - name: Run profile repair
+        run: php scripts/repair_all_profiles.php
+
+      - name: Run mandate population
+        run: php scripts/populate_all_mandates.php
