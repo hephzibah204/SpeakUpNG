@@ -18,7 +18,7 @@ return [
 
   // ── News Cron ───────────────────────────────────────────
   // Generate a strong random token: php -r "echo bin2hex(random_bytes(32));"
-  'NEWS_CRON_TOKEN'           => '',
+  'NEWS_CRON_TOKEN'           => 'af7c72e8294c8a4d0a50668ed443da3d80c02a18620e0179b6598a7c169c155d',
 
   // ── OpenRouter AI ───────────────────────────────────────
   'OPENROUTER_API_KEY'        => '',   // https://openrouter.ai/keys
