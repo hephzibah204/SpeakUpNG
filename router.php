@@ -3,41 +3,82 @@ declare(strict_types=1);
 
 $uri = $_SERVER['REQUEST_URI'] ?? '/';
 $path = parse_url($uri, PHP_URL_PATH);
-if (!is_string($path) || $path === '') $path = '/';
+if (!is_string($path)) $path = '/';
 
-$full = __DIR__ . $path;
-if ($path !== '/' && is_file($full)) return false;
-
-if ($path === '/') {
-  $idx = __DIR__ . '/index.html';
-  if (is_file($idx)) { readfile($idx); exit; }
+$docRoot = __DIR__;
+$filePath = realpath($docRoot . $path);
+if ($filePath && str_starts_with($filePath, $docRoot) && is_file($filePath)) {
+  return false;
 }
 
-if (preg_match('#^/admin/([a-zA-Z0-9-]+)/?$#', $path, $m)) {
-  $p = __DIR__ . '/admin/' . $m[1] . '.html';
-  if (is_file($p)) { readfile($p); exit; }
+function serve(string $rel): void {
+  $full = __DIR__ . '/' . ltrim($rel, '/');
+  if (is_file($full)) {
+    $_SERVER['SCRIPT_NAME'] = '/' . ltrim($rel, '/');
+    require $full;
+    exit;
+  }
+  http_response_code(404);
+  require __DIR__ . '/404.html';
+  exit;
 }
 
-if (preg_match('#^/(index|leaderboard|polls|official|blog|news|news-curated|agencies|politicians|politician)/?$#', $path, $m)) {
-  $p = __DIR__ . '/' . $m[1] . '.html';
-  if (is_file($p)) { readfile($p); exit; }
+if ($path === '/' || $path === '') serve('index.html');
+
+if (preg_match('#^/official/id/([a-zA-Z0-9-]+)/?$#', $path, $m)) {
+  $_GET['id'] = $m[1];
+  serve('official.html');
+}
+if (preg_match('#^/official/([a-zA-Z0-9-]+)--([0-9a-fA-F-]{36})/?$#', $path, $m)) {
+  $_GET['slug'] = $m[1];
+  $_GET['id'] = $m[2];
+  serve('official.html');
+}
+if (preg_match('#^/official/([a-zA-Z0-9-]+)/?$#', $path, $m)) {
+  $_GET['slug'] = $m[1];
+  serve('official.html');
 }
 
 if (preg_match('#^/politician/id/([a-zA-Z0-9-]+)/?$#', $path, $m)) {
-  header('Location: /politician.html?id=' . rawurlencode($m[1]), true, 302);
-  exit;
+  $_GET['id'] = $m[1];
+  serve('politician.html');
+}
+if (preg_match('#^/politician/([a-zA-Z0-9-]+)--([0-9a-fA-F-]{36})/?$#', $path, $m)) {
+  $_GET['slug'] = $m[1];
+  $_GET['id'] = $m[2];
+  serve('politician.html');
 }
 
-if (preg_match('#^/politician/([a-zA-Z0-9-]+)--([0-9a-fA-F-]{36})/?$#', $path, $m)) {
-  header('Location: /politician.html?id=' . rawurlencode($m[2]) . '&slug=' . rawurlencode($m[1]), true, 302);
-  exit;
+$top = [
+  '/leaderboard' => 'leaderboard.html',
+  '/polls' => 'polls.html',
+  '/official' => 'official.html',
+  '/agencies' => 'agencies.html',
+  '/politicians' => 'politicians.html',
+  '/news' => 'news.html',
+  '/news-curated' => 'news-curated.html',
+  '/news-item' => 'news-item.html',
+  '/promise' => 'promise.html',
+  '/blog' => 'blog.html',
+];
+
+$key = rtrim($path, '/');
+if ($key === '') $key = '/';
+if (isset($top[$key])) serve($top[$key]);
+
+if (preg_match('#^/news/([a-zA-Z0-9-]+)/?$#', $path, $m)) {
+  $_GET['slug'] = $m[1];
+  if (is_file(__DIR__ . '/news-post.php')) serve('news-post.php');
+  serve('news-post.html');
+}
+
+if (preg_match('#^/blog/([a-zA-Z0-9-]+)/?$#', $path, $m)) {
+  $_GET['slug'] = $m[1];
+  if (is_file(__DIR__ . '/blog-post.php')) serve('blog-post.php');
+  serve('blog-post.html');
 }
 
 http_response_code(404);
-if (is_file(__DIR__ . '/404.html')) {
-  readfile(__DIR__ . '/404.html');
-} else {
-  header('Content-Type: text/plain; charset=utf-8');
-  echo "404";
-}
+require __DIR__ . '/404.html';
+exit;
 

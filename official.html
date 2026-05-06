@@ -1624,7 +1624,7 @@ function renderNews(items) {
           <span style="font-size:.72rem;color:var(--muted);">${escapeHtml(src)}</span>
           ${topic}
           <span style="font-size:.72rem;color:${s.color};">${escapeHtml(s.label)}</span>
-          <a href="${sanitizeUrl(it.url) || '#'}" target="_blank" rel="noopener noreferrer" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>
+          <a href="/news-item?id=${encodeURIComponent(it.id)}" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>
         </div>
       </div>
     `;

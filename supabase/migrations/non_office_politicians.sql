@@ -57,7 +57,7 @@ values
   (
     'Peter Gregory Obi',
     'Peter Obi',
-    'LP',
+    'NDC',
     'Presidential Aspirant',
     'Prominent Nigerian politician and former Governor of Anambra State.',
     null,
@@ -69,7 +69,7 @@ values
   (
     'Rabiu Musa Kwankwaso',
     'Kwankwaso',
-    'NNPP',
+    'NDC',
     'Presidential Aspirant',
     'Prominent Nigerian politician and former Governor of Kano State.',
     null,
@@ -81,4 +81,3 @@ values
 on conflict (id) do nothing;
 
 commit;
-

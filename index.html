@@ -78,6 +78,26 @@
     cursor: pointer;
   }
   .top-search select option { background: var(--card); }
+
+  /* Politicians preview */
+  #politicians-preview{
+    margin-top:1rem;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:1rem;
+  }
+  @media (max-width: 980px){
+    #politicians-preview{grid-template-columns:repeat(2,minmax(0,1fr));}
+  }
+  @media (max-width: 640px){
+    #politicians-preview{grid-template-columns:1fr;}
+  }
+  .pol-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;gap:.9rem;}
+  .pol-avatar{width:56px;height:56px;border-radius:14px;flex-shrink:0;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;}
+  .pol-avatar img{width:100%;height:100%;object-fit:cover;}
+  .pol-name{font-family:'Syne',sans-serif;font-weight:800;line-height:1.2;}
+  .pol-meta{font-size:.78rem;color:var(--muted);margin-top:.15rem;}
+  .pol-pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.72rem;border:1px solid var(--border);background:rgba(255,255,255,.05);}
   .top-search .btn {
     padding: .7rem 1.1rem;
     border-radius: 10px;
@@ -255,6 +275,7 @@
   <div class="nav-links">
     <a href="/" class="nav-link active show-mobile">Officials</a>
     <a href="/agencies" class="nav-link">Agencies</a>
+    <a href="/politicians" class="nav-link">Politicians</a>
     <a href="/leaderboard" class="nav-link">Rankings</a>
     <a href="/polls" class="nav-link">Polls</a>
     <a href="/blog" class="nav-link">Blog</a>
@@ -324,6 +345,26 @@
   </div>
 </div>
 
+<!-- POLITICIANS PREVIEW -->
+<div class="section" style="padding-top:1.2rem;">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <h2 class="page-title">Prominent Politicians (Aspirants)</h2>
+        <p class="page-sub">Not currently in office. Prioritized by relevance and updated with verified news.</p>
+      </div>
+      <a href="/politicians" class="btn btn-ghost" style="height:42px;display:inline-flex;align-items:center;">View all →</a>
+    </div>
+
+    <div id="politicians-preview">
+      <div class="loading"><div class="spinner"></div><br>Loading politicians...</div>
+    </div>
+    <div id="politicians-preview-empty" class="card" style="display:none;margin-top:1rem;">
+      <div class="empty">No politicians available yet.</div>
+    </div>
+  </div>
+</div>
+
 <!-- OFFICIALS SECTION -->
 <div id="officials-section" class="section">
   <div class="container">
@@ -348,7 +389,7 @@
     <!-- Filters row -->
     <div class="filter-row">
       <div class="search-wrap" style="flex:1;min-width:200px;margin:0;">
-        <span class="search-icon">??</span>
+        <span class="search-icon">🔎</span>
         <input type="text" id="search-input" placeholder="Search officials & agencies (name, role, state, website)...">
       </div>
       <select id="state-filter">
@@ -847,6 +888,64 @@ async function loadOfficials() {
     await enrichOfficialsWithAggregates(S.officials);
   } catch {}
   applyFilters();
+}
+
+async function loadPoliticiansPreview() {
+  const mount = document.getElementById('politicians-preview');
+  const empty = document.getElementById('politicians-preview-empty');
+  if (!mount) return;
+  mount.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading politicians...</div>';
+  if (empty) empty.style.display = 'none';
+
+  try {
+    const { data, error } = await supabase
+      .from('politicians')
+      .select('id,full_name,common_name,party,aspiration_title,photo_url,priority,created_at')
+      .eq('is_active', true)
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(9);
+    if (error) throw error;
+    const rows = data || [];
+    if (!rows.length) {
+      mount.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+
+    const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const initials = (name) => {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+    };
+    const slugify = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60);
+
+    mount.innerHTML = rows.map((p) => {
+      const nm = p.common_name || p.full_name;
+      const slug = slugify(nm);
+      const href = '/politician/' + slug + '--' + encodeURIComponent(p.id);
+      return `
+        <div class="pol-card card-hover">
+          <div class="pol-avatar">${p.photo_url ? `<img alt="${esc(nm)}" src="${esc(p.photo_url)}">` : esc(initials(nm))}</div>
+          <div style="min-width:0;flex:1;">
+            <div class="pol-name">${esc(nm)}</div>
+            <div class="pol-meta">${esc(p.aspiration_title || 'Politician')} · <span class="pol-pill">${esc(p.party || '')}</span></div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.65rem;">
+              <a class="btn btn-green btn-sm" href="${href}">View Profile</a>
+              <a class="btn btn-ghost btn-sm" href="/politicians">More</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    const msg = String(e?.message || '').toLowerCase();
+    if (msg.includes('relation') && msg.includes('politicians')) {
+      mount.innerHTML = '<div class="empty">Politicians feature is not enabled yet. Apply the `non_office_politicians.sql` migration.</div>';
+      return;
+    }
+    mount.innerHTML = `<div class="empty">Unable to load politicians right now. <span style="color:var(--muted);font-size:.82rem;">${String(e?.message || '')}</span></div>`;
+  }
 }
 
 async function loadFeaturedLeaders() {
@@ -1374,7 +1473,7 @@ window.submitRating = async () => {
   showToast(`Rating submitted ${S.anonOn?'anonymously ':''}✓`);
   invalidateRatedOfficialsCache();
   invalidateRatingsAggCache();
-  loadOfficials(); loadStats(); loadBestRatedSections(); loadFeaturedLeaders();
+  loadOfficials(); loadStats(); loadBestRatedSections(); loadFeaturedLeaders(); loadPoliticiansPreview();
 };
 
 // ── REPORT MODAL ──
@@ -1421,6 +1520,7 @@ window.closeModal = (id) => document.getElementById(id).classList.remove('open')
 loadStats();
 loadBestRatedSections();
 loadFeaturedLeaders();
+loadPoliticiansPreview();
 loadOfficials();
 </script>
 </body>

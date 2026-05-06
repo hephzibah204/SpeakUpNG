@@ -194,14 +194,15 @@
       return `
         <article class="news-item card-hover">
           <div class="news-time">${esc(when)}</div>
-          <h2 class="news-title">${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${esc(it.title)}</a>` : esc(it.title)}</h2>
+          <h2 class="news-title"><a href="/news-item?id=${encodeURIComponent(it.id)}">${esc(it.title)}</a></h2>
           <p class="news-copy">${esc(it.summary || '')}</p>
           <div class="news-meta">
             <span class="news-pill" style="${tier.style}">${tier.label}</span>
             <span class="news-pill">${esc(src)}</span>
             ${topic}
             <span class="news-pill" style="color:${s.color};">${esc(s.label)}</span>
-            ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>` : ''}
+            <a href="/news-item?id=${encodeURIComponent(it.id)}" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>
+            ${url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--muted);font-size:.78rem;">Original →</a>` : ''}
           </div>
         </article>
       `;

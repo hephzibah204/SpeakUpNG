@@ -1,5 +1,9 @@
 name: "evote.ng — Daily News Ingest & Monitor"
 
+concurrency:
+  group: evote-news-ingest
+  cancel-in-progress: false
+
 on:
   schedule:
     # Every 15 minutes during active hours (06:00-23:00 WAT = 05:00-22:00 UTC)
@@ -22,9 +26,19 @@ jobs:
     steps:
       - name: Trigger news ingest
         run: |
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ env.SITE_URL }}/api/news-admin.php" \
+          set -euo pipefail
+          if [ -z "${{ secrets.NEWS_CRON_TOKEN }}" ]; then
+            echo "::error::Missing required secret: NEWS_CRON_TOKEN"
+            exit 1
+          fi
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ env.SITE_URL }}/api/news-admin.php?cron_token=${{ secrets.NEWS_CRON_TOKEN }}" \
             -H "Content-Type: application/json" \
             -H "X-Cron-Token: ${{ secrets.NEWS_CRON_TOKEN }}" \
+            --connect-timeout 20 \
+            --max-time 180 \
+            --retry 2 \
+            --retry-delay 3 \
             -d '{"action":"run_ingest"}')
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
