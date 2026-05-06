@@ -133,7 +133,7 @@ const params = new URLSearchParams(window.location.search);
 const promiseId = (params.get('id') || '').trim();
 if (!promiseId) window.location.replace('/');
 
-const S = { promise: null, official: null, fulfilled: null, deviceHash: '', anonId: '' };
+const S = { promise: null, official: null, politician: null, fulfilled: null, deviceHash: '', anonId: '' };
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -198,6 +198,7 @@ function renderPromise() {
 
   const meta = [];
   if (S.official?.full_name) meta.push(`${S.official.full_name}${S.official.role ? ` (${S.official.role})` : ''}`);
+  if (S.politician?.full_name) meta.push(`${S.politician.common_name || S.politician.full_name}${S.politician.aspiration_title ? ` (${S.politician.aspiration_title})` : ''}`);
   if (p.promise_date) meta.push(`Promise date: ${fmtDate(p.promise_date)}`);
   if (p.promise_source) meta.push(`Source: ${p.promise_source}`);
   document.getElementById('promise-meta').textContent = meta.join(' · ');
@@ -211,19 +212,25 @@ function renderPromise() {
   const ev = sanitizeUrl(p.evidence_url);
   if (ev) links.push(`<a href="${ev}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">View Evidence →</a>`);
   if (S.official?.id) links.push(`<a href="/official/id/${encodeURIComponent(S.official.id)}" class="btn btn-ghost btn-sm">View Official →</a>`);
+  if (S.politician?.id) links.push(`<a href="/politician/id/${encodeURIComponent(S.politician.id)}" class="btn btn-ghost btn-sm">View Politician →</a>`);
   document.getElementById('promise-links').innerHTML = links.join('');
 
   if (S.official?.id) {
     const back = document.getElementById('back-to-official');
     back.style.display = '';
     back.href = `/official/id/${encodeURIComponent(S.official.id)}`;
+  } else if (S.politician?.id) {
+    const back = document.getElementById('back-to-official');
+    back.style.display = '';
+    back.textContent = '← Back to politician';
+    back.href = `/politician/id/${encodeURIComponent(S.politician.id)}`;
   }
 }
 
 async function loadPromise() {
   const { data: p, error: perr } = await supabase
     .from('official_promises')
-    .select('id,official_id,promise_title,promise_detail,promise_source,promise_date,promise_category,status,progress_percent,evidence_url,evidence_note,last_updated,created_at')
+    .select('id,official_id,politician_id,promise_title,promise_detail,promise_source,promise_date,promise_category,status,progress_percent,evidence_url,evidence_note,last_updated,created_at')
     .eq('id', promiseId)
     .single();
   if (perr || !p) {
@@ -234,12 +241,21 @@ async function loadPromise() {
   }
   S.promise = p;
 
-  const { data: o, error: oerr } = await supabase
-    .from('officials')
-    .select('id,full_name,role,photo_url,states(name)')
-    .eq('id', p.official_id)
-    .limit(1);
-  if (!oerr && Array.isArray(o) && o[0]) S.official = o[0];
+  if (p.official_id) {
+    const { data: o, error: oerr } = await supabase
+      .from('officials')
+      .select('id,full_name,role,photo_url,states(name)')
+      .eq('id', p.official_id)
+      .limit(1);
+    if (!oerr && Array.isArray(o) && o[0]) S.official = o[0];
+  } else if (p.politician_id) {
+    const { data: pol, error: polErr } = await supabase
+      .from('politicians')
+      .select('id,full_name,common_name,aspiration_title,party,photo_url')
+      .eq('id', p.politician_id)
+      .limit(1);
+    if (!polErr && Array.isArray(pol) && pol[0]) S.politician = pol[0];
+  }
 
   renderPromise();
 }

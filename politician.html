@@ -80,11 +80,31 @@
     <div class="container" style="max-width:980px;">
       <div class="tabs">
         <button class="tab active" onclick="showTab('about', this)">About</button>
+        <button class="tab" onclick="showTab('mandate', this)">Mandate</button>
         <button class="tab" onclick="showTab('news', this)">In The News</button>
+        <button class="tab" onclick="showTab('reviews', this)">Reviews</button>
       </div>
 
       <div id="tab-about" class="cardx">
         <div id="bio" style="color:var(--off);line-height:1.75;"></div>
+        <div id="about-extra" style="margin-top:1rem;display:none;"></div>
+      </div>
+
+      <div id="tab-mandate" style="display:none;">
+        <div class="cardx" style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+            <div>
+              <div style="font-family:Syne,sans-serif;font-weight:800;">Mandate / Promises</div>
+              <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">Citizen‑scored completion per promise. Click any promise to see details and submit your assessment.</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Crowd Mandate Score</div>
+              <div id="mandate-score" style="font-size:1.6rem;font-family:Syne,sans-serif;font-weight:900;line-height:1;color:var(--green-light);">—</div>
+              <div id="mandate-meta" style="font-size:.78rem;color:var(--muted);margin-top:.25rem;"></div>
+            </div>
+          </div>
+        </div>
+        <div id="mandate-list"><div class="loading"><div class="spinner"></div></div></div>
       </div>
 
       <div id="tab-news" style="display:none;">
@@ -97,6 +117,44 @@
         </div>
         <div id="news-list"><div class="loading"><div class="spinner"></div></div></div>
       </div>
+
+      <div id="tab-reviews" style="display:none;">
+        <div class="cardx" style="margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+            <div>
+              <div style="font-family:Syne,sans-serif;font-weight:800;">Citizen Reviews</div>
+              <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">Review based on previous offices and the office being aspired for.</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;">Average</div>
+              <div id="rating-avg" style="font-size:1.6rem;font-family:Syne,sans-serif;font-weight:900;line-height:1;color:var(--green-light);">—</div>
+              <div id="rating-count" style="font-size:.78rem;color:var(--muted);margin-top:.25rem;"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem;">
+            <button class="btn btn-green" onclick="openRateModal()">⭐ Rate this Politician</button>
+          </div>
+        </div>
+        <div id="reviews-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="rate-modal" onclick="if(event.target===this)closeModal('rate-modal')">
+    <div class="modal" style="max-width:760px;">
+      <div class="modal-header">
+        <h2>Rate Politician</h2>
+        <button class="modal-close" onclick="closeModal('rate-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="rate-context" style="color:var(--muted);font-size:.82rem;line-height:1.6;margin-bottom:1rem;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;" id="rate-cats"></div>
+        <div class="form-group" style="margin-top:1rem;">
+          <label class="form-label">Optional review</label>
+          <textarea class="form-control" id="rate-text" rows="4" placeholder="Share facts and context (avoid insults)."></textarea>
+        </div>
+        <button class="submit-btn" id="submit-rate" onclick="submitPoliticianRating()" disabled>Rate at least one category to continue</button>
+      </div>
     </div>
   </div>
 
@@ -108,7 +166,8 @@
   </footer>
 
   <script type="module">
-    import { supabase } from './js/supabase-client.js';
+    import { supabase, showToast, getAnonId } from './js/supabase-client.js';
+    import { getDeviceHash } from './js/device-fingerprint.js';
 
     const params = new URLSearchParams(window.location.search);
     const politicianId = params.get('id');
@@ -147,6 +206,121 @@
     }
 
     let pol = null;
+    let mandateLoaded = false;
+    let reviewsLoaded = false;
+    let catStars = {};
+
+    const CATEGORY_KEYS = ['accountability','service','transparency','responsiveness','power','security','economic_stability','education','healthcare'];
+    const CATEGORY_LABELS = {
+      accountability: 'Accountability',
+      service: 'Service Delivery',
+      transparency: 'Transparency',
+      responsiveness: 'Responsiveness',
+      power: 'Leadership Strength',
+      security: 'Security',
+      economic_stability: 'Economic Management',
+      education: 'Education',
+      healthcare: 'Healthcare',
+    };
+
+    function inferProfileKey(){
+      const t = (pol?.aspiring_for || pol?.aspiration_title || '').toLowerCase();
+      if (t.includes('president')) return 'president';
+      if (t.includes('governor')) return 'governor';
+      if (t.includes('senat') || t.includes('house')) return 'legislator';
+      return 'president';
+    }
+
+    function visibleCats(){
+      const k = inferProfileKey();
+      if (k === 'governor') return ['accountability','transparency','economic_stability','service','security','power','responsiveness','education','healthcare'];
+      if (k === 'legislator') return ['accountability','transparency','responsiveness','service','security','economic_stability'];
+      return ['accountability','transparency','economic_stability','security','power','service','responsiveness'];
+    }
+
+    function renderRateCats(){
+      const mount = document.getElementById('rate-cats');
+      if (!mount) return;
+      const cats = visibleCats();
+      mount.innerHTML = cats.map((k) => {
+        return `
+          <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:.9rem;">
+            <div style="font-weight:800;margin-bottom:.5rem;">${esc(CATEGORY_LABELS[k] || k)}</div>
+            <div class="cat-stars" data-cat="${esc(k)}" style="display:flex;gap:.25rem;font-size:1.15rem;cursor:pointer;user-select:none;">
+              ${[1,2,3,4,5].map((i)=>`<span class="cat-star" data-v="${i}" style="color:${(catStars[k]||0)>=i?'#e8a020':'rgba(255,255,255,.18)'}">★</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      mount.querySelectorAll('.cat-stars').forEach((row) => {
+        row.querySelectorAll('.cat-star').forEach((s) => {
+          s.addEventListener('click', () => {
+            const cat = row.getAttribute('data-cat');
+            const v = Number(s.getAttribute('data-v') || 0);
+            catStars[cat] = v;
+            renderRateCats();
+            updateRateBtn();
+          });
+        });
+      });
+    }
+
+    function updateRateBtn(){
+      const btn = document.getElementById('submit-rate');
+      if (!btn) return;
+      const any = Object.values(catStars).some((v)=>Number(v)>0);
+      btn.disabled = !any;
+    }
+
+    window.openRateModal = () => {
+      catStars = {};
+      document.getElementById('rate-text').value = '';
+      const ctx = [];
+      if (pol?.previous_offices) ctx.push(`Previous offices: ${pol.previous_offices}`);
+      if (pol?.aspiring_for || pol?.aspiration_title) ctx.push(`Aspiring for: ${pol.aspiring_for || pol.aspiration_title}`);
+      document.getElementById('rate-context').textContent = ctx.join(' · ');
+      renderRateCats();
+      updateRateBtn();
+      document.getElementById('rate-modal').classList.add('open');
+    };
+
+    window.closeModal = (id) => { document.getElementById(id)?.classList.remove('open'); };
+
+    window.submitPoliticianRating = async () => {
+      if (!politicianId) return;
+      const btn = document.getElementById('submit-rate');
+      btn.disabled = true;
+      const raw = document.getElementById('rate-text').value.trim() || null;
+      let deviceHash = null;
+      try { deviceHash = await getDeviceHash({ politician_id: politicianId }); } catch {}
+      if (!deviceHash) { showToast('Unable to generate device identity. Try again.', 'error'); btn.disabled = false; return; }
+
+      const selected = visibleCats().map((k)=>({k, v: Number(catStars[k]||0)})).filter((x)=>x.v>0);
+      if (!selected.length) { showToast('Rate at least one category.', 'error'); btn.disabled = false; return; }
+      const overall = selected.reduce((a,b)=>a+b.v,0)/selected.length;
+      const payload = {
+        politician_id: politicianId,
+        device_hash: deviceHash,
+        anon_id: getAnonId(),
+        overall,
+        review_text: raw,
+      };
+      CATEGORY_KEYS.forEach((k)=>{ if (catStars[k]) payload[k] = catStars[k]; });
+
+      const { error } = await supabase.from('politician_ratings').insert(payload);
+      if (error) {
+        const msg = String(error.message||'').toLowerCase();
+        if (msg.includes('duplicate') || msg.includes('unique')) showToast('You already rated this politician from this device.', 'error');
+        else showToast('Unable to submit rating right now.', 'error');
+        btn.disabled = false;
+        return;
+      }
+      showToast('Rating submitted. Thank you.');
+      closeModal('rate-modal');
+      reviewsLoaded = false;
+      await loadReviews(true);
+    };
     async function loadProfile(){
       if(!politicianId){
         document.getElementById('name').textContent = 'Politician not found';
@@ -156,7 +330,7 @@
       }
       const { data, error } = await supabase
         .from('politicians')
-        .select('id,full_name,common_name,party,aspiration_title,bio,photo_url')
+        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,photo_url,wiki_url')
         .eq('id', politicianId)
         .limit(1);
       if(error || !data || !data.length){
@@ -180,15 +354,143 @@
       document.getElementById('sub').textContent = (pol.aspiration_title || 'Politician') + ' · ' + (pol.party || '');
       document.getElementById('pills').innerHTML = `<span class="pill">Party: ${esc(pol.party || '')}</span>`;
       document.getElementById('bio').textContent = pol.bio || 'No bio yet.';
+      const extra = [];
+      if (pol.previous_offices) extra.push(`<div class="card" style="margin-top:.9rem;"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Previous offices</div><div style="line-height:1.7;">${esc(pol.previous_offices).replace(/\n/g,'<br>')}</div></div>`);
+      if (pol.aspiring_for || pol.aspiration_title) extra.push(`<div class="card" style="margin-top:.9rem;"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Aspiring for</div><div style="line-height:1.7;">${esc(pol.aspiring_for || pol.aspiration_title)}</div></div>`);
+      if (pol.wiki_url) extra.push(`<div style="margin-top:.8rem;"><a href="${esc(pol.wiki_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);font-size:.85rem;">Wikipedia →</a></div>`);
+      const extraEl = document.getElementById('about-extra');
+      if (extraEl) {
+        extraEl.style.display = extra.length ? '' : 'none';
+        extraEl.innerHTML = extra.join('');
+      }
       document.getElementById('avatar').innerHTML = pol.photo_url ? `<img alt="${esc(nm)}" src="${esc(pol.photo_url)}">` : esc(initials(nm));
     }
 
     window.showTab = (tab, btn) => {
-      ['about','news'].forEach((t)=>{ document.getElementById(`tab-${t}`).style.display = t===tab ? 'block' : 'none'; });
+      ['about','mandate','news','reviews'].forEach((t)=>{ document.getElementById(`tab-${t}`).style.display = t===tab ? 'block' : 'none'; });
       document.querySelectorAll('.tab').forEach((b)=>b.classList.remove('active'));
       btn.classList.add('active');
       if (tab === 'news') loadNews(false);
+      if (tab === 'mandate') loadMandate(false);
+      if (tab === 'reviews') loadReviews(false);
     };
+
+    async function loadMandate(force){
+      if (mandateLoaded && !force) return;
+      const mount = document.getElementById('mandate-list');
+      mount.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      try{
+        const { data: promises, error } = await supabase
+          .from('official_promises')
+          .select('id,promise_title,promise_detail,promise_category,status,progress_percent,evidence_url,created_at')
+          .eq('politician_id', politicianId)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        const list = promises || [];
+        if (!list.length){
+          mount.innerHTML = '<div class="empty">No published promises yet.</div>';
+          document.getElementById('mandate-meta').textContent = '0 promises';
+          return;
+        }
+        const ids = list.map((p)=>p.id);
+        const { data: comp, error: cErr } = await supabase
+          .from('promise_public_completion')
+          .select('promise_id,total_votes,completion_score')
+          .in('promise_id', ids)
+          .limit(2000);
+        if (cErr) throw cErr;
+        const byId = new Map((comp||[]).map((r)=>[r.promise_id, r]));
+        const scored = list.map((p)=>{
+          const c = byId.get(p.id);
+          const score = (c && Number(c.completion_score)) || null;
+          const votes = (c && Number(c.total_votes)) || 0;
+          return { ...p, crowd_score: (score===null || !Number.isFinite(score)) ? null : Math.max(0, Math.min(100, score)), crowd_votes: votes };
+        });
+        const avg = scored.filter((p)=>p.crowd_score!==null).map((p)=>p.crowd_score);
+        const mandate = avg.length ? (avg.reduce((a,b)=>a+b,0)/avg.length) : null;
+        document.getElementById('mandate-score').textContent = mandate===null ? '—' : `${Math.round(mandate)}`;
+        document.getElementById('mandate-meta').textContent = `${scored.length} promises · ${avg.length} scored`;
+
+        mount.innerHTML = scored.map((p)=>{
+          const prog = p.crowd_score===null ? 0 : p.crowd_score;
+          const status = p.status || 'pending';
+          const statusColor = status === 'fulfilled' ? 'var(--green-light)' : status === 'broken' ? '#e57368' : status === 'in_progress' ? '#e8a020' : 'var(--muted)';
+          const title = esc(p.promise_title || '');
+          const detail = String(p.promise_detail || '').trim();
+          const snip = detail ? (detail.length > 160 ? `${esc(detail.slice(0,160))}…` : esc(detail)) : '';
+          return `
+            <div class="card" style="margin-bottom:1rem;cursor:pointer;" onclick="window.location.href='/promise?id=${encodeURIComponent(p.id)}'">
+              <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+                <div style="min-width:0;">
+                  <div style="font-weight:900;line-height:1.3;">${title}</div>
+                  <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">${esc(p.promise_category || '')} · ${esc(status)}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:.72rem;color:var(--muted);">Crowd completion</div>
+                  <div style="font-family:Syne,sans-serif;font-weight:900;color:${p.crowd_score===null?'var(--muted)':statusColor};font-size:1.25rem;line-height:1;">${p.crowd_score===null?'—':Math.round(p.crowd_score)}%</div>
+                  <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem;">${p.crowd_votes||0} votes</div>
+                </div>
+              </div>
+              ${snip ? `<div style="margin-top:.7rem;font-size:.86rem;line-height:1.7;color:rgba(255,255,255,.88);">${snip}</div>`:''}
+              <div style="margin-top:.8rem;">
+                <div style="height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;">
+                  <div style="width:${prog}%;height:100%;background:${p.crowd_score===null?'rgba(255,255,255,.2)':statusColor};"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        mandateLoaded = true;
+      }catch(e){
+        mount.innerHTML = `<div class="empty">Unable to load mandate. ${esc(e?.message || '')}</div>`;
+      }
+    }
+
+    async function loadReviews(force){
+      if (reviewsLoaded && !force) return;
+      const mount = document.getElementById('reviews-list');
+      mount.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      try{
+        const { data: agg, error: aErr } = await supabase
+          .from('politician_rating_agg')
+          .select('rating_avg,rating_count')
+          .eq('politician_id', politicianId)
+          .limit(1);
+        if (aErr) throw aErr;
+        const row = Array.isArray(agg) && agg[0] ? agg[0] : null;
+        document.getElementById('rating-avg').textContent = row?.rating_avg ? Number(row.rating_avg).toFixed(1) : '—';
+        document.getElementById('rating-count').textContent = `${Number(row?.rating_count || 0)} ratings`;
+
+        const { data, error } = await supabase
+          .from('politician_ratings')
+          .select('overall,review_text,created_at')
+          .eq('politician_id', politicianId)
+          .order('created_at', { ascending: false })
+          .limit(25);
+        if (error) throw error;
+        const list = (data||[]).filter(Boolean);
+        if (!list.length){ mount.innerHTML = '<div class="empty">No reviews yet.</div>'; reviewsLoaded = true; return; }
+        mount.innerHTML = list.map((r)=>{
+          const when = new Date(r.created_at).toLocaleString('en-NG');
+          const stars = [1,2,3,4,5].map((i)=>`<span style="color:${Number(r.overall)>=i?'#e8a020':'rgba(255,255,255,.18)'};">★</span>`).join('');
+          const txt = String(r.review_text||'').trim();
+          return `
+            <div class="card" style="margin-bottom:1rem;">
+              <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+                <div style="font-size:1rem;">${stars}</div>
+                <div style="font-size:.72rem;color:var(--muted);">${esc(when)}</div>
+              </div>
+              ${txt ? `<div style="margin-top:.6rem;font-size:.9rem;line-height:1.7;color:rgba(255,255,255,.9);">${esc(txt)}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+        reviewsLoaded = true;
+      }catch(e){
+        mount.innerHTML = `<div class="empty">Unable to load reviews. ${esc(e?.message || '')}</div>`;
+      }
+    }
 
     let newsLoaded = false;
     function renderNews(items){

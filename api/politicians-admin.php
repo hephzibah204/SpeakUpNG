@@ -130,6 +130,43 @@ function sb_rest(string $path, string $method, array $headers, $body): array {
   return nr_http_json($url, $method, $hdr, $payload, 35);
 }
 
+function nr_wikipedia_summary(string $title, string $ua): array {
+  $title = trim($title);
+  if ($title === '') return ['ok' => false, 'json' => null];
+  $url = 'https://en.wikipedia.org/api/rest_v1/page/summary/' . rawurlencode($title);
+  return nr_http_json($url, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 18);
+}
+
+function nr_pick_wikipedia_photo(?array $json): string {
+  if (!$json) return '';
+  $thumb = $json['thumbnail']['source'] ?? '';
+  if (is_string($thumb) && trim($thumb) !== '') return trim($thumb);
+  $orig = $json['originalimage']['source'] ?? '';
+  if (is_string($orig) && trim($orig) !== '') return trim($orig);
+  return '';
+}
+
+function nr_pick_wikipedia_url(?array $json): string {
+  if (!$json) return '';
+  $u = $json['content_urls']['desktop']['page'] ?? '';
+  return is_string($u) ? trim($u) : '';
+}
+
+function nr_wikipedia_best_match(string $preferredTitle, array $fallbackTitles, string $ua): array {
+  $titles = array_values(array_filter(array_merge([trim($preferredTitle)], $fallbackTitles), fn($x) => is_string($x) && trim($x) !== ''));
+  foreach ($titles as $t) {
+    $res = nr_wikipedia_summary($t, $ua);
+    if (!$res['ok'] || !is_array($res['json'])) continue;
+    $j = $res['json'];
+    $type = (string)($j['type'] ?? '');
+    if ($type === 'disambiguation') continue;
+    $photo = nr_pick_wikipedia_photo($j);
+    if ($photo === '') continue;
+    return ['ok' => true, 'title' => (string)($j['title'] ?? $t), 'photo_url' => $photo, 'wiki_url' => nr_pick_wikipedia_url($j)];
+  }
+  return ['ok' => false, 'title' => '', 'photo_url' => '', 'wiki_url' => ''];
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
 if ($method !== 'POST') nr_json(405, ['error' => 'Method not allowed']);
 $raw = file_get_contents('php://input');
@@ -157,11 +194,20 @@ if ($action === 'upsert') {
   if (!preg_match('/^[A-Z0-9]{2,10}$/', $party)) nr_json(400, ['error' => 'Invalid party code']);
   $aliases = array_values(array_slice(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', $aliases), fn($x) => $x !== ''), 0, 12));
 
+  $aspiringFor = isset($payload['aspiring_for']) && is_string($payload['aspiring_for']) ? trim($payload['aspiring_for']) : '';
+  $previousOffices = isset($payload['previous_offices']) && is_string($payload['previous_offices']) ? trim($payload['previous_offices']) : '';
+  $wikiTitle = isset($payload['wiki_title']) && is_string($payload['wiki_title']) ? trim($payload['wiki_title']) : '';
+  $wikiUrl = isset($payload['wiki_url']) && is_string($payload['wiki_url']) ? trim($payload['wiki_url']) : '';
+
   $row = [
     'full_name' => $full,
     'common_name' => ($common !== '' ? $common : null),
     'party' => $party,
     'aspiration_title' => ($title !== '' ? $title : null),
+    'aspiring_for' => ($aspiringFor !== '' ? $aspiringFor : null),
+    'previous_offices' => ($previousOffices !== '' ? $previousOffices : null),
+    'wiki_title' => ($wikiTitle !== '' ? $wikiTitle : null),
+    'wiki_url' => ($wikiUrl !== '' ? $wikiUrl : null),
     'bio' => ($bio !== '' ? $bio : null),
     'photo_url' => ($photo !== '' ? $photo : null),
     'priority' => $priority,
@@ -179,6 +225,122 @@ if ($action === 'upsert') {
   nr_json(200, ['ok' => true, 'politician' => $ins['json'][0]]);
 }
 
+if ($action === 'fetch_photo') {
+  $id = isset($payload['id']) && is_string($payload['id']) ? trim($payload['id']) : '';
+  if ($id === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $id)) nr_json(400, ['error' => 'Invalid id']);
+
+  $get = sb_rest('/politicians?select=id,full_name,common_name,wiki_title&limit=1&id=eq.' . rawurlencode($id), 'GET', [], null);
+  if (!$get['ok'] || !is_array($get['json']) || !count($get['json'])) nr_json(404, ['error' => 'Not found']);
+  $p = $get['json'][0];
+  $full = (string)($p['full_name'] ?? '');
+  $common = (string)($p['common_name'] ?? '');
+  $wikiTitle = (string)($p['wiki_title'] ?? '');
+
+  $ua = 'evote.ng-politicians-admin/1.0';
+  $res = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
+  if (!$res['ok']) nr_json(200, ['ok' => true, 'updated' => false, 'message' => 'No Wikipedia photo found']);
+
+  $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
+    'Content-Type' => 'application/json',
+    'Prefer' => 'return=representation',
+  ], [[
+    'photo_url' => $res['photo_url'],
+    'wiki_title' => $res['title'] !== '' ? $res['title'] : null,
+    'wiki_url' => $res['wiki_url'] !== '' ? $res['wiki_url'] : null,
+  ]]);
+  if (!$upd['ok'] || !is_array($upd['json']) || !count($upd['json'])) nr_json(500, ['error' => 'Update failed', 'details' => $upd['raw'] ?? null]);
+  nr_json(200, ['ok' => true, 'updated' => true, 'politician' => $upd['json'][0]]);
+}
+
+if ($action === 'bulk_fetch_photos') {
+  $limit = isset($payload['limit']) ? (int)$payload['limit'] : 50;
+  if ($limit < 1) $limit = 1;
+  if ($limit > 3000) $limit = 3000;
+
+  $list = sb_rest('/politicians?select=id,full_name,common_name,wiki_title,photo_url&is_active=eq.true&limit=' . $limit, 'GET', [], null);
+  if (!$list['ok'] || !is_array($list['json'])) nr_json(500, ['error' => 'Unable to load politicians']);
+  $ua = 'evote.ng-politicians-admin/1.0';
+  $updated = 0;
+  $skipped = 0;
+  $failed = 0;
+  foreach ($list['json'] as $p) {
+    if (!is_array($p)) continue;
+    $id = (string)($p['id'] ?? '');
+    if ($id === '') continue;
+    if (is_string($p['photo_url'] ?? null) && trim((string)$p['photo_url']) !== '') { $skipped++; continue; }
+    $full = (string)($p['full_name'] ?? '');
+    $common = (string)($p['common_name'] ?? '');
+    $wikiTitle = (string)($p['wiki_title'] ?? '');
+    $res = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
+    if (!$res['ok']) { $failed++; continue; }
+    $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
+      'Content-Type' => 'application/json',
+      'Prefer' => 'return=minimal',
+    ], [[
+      'photo_url' => $res['photo_url'],
+      'wiki_title' => $res['title'] !== '' ? $res['title'] : null,
+      'wiki_url' => $res['wiki_url'] !== '' ? $res['wiki_url'] : null,
+    ]]);
+    if ($upd['ok']) $updated++; else $failed++;
+    usleep(250000);
+  }
+  nr_json(200, ['ok' => true, 'updated' => $updated, 'skipped' => $skipped, 'failed' => $failed]);
+}
+
+if ($action === 'list_promises') {
+  $politicianId = isset($payload['politician_id']) && is_string($payload['politician_id']) ? trim($payload['politician_id']) : '';
+  if ($politicianId === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $politicianId)) nr_json(400, ['error' => 'Invalid politician_id']);
+  $res = sb_rest('/official_promises?select=id,promise_title,promise_detail,promise_category,promise_date,promise_source,status,progress_percent,evidence_url,last_updated,created_at&politician_id=eq.' . rawurlencode($politicianId) . '&order=created_at.desc&limit=200', 'GET', [], null);
+  if (!$res['ok'] || !is_array($res['json'])) nr_json(500, ['error' => 'Unable to load promises']);
+  nr_json(200, ['ok' => true, 'promises' => $res['json']]);
+}
+
+if ($action === 'upsert_promise') {
+  $politicianId = isset($payload['politician_id']) && is_string($payload['politician_id']) ? trim($payload['politician_id']) : '';
+  if ($politicianId === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $politicianId)) nr_json(400, ['error' => 'Invalid politician_id']);
+
+  $id = isset($payload['id']) && is_string($payload['id']) ? trim($payload['id']) : '';
+  $title = isset($payload['promise_title']) && is_string($payload['promise_title']) ? trim($payload['promise_title']) : '';
+  $detail = isset($payload['promise_detail']) && is_string($payload['promise_detail']) ? trim($payload['promise_detail']) : '';
+  $category = isset($payload['promise_category']) && is_string($payload['promise_category']) ? trim($payload['promise_category']) : '';
+  $date = isset($payload['promise_date']) && is_string($payload['promise_date']) ? trim($payload['promise_date']) : '';
+  $source = isset($payload['promise_source']) && is_string($payload['promise_source']) ? trim($payload['promise_source']) : '';
+  $status = isset($payload['status']) && is_string($payload['status']) ? trim($payload['status']) : 'pending';
+  $progress = isset($payload['progress_percent']) ? (int)$payload['progress_percent'] : 0;
+  $evidence = isset($payload['evidence_url']) && is_string($payload['evidence_url']) ? trim($payload['evidence_url']) : '';
+
+  if ($title === '') nr_json(400, ['error' => 'promise_title is required']);
+  $row = [
+    'politician_id' => $politicianId,
+    'official_id' => null,
+    'promise_title' => $title,
+    'promise_detail' => ($detail !== '' ? $detail : null),
+    'promise_category' => ($category !== '' ? $category : null),
+    'promise_date' => ($date !== '' ? $date : null),
+    'promise_source' => ($source !== '' ? $source : null),
+    'status' => $status,
+    'progress_percent' => max(0, min(100, $progress)),
+    'evidence_url' => ($evidence !== '' ? $evidence : null),
+    'last_updated' => gmdate('c'),
+  ];
+  if ($id !== '' && preg_match('/^[0-9a-f\-]{36}$/i', $id)) $row['id'] = $id;
+
+  $ins = sb_rest('/official_promises?on_conflict=id', 'POST', [
+    'Content-Type' => 'application/json',
+    'Prefer' => 'resolution=merge-duplicates,return=representation',
+  ], [$row]);
+  if (!$ins['ok'] || !is_array($ins['json']) || !count($ins['json'])) nr_json(500, ['error' => 'Upsert failed', 'details' => $ins['raw'] ?? null]);
+  nr_json(200, ['ok' => true, 'promise' => $ins['json'][0]]);
+}
+
+if ($action === 'delete_promise') {
+  $id = isset($payload['id']) && is_string($payload['id']) ? trim($payload['id']) : '';
+  if ($id === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $id)) nr_json(400, ['error' => 'Invalid id']);
+  $del = sb_rest('/official_promises?id=eq.' . rawurlencode($id), 'DELETE', ['Prefer' => 'return=minimal'], null);
+  if (!$del['ok']) nr_json(500, ['error' => 'Delete failed', 'details' => $del['raw'] ?? null]);
+  nr_json(200, ['ok' => true]);
+}
+
 if ($action === 'delete') {
   $id = isset($payload['id']) && is_string($payload['id']) ? trim($payload['id']) : '';
   if ($id === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $id)) nr_json(400, ['error' => 'Invalid id']);
@@ -190,4 +352,3 @@ if ($action === 'delete') {
 }
 
 nr_json(400, ['error' => 'Unknown action']);
-

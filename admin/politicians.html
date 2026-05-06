@@ -31,6 +31,7 @@
         </div>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+          <button class="btn btn-ghost btn-sm" id="btn-photos">Autofill photos</button>
           <button class="btn btn-green btn-sm" id="btn-add">Add politician</button>
         </div>
       </div>
@@ -85,11 +86,30 @@
           <div class="form-group">
             <label class="form-label">Photo URL (optional)</label>
             <input class="form-control" id="pol-photo" placeholder="https://...">
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;">
+              <button class="btn btn-ghost btn-sm" id="pol-fetch-photo" type="button">Fetch photo (Wikipedia)</button>
+              <a class="btn btn-ghost btn-sm" id="pol-wiki" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">Open Wikipedia →</a>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Priority (higher first)</label>
             <input class="form-control" id="pol-priority" type="number" value="0">
           </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div class="form-group">
+            <label class="form-label">Aspiring for (office)</label>
+            <input class="form-control" id="pol-aspiring" placeholder="President, Governor, Senator...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Wikipedia title (optional)</label>
+            <input class="form-control" id="pol-wiki-title" placeholder="Peter_Obi">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Previous offices (one per line)</label>
+          <textarea class="form-control" id="pol-prev" rows="3" placeholder="Former Governor of ...
+Former Vice President of ..."></textarea>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
           <div class="form-group">
@@ -112,6 +132,17 @@
             <button class="btn btn-green" id="pol-save">Save</button>
           </div>
         </div>
+
+        <div class="card" style="margin-top:1.2rem;border:1px solid var(--border);padding:1rem;">
+          <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;">
+            <div>
+              <div style="font-weight:800;">Mandate / Promises</div>
+              <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem;">Published under the politician profile Mandate tab.</div>
+            </div>
+            <button class="btn btn-green btn-sm" id="promise-add" type="button" disabled>Add promise</button>
+          </div>
+          <div id="promise-list" style="margin-top:.9rem;"><div class="empty">Select a politician to manage promises.</div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -125,6 +156,7 @@
 
     let all = [];
     let editingId = null;
+    let promiseRows = [];
 
     function esc(s) {
       return String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -147,6 +179,16 @@
       document.getElementById('pol-priority').value = '0';
       document.getElementById('pol-aliases').value = '';
       document.getElementById('pol-active').value = 'true';
+      document.getElementById('pol-aspiring').value = '';
+      document.getElementById('pol-prev').value = '';
+      document.getElementById('pol-wiki-title').value = '';
+      const wikiLink = document.getElementById('pol-wiki');
+      if (wikiLink) { wikiLink.style.display = 'none'; wikiLink.href = '#'; }
+      const addBtn = document.getElementById('promise-add');
+      if (addBtn) addBtn.disabled = true;
+      promiseRows = [];
+      const pl = document.getElementById('promise-list');
+      if (pl) pl.innerHTML = '<div class="empty">Select a politician to manage promises.</div>';
       const del = document.getElementById('pol-delete');
       if (del) del.style.display = 'none';
     }
@@ -200,7 +242,7 @@
     async function load() {
       const { data, error } = await supabase
         .from('politicians')
-        .select('id,full_name,common_name,party,aspiration_title,bio,photo_url,aliases,social_links,priority,is_active,created_at')
+        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,wiki_title,wiki_url,bio,photo_url,aliases,social_links,priority,is_active,created_at')
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(200);
@@ -223,10 +265,13 @@
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
+      const aspiring_for = String(document.getElementById('pol-aspiring')?.value || '').trim();
+      const previous_offices = String(document.getElementById('pol-prev')?.value || '').trim();
+      const wiki_title = String(document.getElementById('pol-wiki-title')?.value || '').trim();
       try {
         await adminApiJson('/api/politicians-admin.php', {
           method: 'POST',
-          body: { action: 'upsert', id: editingId, full_name, common_name, party, aspiration_title, bio, photo_url, priority, is_active, aliases, social_links: {} }
+          body: { action: 'upsert', id: editingId, full_name, common_name, party, aspiration_title, aspiring_for, previous_offices, wiki_title, bio, photo_url, priority, is_active, aliases, social_links: {} }
         });
         showToast('Saved.');
         closePolModal();
@@ -234,6 +279,158 @@
       } catch (e) {
         showToast(e?.message || 'Save failed', 'error');
       }
+    }
+
+    async function fetchPhoto() {
+      if (!editingId) { showToast('Save/select a politician first.', 'error'); return; }
+      const btn = document.getElementById('pol-fetch-photo');
+      if (btn) { btn.disabled = true; btn.textContent = 'Fetching...'; }
+      try {
+        const res = await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'fetch_photo', id: editingId } });
+        if (res?.politician?.photo_url) document.getElementById('pol-photo').value = res.politician.photo_url;
+        if (res?.politician?.wiki_title) document.getElementById('pol-wiki-title').value = res.politician.wiki_title;
+        const wikiLink = document.getElementById('pol-wiki');
+        if (wikiLink && res?.politician?.wiki_url) { wikiLink.href = res.politician.wiki_url; wikiLink.style.display = ''; }
+        showToast(res?.updated ? 'Photo updated.' : (res?.message || 'No photo found.'), res?.updated ? 'success' : 'error');
+        await load();
+      } catch (e) {
+        showToast(e?.message || 'Fetch failed', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Fetch photo (Wikipedia)'; }
+      }
+    }
+
+    async function bulkPhotos() {
+      const btn = document.getElementById('btn-photos');
+      if (btn) { btn.disabled = true; btn.textContent = 'Running...'; }
+      try {
+        const res = await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'bulk_fetch_photos', limit: 300 } });
+        showToast(`Photos: updated ${res.updated || 0}, skipped ${res.skipped || 0}, failed ${res.failed || 0}.`);
+        await load();
+      } catch (e) {
+        showToast(e?.message || 'Bulk photo failed', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Autofill photos'; }
+      }
+    }
+
+    function renderPromises() {
+      const mount = document.getElementById('promise-list');
+      if (!mount) return;
+      if (!editingId) {
+        mount.innerHTML = '<div class="empty">Select a politician to manage promises.</div>';
+        return;
+      }
+      if (!promiseRows.length) {
+        mount.innerHTML = '<div class="empty">No promises yet. Add one.</div>';
+        return;
+      }
+      mount.innerHTML = promiseRows.map((p) => {
+        return `
+          <div class="card" style="padding:.9rem;border:1px solid var(--border);margin-bottom:.8rem;">
+            <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+              <div style="min-width:0;">
+                <div style="font-weight:800;">${esc(p.promise_title || '')}</div>
+                <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;">${esc(p.promise_category || '')} · ${esc(p.status || 'pending')}</div>
+              </div>
+              <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                <button class="btn btn-ghost btn-sm" onclick="window.editPromise('${p.id}')">Edit</button>
+                <button class="btn btn-ghost btn-sm" style="border-color:rgba(239,68,68,.3);color:#ef4444;" onclick="window.deletePromise('${p.id}')">Delete</button>
+              </div>
+            </div>
+            ${p.promise_detail ? `<div style="margin-top:.6rem;color:rgba(255,255,255,.88);font-size:.86rem;line-height:1.7;">${esc(String(p.promise_detail)).slice(0,220)}${String(p.promise_detail).length>220?'…':''}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadPromises() {
+      if (!editingId) return;
+      const mount = document.getElementById('promise-list');
+      if (mount) mount.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      try {
+        const res = await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'list_promises', politician_id: editingId } });
+        promiseRows = Array.isArray(res?.promises) ? res.promises : [];
+        renderPromises();
+      } catch (e) {
+        promiseRows = [];
+        if (mount) mount.innerHTML = '<div class="empty">Unable to load promises.</div>';
+      }
+    }
+
+    async function upsertPromise(p) {
+      if (!editingId) return;
+      await adminApiJson('/api/politicians-admin.php', {
+        method: 'POST',
+        body: {
+          action: 'upsert_promise',
+          politician_id: editingId,
+          id: p?.id || null,
+          promise_title: p.promise_title,
+          promise_detail: p.promise_detail,
+          promise_category: p.promise_category,
+          promise_date: p.promise_date,
+          promise_source: p.promise_source,
+          status: p.status,
+          progress_percent: p.progress_percent,
+          evidence_url: p.evidence_url,
+        }
+      });
+      await loadPromises();
+    }
+
+    window.deletePromise = async (id) => {
+      if (!confirm('Delete this promise?')) return;
+      try {
+        await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'delete_promise', id } });
+        showToast('Deleted promise.');
+        await loadPromises();
+      } catch (e) {
+        showToast(e?.message || 'Delete failed', 'error');
+      }
+    };
+
+    window.editPromise = async (id) => {
+      const p = promiseRows.find((x) => x.id === id);
+      if (!p) return;
+      const title = prompt('Promise title', p.promise_title || '');
+      if (title === null) return;
+      const detail = prompt('Promise detail (optional)', p.promise_detail || '') ?? '';
+      const category = prompt('Category (optional)', p.promise_category || '') ?? '';
+      const status = prompt('Status: pending | in_progress | fulfilled | broken | disputed', p.status || 'pending') ?? 'pending';
+      const evidence_url = prompt('Evidence URL (optional)', p.evidence_url || '') ?? '';
+      await upsertPromise({
+        id: p.id,
+        promise_title: title.trim(),
+        promise_detail: detail.trim(),
+        promise_category: category.trim(),
+        promise_date: p.promise_date,
+        promise_source: p.promise_source,
+        status: status.trim(),
+        progress_percent: Number(p.progress_percent || 0),
+        evidence_url: evidence_url.trim(),
+      });
+      showToast('Updated promise.');
+    };
+
+    async function addPromise() {
+      if (!editingId) return;
+      const title = prompt('Promise title');
+      if (!title) return;
+      const detail = prompt('Promise detail (optional)') ?? '';
+      const category = prompt('Category (optional)') ?? '';
+      const status = prompt('Status: pending | in_progress | fulfilled | broken | disputed', 'pending') ?? 'pending';
+      await upsertPromise({
+        promise_title: title.trim(),
+        promise_detail: detail.trim(),
+        promise_category: category.trim(),
+        promise_date: null,
+        promise_source: null,
+        status: status.trim(),
+        progress_percent: 0,
+        evidence_url: null,
+      });
+      showToast('Added promise.');
     }
 
     async function del() {
@@ -257,6 +454,9 @@
       document.getElementById('pol-common').value = p.common_name || '';
       document.getElementById('pol-party').value = p.party || '';
       document.getElementById('pol-title').value = p.aspiration_title || '';
+      document.getElementById('pol-aspiring').value = p.aspiring_for || '';
+      document.getElementById('pol-prev').value = p.previous_offices || '';
+      document.getElementById('pol-wiki-title').value = p.wiki_title || '';
       document.getElementById('pol-bio').value = p.bio || '';
       document.getElementById('pol-photo').value = p.photo_url || '';
       document.getElementById('pol-priority').value = String(p.priority ?? 0);
@@ -265,13 +465,21 @@
       document.getElementById('pol-aliases').value = aliases.map((a) => String(a || '').trim()).filter(Boolean).join(', ');
       const delBtn = document.getElementById('pol-delete');
       if (delBtn) delBtn.style.display = '';
+      const addBtn = document.getElementById('promise-add');
+      if (addBtn) addBtn.disabled = false;
+      const wikiLink = document.getElementById('pol-wiki');
+      if (wikiLink && p.wiki_url) { wikiLink.href = p.wiki_url; wikiLink.style.display = ''; }
       openPolModal();
+      loadPromises();
     };
 
     document.getElementById('btn-add')?.addEventListener('click', () => { editingId = null; openPolModal(); });
     document.getElementById('btn-refresh')?.addEventListener('click', load);
+    document.getElementById('btn-photos')?.addEventListener('click', bulkPhotos);
     document.getElementById('pol-save')?.addEventListener('click', save);
     document.getElementById('pol-delete')?.addEventListener('click', del);
+    document.getElementById('pol-fetch-photo')?.addEventListener('click', fetchPhoto);
+    document.getElementById('promise-add')?.addEventListener('click', addPromise);
     document.getElementById('party-filter')?.addEventListener('change', render);
     document.getElementById('active-filter')?.addEventListener('change', render);
     document.getElementById('q')?.addEventListener('input', () => { clearTimeout(window.__pqT); window.__pqT = setTimeout(render, 150); });
@@ -280,4 +488,3 @@
   </script>
 </body>
 </html>
-
