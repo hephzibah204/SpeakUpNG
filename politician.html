@@ -166,12 +166,19 @@
   </footer>
 
   <script type="module">
-    import { supabase, showToast, getAnonId } from './js/supabase-client.js';
-    import { getDeviceHash } from './js/device-fingerprint.js';
+    import { supabase, showToast, getAnonId } from '/js/supabase-client.js';
+    import { getDeviceHash } from '/js/device-fingerprint.js';
 
     const params = new URLSearchParams(window.location.search);
-    const politicianId = params.get('id');
     const slug = params.get('slug');
+    const path = window.location.pathname || '';
+    const fromQuery = (params.get('id') || '').trim();
+    let politicianId = fromQuery;
+    if (!politicianId) {
+      const m1 = path.match(/\/politician\/id\/([0-9a-fA-F-]{36})\/?$/);
+      const m2 = path.match(/\/politician\/[a-zA-Z0-9-]+--([0-9a-fA-F-]{36})\/?$/);
+      politicianId = (m1 && m1[1]) || (m2 && m2[1]) || '';
+    }
 
     function esc(s){return String(s||'').replace(/[&<>"']/g,(c)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));}
     function sanitizeUrl(url){
@@ -326,17 +333,19 @@
         document.getElementById('name').textContent = 'Politician not found';
         document.getElementById('breadcrumb').textContent = 'Unknown';
         document.getElementById('bio').textContent = 'Missing id.';
+        document.getElementById('avatar').textContent = '—';
         return;
       }
       const { data, error } = await supabase
         .from('politicians')
-        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,photo_url,wiki_url')
+        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,profile_bio,photo_url,wiki_url')
         .eq('id', politicianId)
         .limit(1);
       if(error || !data || !data.length){
         document.getElementById('name').textContent = 'Politician not found';
         document.getElementById('breadcrumb').textContent = 'Unknown';
         document.getElementById('bio').textContent = 'Unable to load profile.';
+        document.getElementById('avatar').textContent = '—';
         return;
       }
       pol = data[0];
@@ -353,7 +362,10 @@
       document.getElementById('name').textContent = nm;
       document.getElementById('sub').textContent = (pol.aspiration_title || 'Politician') + ' · ' + (pol.party || '');
       document.getElementById('pills').innerHTML = `<span class="pill">Party: ${esc(pol.party || '')}</span>`;
-      document.getElementById('bio').textContent = pol.bio || 'No bio yet.';
+      const aboutText = (pol.profile_bio || pol.bio || '').trim();
+      document.getElementById('bio').innerHTML = aboutText
+        ? `<div>${esc(aboutText).replace(/\n\n+/g,'</div><div style="margin-top:.85rem;">').replace(/\n/g,'<br>')}</div>`
+        : 'No bio yet.';
       const extra = [];
       if (pol.previous_offices) extra.push(`<div class="card" style="margin-top:.9rem;"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Previous offices</div><div style="line-height:1.7;">${esc(pol.previous_offices).replace(/\n/g,'<br>')}</div></div>`);
       if (pol.aspiring_for || pol.aspiration_title) extra.push(`<div class="card" style="margin-top:.9rem;"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Aspiring for</div><div style="line-height:1.7;">${esc(pol.aspiring_for || pol.aspiration_title)}</div></div>`);
@@ -545,6 +557,30 @@
           items = (data || []).map((r) => r?.news_items).filter(Boolean);
           items.sort((a, b) => new Date(b.published_at || b.created_at).getTime() - new Date(a.published_at || a.created_at).getTime());
           items = items.slice(0, 25);
+        }
+        if (!items.length) {
+          const terms = [String(pol?.full_name || '').trim(), String(pol?.common_name || '').trim()]
+            .concat(Array.isArray(pol?.aliases) ? pol.aliases : [])
+            .map((t) => String(t || '').trim())
+            .filter(Boolean)
+            .slice(0, 6);
+          if (terms.length) {
+            const or = terms
+              .flatMap((t) => [
+                `title.ilike.%${t.replace(/%/g, '')}%`,
+                `summary.ilike.%${t.replace(/%/g, '')}%`,
+              ])
+              .join(',');
+            const { data, error } = await supabase
+              .from('news_items')
+              .select('id,title,url,published_at,created_at,summary,sentiment_score,topic,news_sources(name,credibility_tier)')
+              .eq('moderation_status', 'approved')
+              .or(or)
+              .order('published_at', { ascending: false })
+              .limit(25);
+            if (error) throw error;
+            items = data || [];
+          }
         }
         renderNews(items);
         newsLoaded = true;

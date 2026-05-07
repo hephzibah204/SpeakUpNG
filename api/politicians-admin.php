@@ -137,6 +137,44 @@ function nr_wikipedia_summary(string $title, string $ua): array {
   return nr_http_json($url, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 18);
 }
 
+function nr_wikipedia_extract(string $title, int $chars, string $ua): array {
+  $title = trim($title);
+  if ($title === '') return ['ok' => false, 'json' => null];
+  $qs = http_build_query([
+    'action' => 'query',
+    'format' => 'json',
+    'redirects' => 1,
+    'prop' => 'extracts',
+    'explaintext' => 1,
+    'exsectionformat' => 'plain',
+    'exchars' => $chars,
+    'titles' => $title,
+  ]);
+  $url = 'https://en.wikipedia.org/w/api.php?' . $qs;
+  return nr_http_json($url, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 22);
+}
+
+function nr_pick_wikipedia_extract(?array $json): string {
+  if (!$json) return '';
+  $pages = $json['query']['pages'] ?? null;
+  if (!is_array($pages)) return '';
+  foreach ($pages as $p) {
+    if (!is_array($p)) continue;
+    $ex = $p['extract'] ?? '';
+    if (is_string($ex) && trim($ex) !== '') return trim($ex);
+    return '';
+  }
+  return '';
+}
+
+function nr_words_limit(string $text, int $maxWords): string {
+  $t = trim(preg_replace('/\s+/', ' ', $text) ?? $text);
+  if ($t === '') return '';
+  $parts = preg_split('/\s+/', $t) ?: [];
+  if (count($parts) <= $maxWords) return $t;
+  return implode(' ', array_slice($parts, 0, $maxWords));
+}
+
 function nr_pick_wikipedia_photo(?array $json): string {
   if (!$json) return '';
   $thumb = $json['thumbnail']['source'] ?? '';
@@ -252,6 +290,88 @@ if ($action === 'fetch_photo') {
   nr_json(200, ['ok' => true, 'updated' => true, 'politician' => $upd['json'][0]]);
 }
 
+if ($action === 'fetch_bio') {
+  $id = isset($payload['id']) && is_string($payload['id']) ? trim($payload['id']) : '';
+  if ($id === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $id)) nr_json(400, ['error' => 'Invalid id']);
+
+  $get = sb_rest('/politicians?select=id,full_name,common_name,wiki_title,profile_bio,bio&limit=1&id=eq.' . rawurlencode($id), 'GET', [], null);
+  if (!$get['ok'] || !is_array($get['json']) || !count($get['json'])) nr_json(404, ['error' => 'Not found']);
+  $p = $get['json'][0];
+  $full = (string)($p['full_name'] ?? '');
+  $common = (string)($p['common_name'] ?? '');
+  $wikiTitle = (string)($p['wiki_title'] ?? '');
+
+  $ua = 'evote.ng-politicians-admin/1.0';
+  $best = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
+  $title = $best['ok'] ? (string)($best['title'] ?? '') : '';
+  if ($title === '') $title = $wikiTitle !== '' ? $wikiTitle : ($common !== '' ? $common : $full);
+
+  $ex = nr_wikipedia_extract($title, 6500, $ua);
+  if (!$ex['ok'] || !is_array($ex['json'])) nr_json(200, ['ok' => true, 'updated' => false, 'message' => 'No Wikipedia extract found']);
+  $rawBio = nr_pick_wikipedia_extract($ex['json']);
+  if ($rawBio === '') nr_json(200, ['ok' => true, 'updated' => false, 'message' => 'No Wikipedia extract found']);
+
+  $long = nr_words_limit($rawBio, 500);
+  $short = nr_words_limit($rawBio, 120);
+  $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
+    'Content-Type' => 'application/json',
+    'Prefer' => 'return=representation',
+  ], [[
+    'profile_bio' => $long !== '' ? $long : null,
+    'bio' => $short !== '' ? $short : null,
+    'bio_source' => 'wikipedia',
+    'bio_updated_at' => gmdate('c'),
+    'wiki_title' => $title !== '' ? $title : null,
+  ]]);
+  if (!$upd['ok'] || !is_array($upd['json']) || !count($upd['json'])) nr_json(500, ['error' => 'Update failed', 'details' => $upd['raw'] ?? null]);
+  nr_json(200, ['ok' => true, 'updated' => true, 'politician' => $upd['json'][0]]);
+}
+
+if ($action === 'bulk_fetch_bios') {
+  $limit = isset($payload['limit']) ? (int)$payload['limit'] : 200;
+  if ($limit < 1) $limit = 1;
+  if ($limit > 3000) $limit = 3000;
+
+  $list = sb_rest('/politicians?select=id,full_name,common_name,wiki_title,profile_bio,is_active&is_active=eq.true&limit=' . $limit, 'GET', [], null);
+  if (!$list['ok'] || !is_array($list['json'])) nr_json(500, ['error' => 'Unable to load politicians']);
+  $ua = 'evote.ng-politicians-admin/1.0';
+  $updated = 0;
+  $skipped = 0;
+  $failed = 0;
+  foreach ($list['json'] as $p) {
+    if (!is_array($p)) continue;
+    $id = (string)($p['id'] ?? '');
+    if ($id === '') continue;
+    $pb = is_string($p['profile_bio'] ?? null) ? trim((string)$p['profile_bio']) : '';
+    if ($pb !== '' && mb_strlen($pb, 'UTF-8') >= 800) { $skipped++; continue; }
+    $full = (string)($p['full_name'] ?? '');
+    $common = (string)($p['common_name'] ?? '');
+    $wikiTitle = (string)($p['wiki_title'] ?? '');
+    $best = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
+    $title = $best['ok'] ? (string)($best['title'] ?? '') : '';
+    if ($title === '') $title = $wikiTitle !== '' ? $wikiTitle : ($common !== '' ? $common : $full);
+    $ex = nr_wikipedia_extract($title, 6500, $ua);
+    if (!$ex['ok'] || !is_array($ex['json'])) { $failed++; continue; }
+    $rawBio = nr_pick_wikipedia_extract($ex['json']);
+    if ($rawBio === '') { $failed++; continue; }
+    $long = nr_words_limit($rawBio, 500);
+    $short = nr_words_limit($rawBio, 120);
+    $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
+      'Content-Type' => 'application/json',
+      'Prefer' => 'return=minimal',
+    ], [[
+      'profile_bio' => $long !== '' ? $long : null,
+      'bio' => $short !== '' ? $short : null,
+      'bio_source' => 'wikipedia',
+      'bio_updated_at' => gmdate('c'),
+      'wiki_title' => $title !== '' ? $title : null,
+    ]]);
+    if ($upd['ok']) $updated++; else $failed++;
+    usleep(350000);
+  }
+  nr_json(200, ['ok' => true, 'updated' => $updated, 'skipped' => $skipped, 'failed' => $failed]);
+}
+
 if ($action === 'bulk_fetch_photos') {
   $limit = isset($payload['limit']) ? (int)$payload['limit'] : 50;
   if ($limit < 1) $limit = 1;
@@ -339,6 +459,77 @@ if ($action === 'delete_promise') {
   $del = sb_rest('/official_promises?id=eq.' . rawurlencode($id), 'DELETE', ['Prefer' => 'return=minimal'], null);
   if (!$del['ok']) nr_json(500, ['error' => 'Delete failed', 'details' => $del['raw'] ?? null]);
   nr_json(200, ['ok' => true]);
+}
+
+if ($action === 'seed_mandate_template') {
+  $politicianId = isset($payload['politician_id']) && is_string($payload['politician_id']) ? trim($payload['politician_id']) : '';
+  if ($politicianId === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $politicianId)) nr_json(400, ['error' => 'Invalid politician_id']);
+  $kind = isset($payload['kind']) && is_string($payload['kind']) ? strtolower(trim($payload['kind'])) : 'president';
+  if (!in_array($kind, ['president','governor','legislator','general'], true)) $kind = 'general';
+
+  $existing = sb_rest('/official_promises?select=id&politician_id=eq.' . rawurlencode($politicianId) . '&limit=1', 'GET', [], null);
+  if ($existing['ok'] && is_array($existing['json']) && count($existing['json']) > 0) {
+    nr_json(200, ['ok' => true, 'inserted' => 0, 'message' => 'Promises already exist']);
+  }
+
+  $templates = [];
+  if ($kind === 'president') {
+    $templates = [
+      ['promise_title' => 'Reduce cost of living and inflation', 'promise_category' => 'economy'],
+      ['promise_title' => 'Improve national security and public safety', 'promise_category' => 'security'],
+      ['promise_title' => 'Strengthen anti-corruption and transparency', 'promise_category' => 'governance'],
+      ['promise_title' => 'Create jobs and support small businesses', 'promise_category' => 'economy'],
+      ['promise_title' => 'Improve electricity and infrastructure', 'promise_category' => 'policy'],
+      ['promise_title' => 'Improve education access and quality', 'promise_category' => 'policy'],
+      ['promise_title' => 'Improve healthcare access and outcomes', 'promise_category' => 'policy'],
+    ];
+  } else if ($kind === 'governor') {
+    $templates = [
+      ['promise_title' => 'Improve state security and safety', 'promise_category' => 'security'],
+      ['promise_title' => 'Fix and expand roads and transport', 'promise_category' => 'policy'],
+      ['promise_title' => 'Improve primary healthcare services', 'promise_category' => 'policy'],
+      ['promise_title' => 'Improve public education and schools', 'promise_category' => 'policy'],
+      ['promise_title' => 'Create jobs and support local businesses', 'promise_category' => 'economy'],
+      ['promise_title' => 'Strengthen transparency and accountability', 'promise_category' => 'governance'],
+    ];
+  } else if ($kind === 'legislator') {
+    $templates = [
+      ['promise_title' => 'Sponsor/Support bills that improve governance', 'promise_category' => 'governance'],
+      ['promise_title' => 'Ensure constituency engagement and transparency', 'promise_category' => 'governance'],
+      ['promise_title' => 'Push policies that reduce unemployment', 'promise_category' => 'economy'],
+      ['promise_title' => 'Support reforms that improve security', 'promise_category' => 'security'],
+    ];
+  } else {
+    $templates = [
+      ['promise_title' => 'Improve transparency and accountability', 'promise_category' => 'governance'],
+      ['promise_title' => 'Improve economic opportunities', 'promise_category' => 'economy'],
+      ['promise_title' => 'Improve security and safety', 'promise_category' => 'security'],
+    ];
+  }
+
+  $rows = [];
+  foreach ($templates as $t) {
+    $rows[] = [
+      'politician_id' => $politicianId,
+      'official_id' => null,
+      'promise_title' => $t['promise_title'],
+      'promise_detail' => null,
+      'promise_source' => 'Template',
+      'promise_date' => null,
+      'promise_category' => $t['promise_category'],
+      'status' => 'pending',
+      'progress_percent' => 0,
+      'verified_by' => 'template',
+      'last_updated' => gmdate('c'),
+    ];
+  }
+
+  $ins = sb_rest('/official_promises', 'POST', [
+    'Content-Type' => 'application/json',
+    'Prefer' => 'return=representation',
+  ], $rows);
+  if (!$ins['ok'] || !is_array($ins['json'])) nr_json(500, ['error' => 'Insert failed', 'details' => $ins['raw'] ?? null]);
+  nr_json(200, ['ok' => true, 'inserted' => count($ins['json'])]);
 }
 
 if ($action === 'delete') {

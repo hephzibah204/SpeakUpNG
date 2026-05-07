@@ -32,6 +32,7 @@
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm" id="btn-refresh">Refresh</button>
           <button class="btn btn-ghost btn-sm" id="btn-photos">Autofill photos</button>
+          <button class="btn btn-ghost btn-sm" id="btn-bios">Autofill bios</button>
           <button class="btn btn-green btn-sm" id="btn-add">Add politician</button>
         </div>
       </div>
@@ -88,6 +89,7 @@
             <input class="form-control" id="pol-photo" placeholder="https://...">
             <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;">
               <button class="btn btn-ghost btn-sm" id="pol-fetch-photo" type="button">Fetch photo (Wikipedia)</button>
+              <button class="btn btn-ghost btn-sm" id="pol-fetch-bio" type="button">Fetch bio (Wikipedia)</button>
               <a class="btn btn-ghost btn-sm" id="pol-wiki" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">Open Wikipedia →</a>
             </div>
           </div>
@@ -139,7 +141,10 @@ Former Vice President of ..."></textarea>
               <div style="font-weight:800;">Mandate / Promises</div>
               <div style="font-size:.8rem;color:var(--muted);margin-top:.2rem;">Published under the politician profile Mandate tab.</div>
             </div>
-            <button class="btn btn-green btn-sm" id="promise-add" type="button" disabled>Add promise</button>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" id="promise-seed" type="button" disabled>Seed template</button>
+              <button class="btn btn-green btn-sm" id="promise-add" type="button" disabled>Add promise</button>
+            </div>
           </div>
           <div id="promise-list" style="margin-top:.9rem;"><div class="empty">Select a politician to manage promises.</div></div>
         </div>
@@ -315,6 +320,35 @@ Former Vice President of ..."></textarea>
       }
     }
 
+    async function fetchBio() {
+      if (!editingId) { showToast('Save/select a politician first.', 'error'); return; }
+      const btn = document.getElementById('pol-fetch-bio');
+      if (btn) { btn.disabled = true; btn.textContent = 'Fetching...'; }
+      try {
+        const res = await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'fetch_bio', id: editingId } });
+        showToast(res?.updated ? 'Bio updated.' : (res?.message || 'No bio found.'), res?.updated ? 'success' : 'error');
+        await load();
+      } catch (e) {
+        showToast(e?.message || 'Fetch failed', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Fetch bio (Wikipedia)'; }
+      }
+    }
+
+    async function bulkBios() {
+      const btn = document.getElementById('btn-bios');
+      if (btn) { btn.disabled = true; btn.textContent = 'Running...'; }
+      try {
+        const res = await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'bulk_fetch_bios', limit: 300 } });
+        showToast(`Bios: updated ${res.updated || 0}, skipped ${res.skipped || 0}, failed ${res.failed || 0}.`);
+        await load();
+      } catch (e) {
+        showToast(e?.message || 'Bulk bio failed', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Autofill bios'; }
+      }
+    }
+
     function renderPromises() {
       const mount = document.getElementById('promise-list');
       if (!mount) return;
@@ -434,6 +468,22 @@ Former Vice President of ..."></textarea>
       showToast('Added promise.');
     }
 
+    async function seedTemplate() {
+      if (!editingId) return;
+      const kindRaw = (document.getElementById('pol-aspiring')?.value || document.getElementById('pol-title')?.value || '').toLowerCase();
+      let kind = 'general';
+      if (kindRaw.includes('president')) kind = 'president';
+      else if (kindRaw.includes('governor')) kind = 'governor';
+      else if (kindRaw.includes('senat') || kindRaw.includes('house')) kind = 'legislator';
+      try {
+        const res = await adminApiJson('/api/politicians-admin.php', { method: 'POST', body: { action: 'seed_mandate_template', politician_id: editingId, kind } });
+        showToast(res?.inserted ? `Seeded ${res.inserted} promises.` : (res?.message || 'No changes.'));
+        await loadPromises();
+      } catch (e) {
+        showToast(e?.message || 'Seed failed', 'error');
+      }
+    }
+
     async function del() {
       if (!editingId) return;
       if (!confirm('Delete this politician?')) return;
@@ -468,6 +518,8 @@ Former Vice President of ..."></textarea>
       if (delBtn) delBtn.style.display = '';
       const addBtn = document.getElementById('promise-add');
       if (addBtn) addBtn.disabled = false;
+      const seedBtn = document.getElementById('promise-seed');
+      if (seedBtn) seedBtn.disabled = false;
       const wikiLink = document.getElementById('pol-wiki');
       if (wikiLink && p.wiki_url) { wikiLink.href = p.wiki_url; wikiLink.style.display = ''; }
       openPolModal();
@@ -477,9 +529,12 @@ Former Vice President of ..."></textarea>
     document.getElementById('btn-add')?.addEventListener('click', () => { editingId = null; openPolModal(); });
     document.getElementById('btn-refresh')?.addEventListener('click', load);
     document.getElementById('btn-photos')?.addEventListener('click', bulkPhotos);
+    document.getElementById('btn-bios')?.addEventListener('click', bulkBios);
     document.getElementById('pol-save')?.addEventListener('click', save);
     document.getElementById('pol-delete')?.addEventListener('click', del);
     document.getElementById('pol-fetch-photo')?.addEventListener('click', fetchPhoto);
+    document.getElementById('pol-fetch-bio')?.addEventListener('click', fetchBio);
+    document.getElementById('promise-seed')?.addEventListener('click', seedTemplate);
     document.getElementById('promise-add')?.addEventListener('click', addPromise);
     document.getElementById('party-filter')?.addEventListener('change', render);
     document.getElementById('active-filter')?.addEventListener('change', render);
