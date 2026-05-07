@@ -3,21 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nigeria Politics News - Aggregated Updates | evote.ng</title>
-<meta name="description" content="Latest Nigerian politics news aggregated from credible sources. Updated every 15 minutes and moderated for relevance.">
-<meta name="keywords" content="Nigeria politics news, Punch politics, Vanguard politics, The Nation politics, TheCable politics, Nigerian politics updates">
+<title>News | evote.ng</title>
+<meta name="description" content="Read evote.ng editorial updates and an aggregated politics feed from credible sources. Full articles open inside evote.ng.">
+<meta name="keywords" content="Nigeria news, Nigeria politics news, evote.ng editorial, Punch politics, Vanguard politics, The Nation politics, TheCable politics">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="/news" id="canonical-link">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="evote.ng">
 <meta property="og:locale" content="en_NG">
-<meta property="og:title" content="Nigeria Politics News - Aggregated Updates | evote.ng">
-<meta property="og:description" content="Latest Nigerian politics news aggregated from credible sources. Updated every 15 minutes and moderated for relevance.">
+<meta property="og:title" content="News | evote.ng">
+<meta property="og:description" content="Read evote.ng editorial updates and an aggregated politics feed from credible sources. Full articles open inside evote.ng.">
 <meta property="og:image" content="/images/logo.png">
 <meta property="og:url" content="/news" id="og-url">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Nigeria Politics News - Aggregated Updates | evote.ng">
-<meta name="twitter:description" content="Latest Nigerian politics news aggregated from credible sources. Updated every 15 minutes and moderated for relevance.">
+<meta name="twitter:title" content="News | evote.ng">
+<meta name="twitter:description" content="Read evote.ng editorial updates and an aggregated politics feed from credible sources. Full articles open inside evote.ng.">
 <meta name="twitter:image" content="/images/logo.png">
 <link rel="stylesheet" href="css/style.css">
 <style>
@@ -48,6 +48,7 @@
     color: var(--muted);
     font-size: .86rem;
   }
+  .news-img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;border:1px solid var(--border);margin-bottom:.7rem;background:#101310;}
 </style>
 <script>
   (function setCanonicalMeta() {
@@ -63,9 +64,9 @@
 {
   "@context": "https://schema.org",
   "@type": "NewsMediaOrganization",
-  "name": "evote.ng Nigeria Politics News",
+  "name": "evote.ng News",
   "url": "/news",
-  "description": "Aggregated Nigeria politics news feed from credible sources.",
+  "description": "evote.ng news hub: editorial updates and an aggregated Nigeria politics feed.",
   "inLanguage": "en-NG"
 }
 </script>
@@ -77,6 +78,7 @@
   <div class="nav-links">
     <a href="/" class="nav-link show-mobile">Officials</a>
     <a href="/agencies" class="nav-link">Agencies</a>
+    <a href="/politicians" class="nav-link">Politicians</a>
     <a href="/leaderboard" class="nav-link">Rankings</a>
     <a href="/polls" class="nav-link">Polls</a>
     <a href="/blog" class="nav-link">Blog</a>
@@ -86,15 +88,39 @@
 
 <div class="section">
   <div class="container" style="max-width:900px;">
-    <div class="page-header">
-      <h1 class="page-title">Politics News (Aggregated)</h1>
-      <p class="page-sub">Punch · Vanguard · The Nation · TheCable · Nigerian Newspaper (filtered to politics, moderated). Refreshes every 15 minutes.</p>
+    <div class="page-header" style="border:none;padding-bottom:0;">
+      <h1 class="page-title">News</h1>
+      <p class="page-sub">Read evote.ng editorial updates and the moderated politics feed. Full articles open inside evote.ng.</p>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.9rem;">
+        <button class="btn btn-ghost btn-sm" id="tab-all">All</button>
+        <button class="btn btn-ghost btn-sm" id="tab-editorial">Editorial</button>
+        <button class="btn btn-ghost btn-sm" id="tab-politics">Politics feed</button>
+      </div>
     </div>
 
-    <div class="news-list" id="news-list" aria-live="polite"></div>
-    <div id="news-empty" class="news-item" style="display:none;">
-      <h2 class="news-title">No updates yet</h2>
-      <p class="news-copy">Check back soon.</p>
+    <div id="section-editorial" style="margin-top:1.1rem;">
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="font-family:'Syne',sans-serif;font-weight:800;">Editorial Updates</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-top:.25rem;">Curated posts published on evote.ng.</div>
+      </div>
+      <div class="news-list" id="editorial-list" aria-live="polite"></div>
+      <div id="editorial-empty" class="news-item" style="display:none;">
+        <h2 class="news-title">No editorial posts yet</h2>
+        <p class="news-copy">Check back soon.</p>
+      </div>
+    </div>
+
+    <div id="section-politics" style="margin-top:1.4rem;">
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="font-family:'Syne',sans-serif;font-weight:800;">Politics Feed (Aggregated)</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-top:.25rem;">Punch · Vanguard · The Nation · TheCable · Nigerian Newspaper (filtered to politics, moderated). Refreshes every 15 minutes.</div>
+      </div>
+
+      <div class="news-list" id="news-list" aria-live="polite"></div>
+      <div id="news-empty" class="news-item" style="display:none;">
+        <h2 class="news-title">No updates yet</h2>
+        <p class="news-copy">Check back soon.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -104,14 +130,22 @@
   <a href="/" style="color:var(--green-light);">Officials</a> ·
   <a href="/polls" style="color:var(--green-light);">Polls</a> ·
   <a href="/blog" style="color:var(--green-light);">Blog</a> ·
-  <a href="/news-curated" style="color:var(--green-light);">Editorial</a>
+  <a href="/news?tab=editorial" style="color:var(--green-light);">Editorial</a>
 </footer>
 <script type="module">
-  import { supabase } from './js/supabase-client.js';
+  import { supabase } from '/js/supabase-client.js';
 
   const listEl = document.getElementById('news-list');
   const emptyEl = document.getElementById('news-empty');
+  const editorialEl = document.getElementById('editorial-list');
+  const editorialEmptyEl = document.getElementById('editorial-empty');
   const ldItemsEl = document.getElementById('ld-items');
+
+  const sectionEditorial = document.getElementById('section-editorial');
+  const sectionPolitics = document.getElementById('section-politics');
+  const btnAll = document.getElementById('tab-all');
+  const btnEditorial = document.getElementById('tab-editorial');
+  const btnPolitics = document.getElementById('tab-politics');
 
   function formatDate(iso) {
     try {
@@ -135,6 +169,82 @@
     } catch {
       return '';
     }
+  }
+
+  function setTab(tab) {
+    const t = String(tab || 'all');
+    const showEditorial = t === 'all' || t === 'editorial';
+    const showPolitics = t === 'all' || t === 'politics';
+    if (sectionEditorial) sectionEditorial.style.display = showEditorial ? '' : 'none';
+    if (sectionPolitics) sectionPolitics.style.display = showPolitics ? '' : 'none';
+    const active = (b, on) => {
+      if (!b) return;
+      b.classList.toggle('btn-green', !!on);
+      b.classList.toggle('btn-ghost', !on);
+    };
+    active(btnAll, t === 'all');
+    active(btnEditorial, t === 'editorial');
+    active(btnPolitics, t === 'politics');
+
+    const u = new URL(window.location.href);
+    if (t === 'all') u.searchParams.delete('tab');
+    else u.searchParams.set('tab', t);
+    window.history.replaceState({}, '', u.toString());
+  }
+
+  function fmtEditorialDate(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }); }
+    catch { return iso; }
+  }
+
+  function isPublished(p) {
+    const st = String(p?.status || '').toLowerCase();
+    if (st && st !== 'published') return false;
+    return !!String(p?.published_at || '').trim();
+  }
+
+  async function loadEditorial() {
+    if (!editorialEl) return [];
+    editorialEl.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading editorial...</div>';
+    try {
+      const res = await fetch('/data/news-posts.json', { cache: 'no-store' });
+      const json = await res.json();
+      const posts = Array.isArray(json?.posts) ? json.posts : [];
+      const pub = posts.filter(isPublished);
+      pub.sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || '')));
+      return pub.slice(0, 20);
+    } catch {
+      return [];
+    }
+  }
+
+  function renderEditorial(posts) {
+    if (!editorialEl) return;
+    if (!posts.length) {
+      if (editorialEmptyEl) editorialEmptyEl.style.display = '';
+      editorialEl.innerHTML = '';
+      return;
+    }
+    if (editorialEmptyEl) editorialEmptyEl.style.display = 'none';
+    editorialEl.innerHTML = posts.map((p) => {
+      const when = fmtEditorialDate(p.published_at);
+      const img = sanitizeUrl(p.featured_image);
+      const href = '/news/' + encodeURIComponent(String(p.slug || ''));
+      return `
+        <article class="news-item card-hover">
+          ${img ? `<a href="${href}"><img class="news-img" src="${esc(img)}" alt="${esc(p.featured_image_alt || p.title || 'Editorial image')}"></a>` : ''}
+          <div class="news-time">${esc(when)}</div>
+          <h2 class="news-title"><a href="${href}">${esc(p.title || '')}</a></h2>
+          <p class="news-copy">${esc(p.excerpt || '')}</p>
+          <div class="news-meta">
+            <span class="news-pill">Editorial</span>
+            ${p.category ? `<span class="news-pill">${esc(p.category)}</span>` : ''}
+            <a href="${href}" style="margin-left:auto;color:var(--green-light);font-size:.78rem;">Read →</a>
+          </div>
+        </article>
+      `;
+    }).join('');
   }
 
   function tierMeta(tier) {
@@ -223,14 +333,18 @@
     }
   }
 
-  (async function init() {
-    try {
-      const items = await loadPoliticsFeed();
-      render(items);
-    } catch (e) {
-      if (emptyEl) emptyEl.style.display = '';
-    }
-  })();
+  const initialTab = String(new URLSearchParams(window.location.search).get('tab') || 'all').toLowerCase();
+  setTab(['editorial','politics'].includes(initialTab) ? initialTab : 'all');
+  btnAll?.addEventListener('click', () => setTab('all'));
+  btnEditorial?.addEventListener('click', () => setTab('editorial'));
+  btnPolitics?.addEventListener('click', () => setTab('politics'));
+
+  const [editorial, politics] = await Promise.all([
+    loadEditorial(),
+    loadPoliticsFeed(),
+  ]);
+  renderEditorial(editorial);
+  render(politics);
 </script>
 </body>
 </html>
