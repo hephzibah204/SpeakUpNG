@@ -47,13 +47,26 @@ $supaHeaders = [
   'Content-Type' => 'application/json'
 ];
 
-echo "Auditing officials for missing data...\n";
-// Find officials with missing bio or photo_url
-$res = fetch_json("{$supabaseUrl}/rest/v1/officials?or=(bio.is.null,photo_url.is.null)&status=eq.active&select=id,full_name,role", 'GET', null, $supaHeaders);
+echo "Auditing officials for missing/short bio or missing photo...\n";
+// Find officials with missing OR short bio/profile_bio OR missing photo
+$res = fetch_json(
+  "{$supabaseUrl}/rest/v1/officials?or=(bio.is.null,photo_url.is.null,profile_bio.is.null)&status=eq.active&select=id,full_name,role,bio,profile_bio,photo_url&limit=3000",
+  'GET',
+  null,
+  $supaHeaders
+);
 
 if (!$res['ok']) die("Failed to fetch officials: " . json_encode($res['json']) . "\n");
 
-$targets = $res['json'];
+$targets = array_values(array_filter($res['json'], function ($o) {
+  $bio = isset($o['bio']) ? trim((string)$o['bio']) : '';
+  $pb = isset($o['profile_bio']) ? trim((string)$o['profile_bio']) : '';
+  $photo = isset($o['photo_url']) ? trim((string)$o['photo_url']) : '';
+  if ($photo === '') return true;
+  if ($pb === '' || mb_strlen($pb, 'UTF-8') < 450) return true;
+  if ($bio === '' || mb_strlen($bio, 'UTF-8') < 180) return true;
+  return false;
+}));
 $total = count($targets);
 echo "Found {$total} officials needing repair.\n\n";
 
@@ -71,7 +84,7 @@ foreach ($targets as $i => $o) {
   // For safety in bulk, we simulate the logic here to avoid overhead
   
   $q = urlencode($o['full_name']);
-  $wikiUrl = "https://en.wikipedia.org/w/api.php?action=query&titles={$q}&prop=pageimages|extracts&pithumbsize=600&exintro=1&explaintext=1&redirects=1&format=json";
+  $wikiUrl = "https://en.wikipedia.org/w/api.php?action=query&titles={$q}&prop=pageimages|extracts&pithumbsize=900&explaintext=1&exsectionformat=plain&exchars=4500&redirects=1&format=json";
   
   $ch = curl_init($wikiUrl);
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -85,7 +98,7 @@ foreach ($targets as $i => $o) {
     $wikiData = json_decode((string)$wikiRaw, true);
     if (!empty($wikiData['query']['pages'])) {
       foreach ($wikiData['query']['pages'] as $page) {
-        if (!empty($page['extract'])) $wikiExtract = trim(mb_substr((string)$page['extract'], 0, 2000));
+        if (!empty($page['extract'])) $wikiExtract = trim(mb_substr((string)$page['extract'], 0, 4500));
         if (!empty($page['thumbnail']['source'])) $wikiImage = trim((string)$page['thumbnail']['source']);
         break;
       }
@@ -94,7 +107,12 @@ foreach ($targets as $i => $o) {
 
   // Update logic
   $updates = [];
-  if ($wikiExtract) $updates['bio'] = $wikiExtract;
+  if ($wikiExtract) {
+    $updates['profile_bio'] = $wikiExtract;
+    if (empty($o['bio']) || mb_strlen(trim((string)($o['bio'] ?? '')), 'UTF-8') < 180) {
+      $updates['bio'] = mb_substr($wikiExtract, 0, 1200);
+    }
+  }
   if ($wikiImage) $updates['photo_url'] = $wikiImage;
 
   if (!empty($updates)) {

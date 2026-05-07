@@ -224,9 +224,10 @@ Former Vice President of ..."></textarea>
         return;
       }
       mount.innerHTML = rows.map((p) => {
+        const href = `/politician/id/${encodeURIComponent(p.id)}`;
         return `<tr>
-          <td style="cursor:pointer;" onclick="window.editPol('${p.id}')">
-            <div style="font-size:.85rem;font-weight:800;">${esc(p.full_name)}</div>
+          <td>
+            <div style="font-size:.85rem;font-weight:800;"><a href="${href}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);">${esc(p.full_name)}</a></div>
             <div style="font-size:.74rem;color:var(--muted);">${esc(p.common_name || '')}</div>
           </td>
           <td>${esc(p.party || '')}</td>

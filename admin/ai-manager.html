@@ -173,6 +173,7 @@
           <div style="font-size:.7rem;color:var(--green-light);font-weight:700;margin-bottom:.5rem;text-transform:uppercase;">Step 2: Auto-Repair</div>
           <div style="font-size:.8rem;color:var(--white);margin-bottom:1rem;line-height:1.5;">This will sequentially call the AI for every missing field found in Step 1.</div>
           <button class="ai-btn ai-btn-green" style="width:100%;" id="btn-repair" disabled onclick="runGlobalRepair()">🩹 Start Bulk Repair</button>
+          <button class="ai-btn ai-btn-ghost" style="width:100%;margin-top:.6rem;" id="btn-repair-stop" disabled onclick="stopGlobalRepair()">⏸️ Stop (pause)</button>
         </div>
       </div>
 
@@ -973,6 +974,30 @@ document.getElementById('btn-save-secrets').addEventListener('click', async () =
 
 // ── REPAIR LOGIC ─────────────────────────────────────────────────────────────
 let repairTargets = [];
+let repairStop = false;
+const REPAIR_STORAGE_KEY = 'nr_repair_checkpoint_v1';
+
+function loadRepairCheckpoint() {
+  try {
+    const raw = localStorage.getItem(REPAIR_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== 'object') return null;
+    if (!Array.isArray(data.targets)) return null;
+    const idx = Number(data.index || 0);
+    return { targets: data.targets, index: Number.isFinite(idx) ? idx : 0, updatedAt: data.updatedAt || null };
+  } catch { return null; }
+}
+
+function saveRepairCheckpoint(targets, index) {
+  try {
+    localStorage.setItem(REPAIR_STORAGE_KEY, JSON.stringify({ targets, index, updatedAt: new Date().toISOString() }));
+  } catch {}
+}
+
+function clearRepairCheckpoint() {
+  try { localStorage.removeItem(REPAIR_STORAGE_KEY); } catch {}
+}
 
 window.runAudit = async () => {
   const el = document.getElementById('audit-count');
@@ -980,14 +1005,27 @@ window.runAudit = async () => {
   try {
     const { data, error } = await supabase
       .from('officials')
-      .select('id, full_name')
-      .or('bio.is.null,photo_url.is.null')
-      .eq('status', 'active');
+      .select('id,full_name,bio,profile_bio,photo_url')
+      .eq('status', 'active')
+      .limit(3000);
     
     if (error) throw error;
-    repairTargets = data || [];
+    const rows = data || [];
+    const minBio = 180;
+    const minProfileBio = 450;
+    repairTargets = rows.filter((r) => {
+      const bio = String(r?.bio || '').trim();
+      const pb = String(r?.profile_bio || '').trim();
+      const photo = String(r?.photo_url || '').trim();
+      const bioBad = !bio || bio.length < minBio;
+      const pbBad = !pb || pb.length < minProfileBio;
+      const photoBad = !photo;
+      return photoBad || pbBad || bioBad;
+    }).map((r) => ({ id: r.id, full_name: r.full_name }));
     el.textContent = repairTargets.length;
     document.getElementById('btn-repair').disabled = repairTargets.length === 0;
+    document.getElementById('btn-repair-stop').disabled = true;
+    saveRepairCheckpoint(repairTargets, 0);
     showToast(`Found ${repairTargets.length} profiles needing attention.`);
   } catch (e) {
     el.textContent = 'Error';
@@ -996,54 +1034,77 @@ window.runAudit = async () => {
 };
 
 window.runGlobalRepair = async () => {
-  if (!repairTargets.length) return;
+  const checkpoint = loadRepairCheckpoint();
+  const targets = (checkpoint && Array.isArray(checkpoint.targets) && checkpoint.targets.length) ? checkpoint.targets : repairTargets;
+  if (!targets.length) return;
+  let startIndex = checkpoint ? Math.max(0, Math.min(targets.length, Number(checkpoint.index || 0))) : 0;
+
   const logEl = document.getElementById('repair-log');
   const btn = document.getElementById('btn-repair');
+  const stopBtn = document.getElementById('btn-repair-stop');
   logEl.style.display = 'block';
-  logEl.innerHTML = '<div style="color:var(--green-light);margin-bottom:.5rem;">Starting Global Repair Sequence...</div>';
+  logEl.innerHTML = `<div style="color:var(--green-light);margin-bottom:.5rem;">Starting Global Repair Sequence... <span style="color:var(--muted)">(${startIndex + 1}/${targets.length})</span></div>`;
   btn.disabled = true;
+  if (stopBtn) stopBtn.disabled = false;
+  repairStop = false;
   
-  for (let i = 0; i < repairTargets.length; i++) {
-    const t = repairTargets[i];
+  for (let i = startIndex; i < targets.length; i++) {
+    if (repairStop) {
+      logEl.innerHTML += '<div style="color:var(--muted);margin-top:.8rem;">⏸️ Repair paused. You can resume without restarting.</div>';
+      break;
+    }
+    const t = targets[i];
     const logItem = document.createElement('div');
-    logItem.innerHTML = `<span style="color:var(--muted)">[${i+1}/${repairTargets.length}]</span> Repairing: <strong>${t.full_name}</strong>... `;
+    logItem.innerHTML = `<span style="color:var(--muted)">[${i+1}/${targets.length}]</span> Repairing: <strong>${t.full_name}</strong>... `;
     logEl.appendChild(logItem);
     logEl.scrollTop = logEl.scrollHeight;
     
     try {
-      const res = await fetch('/api/fetch-official-profile.php', {
+      const res = await fetch('/api/repair-official.php', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
           'Authorization': `Bearer ${session.access_token}` 
         },
-        body: JSON.stringify({ name: t.full_name })
+        body: JSON.stringify({ official_id: t.id, name: t.full_name, min_bio_chars: 180, min_profile_bio_chars: 450 })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'AI Fetch failed');
-      
-      const v = data.profile;
-      const { error } = await supabase.from('officials').update({
-        bio: v.bio || null,
-        photo_url: v.photo_url || null,
-        // Only update these if the AI found high-confidence data
-        role: v.role || undefined,
-        party: v.party || undefined
-      }).eq('id', t.id);
-      
-      if (error) throw error;
-      logItem.innerHTML += '<span style="color:var(--green-light)">REPAIRED! ✓</span>';
+      saveRepairCheckpoint(targets, i + 1);
+      logItem.innerHTML += `<span style="color:var(--green-light)">${data.updated ? 'REPAIRED! ✓' : 'SKIPPED'}</span>`;
     } catch (e) {
       logItem.innerHTML += `<span style="color:#e84040">FAILED: ${e.message}</span>`;
+      saveRepairCheckpoint(targets, i + 1);
     }
-    // Pause to avoid OpenRouter rate limits
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 700));
   }
-  
-  logEl.innerHTML += '<div style="color:var(--green-light);margin-top:.8rem;font-weight:700;">✅ Global Repair Finished. All profiles updated.</div>';
-  showToast('Global Repair Finished!', 'success');
+
+  const doneCheckpoint = loadRepairCheckpoint();
+  const doneIndex = doneCheckpoint ? Number(doneCheckpoint.index || 0) : 0;
+  if (doneIndex >= targets.length) {
+    logEl.innerHTML += '<div style="color:var(--green-light);margin-top:.8rem;font-weight:700;">✅ Global Repair Finished. All profiles processed.</div>';
+    showToast('Global Repair Finished!', 'success');
+    clearRepairCheckpoint();
+  }
   btn.disabled = false;
+  if (stopBtn) stopBtn.disabled = true;
 };
+
+window.stopGlobalRepair = () => {
+  repairStop = true;
+};
+
+(function initRepairUI(){
+  const chk = loadRepairCheckpoint();
+  const btn = document.getElementById('btn-repair');
+  if (btn && chk && chk.targets && chk.targets.length && Number(chk.index || 0) > 0 && Number(chk.index || 0) < chk.targets.length) {
+    btn.disabled = false;
+    btn.textContent = '🩹 Resume Bulk Repair';
+    const el = document.getElementById('audit-count');
+    if (el) el.textContent = chk.targets.length;
+    repairTargets = chk.targets;
+  }
+})();
 window.toggleAutopilot = () => {
   const active = localStorage.getItem('nr_autopilot') === 'true';
   const next = !active;
