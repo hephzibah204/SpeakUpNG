@@ -336,15 +336,31 @@
         document.getElementById('avatar').textContent = '—';
         return;
       }
-      const { data, error } = await supabase
-        .from('politicians')
-        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,profile_bio,photo_url,wiki_url,source_urls')
-        .eq('id', politicianId)
-        .limit(1);
+      let data = null;
+      let error = null;
+      const extSelect = 'id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,profile_bio,photo_url,wiki_url,source_urls,aliases';
+      const baseSelect = 'id,full_name,common_name,party,aspiration_title,bio,photo_url,aliases';
+      try {
+        ({ data, error } = await supabase
+          .from('politicians')
+          .select(extSelect)
+          .eq('id', politicianId)
+          .limit(1));
+        if (error) {
+          const msg = String(error.message || '').toLowerCase();
+          if (msg.includes('column') && (msg.includes('does not exist') || msg.includes('not found'))) throw error;
+        }
+      } catch {
+        ({ data, error } = await supabase
+          .from('politicians')
+          .select(baseSelect)
+          .eq('id', politicianId)
+          .limit(1));
+      }
       if(error || !data || !data.length){
         document.getElementById('name').textContent = 'Politician not found';
         document.getElementById('breadcrumb').textContent = 'Unknown';
-        document.getElementById('bio').textContent = 'Unable to load profile.';
+        document.getElementById('bio').textContent = error ? ('Unable to load profile: ' + (error.message || '')) : 'Unable to load profile.';
         document.getElementById('avatar').textContent = '—';
         return;
       }

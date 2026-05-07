@@ -425,7 +425,6 @@ let artTone       = 'formal';
 let socPlatform   = { id:'twitter', max:280 };
 let scanHistory   = [];
 let scanCount     = 0;
-const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 const AI_SCAN_UNAVAILABLE = 'Full scan still runs via scripts/monitor.js or GitHub Actions. This page generates Articles, Social, SQL, and Audit using OpenRouter when /api/openrouter-chat.php is configured.';
 
 const QUERIES = [
@@ -734,7 +733,6 @@ document.getElementById('btn-article').addEventListener('click', async () => {
   try {
     const sys = `You are evote.ng Admin AI. Write a helpful Nigerian governance news article. Tone: ${artTone}. Output plain text with short paragraphs.`;
     const res = await openRouterChat({
-      model: DEFAULT_MODEL,
       temperature: 0.6,
       messages: [
         { role: 'system', content: sys },
@@ -781,7 +779,6 @@ document.getElementById('btn-social').addEventListener('click', async () => {
   try {
     const sys = `You are evote.ng Admin AI. Write 1 social post for ${socPlatform.id}. Max ${socPlatform.max} characters. Include a clear call-to-action to rate officials on evote.ng. Avoid hashtags spam. Output only the post text.`;
     const res = await openRouterChat({
-      model: DEFAULT_MODEL,
       temperature: 0.7,
       messages: [
         { role: 'system', content: sys },
@@ -832,7 +829,6 @@ document.getElementById('btn-sql').addEventListener('click', async () => {
   try {
     const sys = `You are evote.ng Admin AI. Generate PostgreSQL SQL for Supabase. Output ONLY SQL (no markdown, no commentary). Keep it safe: prefer SELECT previews, idempotent ALTER TABLE IF NOT EXISTS, and avoid destructive operations unless explicitly requested.`;
     const res = await openRouterChat({
-      model: DEFAULT_MODEL,
       temperature: 0.2,
       messages: [
         { role: 'system', content: sys },
@@ -866,7 +862,6 @@ document.getElementById('btn-audit').addEventListener('click', async () => {
   try {
     const ctx = `Site: evote.ng.\n\nLive audit checks:\n${JSON.stringify(AUDIT_CHECKS, null, 2)}\n\nWrite an admin-friendly site health report with:\n- Quick summary (1 paragraph)\n- Top 5 risks\n- Top 10 recommended actions (ordered)\n- SEO checklist\n- Performance checklist\nKeep it concise and actionable.`;
     const res = await openRouterChat({
-      model: DEFAULT_MODEL,
       temperature: 0.4,
       messages: [
         { role: 'system', content: 'You are evote.ng Admin AI. Write concise, actionable audit reports.' },

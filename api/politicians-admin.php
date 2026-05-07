@@ -294,6 +294,79 @@ function nr_wikipedia_best_match(string $preferredTitle, array $fallbackTitles, 
   return ['ok' => false, 'title' => '', 'photo_url' => '', 'wiki_url' => ''];
 }
 
+function nr_wikidata_search_best(array $terms, string $ua): string {
+  foreach ($terms as $t) {
+    $q = is_string($t) ? trim($t) : '';
+    if ($q === '') continue;
+    $url = 'https://www.wikidata.org/w/api.php?' . http_build_query([
+      'action' => 'wbsearchentities',
+      'format' => 'json',
+      'language' => 'en',
+      'limit' => 1,
+      'type' => 'item',
+      'search' => $q,
+    ]);
+    $res = nr_http_json($url, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 18);
+    if (!$res['ok'] || !is_array($res['json'])) continue;
+    $hits = $res['json']['search'] ?? null;
+    if (!is_array($hits) || !count($hits)) continue;
+    $id = (string)($hits[0]['id'] ?? '');
+    if (preg_match('/^Q\d+$/', $id)) return $id;
+  }
+  return '';
+}
+
+function nr_wikidata_p18_filename(string $qid, string $ua): string {
+  if (!preg_match('/^Q\d+$/', $qid)) return '';
+  $url = 'https://www.wikidata.org/wiki/Special:EntityData/' . rawurlencode($qid) . '.json';
+  $res = nr_http_json($url, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 18);
+  if (!$res['ok'] || !is_array($res['json'])) return '';
+  $ent = $res['json']['entities'][$qid] ?? null;
+  if (!is_array($ent)) return '';
+  $claims = $ent['claims']['P18'] ?? null;
+  if (!is_array($claims) || !count($claims)) return '';
+  $first = $claims[0] ?? null;
+  if (!is_array($first)) return '';
+  $val = $first['mainsnak']['datavalue']['value'] ?? null;
+  return is_string($val) ? trim($val) : '';
+}
+
+function nr_commons_thumb_from_filename(string $filename, string $ua): string {
+  $fn = trim($filename);
+  if ($fn === '') return '';
+  if (!str_starts_with($fn, 'File:')) $fn = 'File:' . $fn;
+  $url = 'https://commons.wikimedia.org/w/api.php?' . http_build_query([
+    'action' => 'query',
+    'format' => 'json',
+    'prop' => 'imageinfo',
+    'iiprop' => 'url',
+    'iiurlwidth' => 700,
+    'titles' => $fn,
+  ]);
+  $res = nr_http_json($url, 'GET', ['Accept' => 'application/json', 'User-Agent' => $ua], null, 18);
+  if (!$res['ok'] || !is_array($res['json'])) return '';
+  $pages = $res['json']['query']['pages'] ?? null;
+  if (!is_array($pages)) return '';
+  foreach ($pages as $p) {
+    if (!is_array($p)) continue;
+    $ii = $p['imageinfo'][0] ?? null;
+    if (!is_array($ii)) continue;
+    $thumb = $ii['thumburl'] ?? '';
+    if (is_string($thumb) && trim($thumb) !== '') return trim($thumb);
+    $u = $ii['url'] ?? '';
+    if (is_string($u) && trim($u) !== '') return trim($u);
+  }
+  return '';
+}
+
+function nr_wikidata_photo_best(array $terms, string $ua): string {
+  $qid = nr_wikidata_search_best($terms, $ua);
+  if ($qid === '') return '';
+  $fn = nr_wikidata_p18_filename($qid, $ua);
+  if ($fn === '') return '';
+  return nr_commons_thumb_from_filename($fn, $ua);
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
 if ($method !== 'POST') nr_json(405, ['error' => 'Method not allowed']);
 $raw = file_get_contents('php://input');
@@ -370,15 +443,19 @@ if ($action === 'fetch_photo') {
 
   $ua = 'evote.ng-politicians-admin/1.0';
   $res = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
-  if (!$res['ok']) nr_json(200, ['ok' => true, 'updated' => false, 'message' => 'No Wikipedia photo found']);
+  $photoUrl = $res['ok'] ? (string)($res['photo_url'] ?? '') : '';
+  if ($photoUrl === '') {
+    $photoUrl = nr_wikidata_photo_best([$wikiTitle, $common, $full], $ua);
+  }
+  if ($photoUrl === '') nr_json(200, ['ok' => true, 'updated' => false, 'message' => 'No photo found']);
 
   $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
     'Content-Type' => 'application/json',
     'Prefer' => 'return=representation',
   ], [[
-    'photo_url' => $res['photo_url'],
-    'wiki_title' => $res['title'] !== '' ? $res['title'] : null,
-    'wiki_url' => $res['wiki_url'] !== '' ? $res['wiki_url'] : null,
+    'photo_url' => $photoUrl,
+    'wiki_title' => $res['ok'] && $res['title'] !== '' ? $res['title'] : null,
+    'wiki_url' => $res['ok'] && $res['wiki_url'] !== '' ? $res['wiki_url'] : null,
   ]]);
   if (!$upd['ok'] || !is_array($upd['json']) || !count($upd['json'])) nr_json(500, ['error' => 'Update failed', 'details' => $upd['raw'] ?? null]);
   nr_json(200, ['ok' => true, 'updated' => true, 'politician' => $upd['json'][0]]);
@@ -491,14 +568,18 @@ if ($action === 'bulk_fetch_photos') {
     $common = (string)($p['common_name'] ?? '');
     $wikiTitle = (string)($p['wiki_title'] ?? '');
     $res = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
-    if (!$res['ok']) { $failed++; continue; }
+    $photoUrl = $res['ok'] ? (string)($res['photo_url'] ?? '') : '';
+    if ($photoUrl === '') {
+      $photoUrl = nr_wikidata_photo_best([$wikiTitle, $common, $full], $ua);
+    }
+    if ($photoUrl === '') { $failed++; continue; }
     $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
       'Content-Type' => 'application/json',
       'Prefer' => 'return=minimal',
     ], [[
-      'photo_url' => $res['photo_url'],
-      'wiki_title' => $res['title'] !== '' ? $res['title'] : null,
-      'wiki_url' => $res['wiki_url'] !== '' ? $res['wiki_url'] : null,
+      'photo_url' => $photoUrl,
+      'wiki_title' => $res['ok'] && $res['title'] !== '' ? $res['title'] : null,
+      'wiki_url' => $res['ok'] && $res['wiki_url'] !== '' ? $res['wiki_url'] : null,
     ]]);
     if ($upd['ok']) $updated++; else $failed++;
     usleep(250000);

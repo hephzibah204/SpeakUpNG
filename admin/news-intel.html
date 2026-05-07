@@ -75,7 +75,7 @@
 
 </div>
 
-<div class="modal-overlay" id="source-modal" style="display:none;" onclick="if(event.target===this)closeSourceModal()">
+<div class="modal-overlay" id="source-modal" onclick="if(event.target===this)closeSourceModal()">
   <div class="modal" style="max-width:720px;">
     <div class="modal-header">
       <h2>News Source</h2>
@@ -273,11 +273,11 @@ async function setStatus(itemId, status) {
 
 function openSourceModal() {
   const m = document.getElementById('source-modal');
-  if (m) m.style.display = 'flex';
+  if (m) m.classList.add('open');
 }
 function closeSourceModal() {
   const m = document.getElementById('source-modal');
-  if (m) m.style.display = 'none';
+  if (m) m.classList.remove('open');
   editingSourceId = null;
   document.getElementById('src-name').value = '';
   document.getElementById('src-home').value = '';

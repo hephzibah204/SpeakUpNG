@@ -268,8 +268,9 @@
     // Dynamically fetch all active, non-blocked sources instead of hardcoding names
     const { data: srcs, error: srcErr } = await supabase
       .from('news_sources')
-      .select('id,name')
-      .eq('is_active', true);
+      .select('id,name,credibility_tier')
+      .eq('is_active', true)
+      .neq('credibility_tier', 'blocked');
     if (srcErr) throw srcErr;
     const ids = (srcs || []).map((s) => s.id).filter(Boolean);
     if (!ids.length) return [];
