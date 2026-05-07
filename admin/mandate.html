@@ -123,11 +123,11 @@
   <div class="toast" id="toast"></div>
 
   <!-- BULK MODAL -->
-  <div class="modal-overlay" id="bulk-modal" onclick="if(event.target===this && !bulkIsRunning) closeBulkModal()">
+  <div class="modal-overlay" id="bulk-modal" onclick="if(event.target===this) closeBulkModal()">
     <div class="modal" style="max-width:600px;">
       <div class="modal-header">
         <h2>⚡ Bulk AI Auto-Populate</h2>
-        <button class="modal-close" onclick="if(!bulkIsRunning) closeBulkModal()">✕</button>
+        <button class="modal-close" onclick="closeBulkModal()">✕</button>
       </div>
       <div class="modal-body">
         <div id="bulk-status" style="font-weight:600;margin-bottom:.5rem;">Ready to process.</div>
@@ -179,11 +179,11 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="tpl-modal" onclick="if(event.target===this && !tplIsRunning) closeTplModal()">
+  <div class="modal-overlay" id="tpl-modal" onclick="if(event.target===this) closeTplModal()">
     <div class="modal" style="max-width:720px;">
       <div class="modal-header">
         <h2>📌 Bulk Template Populate</h2>
-        <button class="modal-close" onclick="if(!tplIsRunning) closeTplModal()">✕</button>
+        <button class="modal-close" onclick="closeTplModal()">✕</button>
       </div>
       <div class="modal-body">
         <div id="tpl-status" style="font-weight:600;margin-bottom:.5rem;">Ready.</div>
@@ -238,7 +238,7 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="reverify-modal" onclick="if(event.target===this && !reverifyIsRunning) closeReverifyModal()">
+  <div class="modal-overlay" id="reverify-modal" onclick="if(event.target===this) closeReverifyModal()">
     <div class="modal" style="max-width:780px;">
       <div class="modal-header">
         <h2>🔁 Bulk Re-Verify</h2>
@@ -849,6 +849,10 @@
     };
 
     window.openReverifyModal = () => {
+      if (reverifyIsRunning) {
+        el('reverify-modal').classList.add('open');
+        return;
+      }
       reverifyShouldStop = false;
       reverifyIsRunning = false;
       el('reverify-modal').classList.add('open');
@@ -860,7 +864,7 @@
     };
 
     window.closeReverifyModal = () => {
-      if (!reverifyIsRunning) el('reverify-modal').classList.remove('open');
+      el('reverify-modal').classList.remove('open');
     };
 
     window.stopReverify = () => {
@@ -1335,6 +1339,10 @@
     }
 
     window.openBulkModal = () => {
+      if (bulkIsRunning) {
+        el('bulk-modal').classList.add('open');
+        return;
+      }
       if (!filteredOfficialsAll || !filteredOfficialsAll.length) {
         showToast('No officials found in current filter.', 'error');
         return;
@@ -1351,10 +1359,8 @@
     };
 
     window.closeBulkModal = () => {
-      if (!bulkIsRunning) {
-        el('bulk-modal').classList.remove('open');
-        if (selectedOfficialId) loadPromises(); // refresh table if they processed the currently selected guy
-      }
+      el('bulk-modal').classList.remove('open');
+      if (!bulkIsRunning && selectedOfficialId) loadPromises();
     };
 
     window.stopBulkAp = () => {
@@ -1663,6 +1669,10 @@
     }
 
     window.openTplModal = () => {
+      if (tplIsRunning) {
+        el('tpl-modal').classList.add('open');
+        return;
+      }
       renderTplCats();
       tplShouldStop = false;
       tplIsRunning = false;
@@ -1675,7 +1685,7 @@
     };
 
     window.closeTplModal = () => {
-      if (!tplIsRunning) el('tpl-modal').classList.remove('open');
+      el('tpl-modal').classList.remove('open');
     };
 
     window.stopTpl = () => {

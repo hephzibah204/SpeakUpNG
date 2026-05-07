@@ -208,8 +208,31 @@ function nr_parse_rss(string $xml): array {
           if ($v !== '') $cats[] = $v;
         }
       }
+      $image = '';
+      try {
+        $media = $it->children('http://search.yahoo.com/mrss/');
+        if ($media && isset($media->content)) {
+          foreach ($media->content as $mc) {
+            $u = (string)($mc->attributes()['url'] ?? '');
+            if ($u !== '') { $image = trim($u); break; }
+          }
+        }
+        if ($image === '' && $media && isset($media->thumbnail)) {
+          foreach ($media->thumbnail as $mt) {
+            $u = (string)($mt->attributes()['url'] ?? '');
+            if ($u !== '') { $image = trim($u); break; }
+          }
+        }
+        if ($image === '' && isset($it->enclosure)) {
+          $u = (string)($it->enclosure->attributes()['url'] ?? '');
+          if ($u !== '') $image = trim($u);
+        }
+      } catch (Throwable $e) { }
+      if ($image === '' && $desc !== '') {
+        if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $desc, $m)) $image = trim($m[1]);
+      }
       if ($title === '' || $link === '') continue;
-      $items[] = ['title' => $title, 'url' => $link, 'published_at' => $pub, 'description' => $desc, 'categories' => $cats];
+      $items[] = ['title' => $title, 'url' => $link, 'published_at' => $pub, 'description' => $desc, 'categories' => $cats, 'image_url' => $image];
     }
   } elseif (isset($sx->entry)) {
     foreach ($sx->entry as $it) {
@@ -231,11 +254,155 @@ function nr_parse_rss(string $xml): array {
           if ($v !== '') $cats[] = $v;
         }
       }
+      $image = '';
+      try {
+        $media = $it->children('http://search.yahoo.com/mrss/');
+        if ($media && isset($media->content)) {
+          foreach ($media->content as $mc) {
+            $u = (string)($mc->attributes()['url'] ?? '');
+            if ($u !== '') { $image = trim($u); break; }
+          }
+        }
+        if ($image === '' && $media && isset($media->thumbnail)) {
+          foreach ($media->thumbnail as $mt) {
+            $u = (string)($mt->attributes()['url'] ?? '');
+            if ($u !== '') { $image = trim($u); break; }
+          }
+        }
+      } catch (Throwable $e) { }
+      if ($image === '' && $desc !== '') {
+        if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $desc, $m)) $image = trim($m[1]);
+      }
       if ($title === '' || $link === '') continue;
-      $items[] = ['title' => $title, 'url' => $link, 'published_at' => $pub, 'description' => $desc, 'categories' => $cats];
+      $items[] = ['title' => $title, 'url' => $link, 'published_at' => $pub, 'description' => $desc, 'categories' => $cats, 'image_url' => $image];
     }
   }
   return $items;
+}
+
+function nr_fetch_html(string $url, int $maxKb, int $timeoutSec = 18): string {
+  $maxBytes = max(64 * 1024, min(2 * 1024 * 1024, $maxKb * 1024));
+  if (function_exists('curl_init')) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSec);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'evote.ng-news-ingest/1.0');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+      'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    ]);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+    curl_setopt($ch, CURLOPT_BUFFERSIZE, 1024 * 16);
+    curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+    curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, function ($resource, $dl_total, $dl_now) use ($maxBytes) {
+      if ($dl_now > $maxBytes) return 1;
+      return 0;
+    });
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($resp === false) return '';
+    if ($code < 200 || $code >= 300) return '';
+    if (strlen($resp) > $maxBytes) $resp = substr($resp, 0, $maxBytes);
+    return (string)$resp;
+  }
+
+  $ctx = stream_context_create([
+    'http' => [
+      'method' => 'GET',
+      'timeout' => $timeoutSec,
+      'header' => "User-Agent: evote.ng-news-ingest/1.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n",
+      'ignore_errors' => true,
+    ],
+  ]);
+  $resp = @file_get_contents($url, false, $ctx);
+  if (!is_string($resp)) return '';
+  if (strlen($resp) > $maxBytes) $resp = substr($resp, 0, $maxBytes);
+  return $resp;
+}
+
+function nr_meta_content(DOMXPath $xp, string $query): string {
+  $n = $xp->query($query);
+  if (!$n || $n->length === 0) return '';
+  $v = $n->item(0)->getAttribute('content');
+  return is_string($v) ? trim($v) : '';
+}
+
+function nr_extract_article(string $html): array {
+  $out = ['image_url' => '', 'site_name' => '', 'author' => '', 'content_text' => '', 'content_html' => ''];
+  if ($html === '') return $out;
+  libxml_use_internal_errors(true);
+  $dom = new DOMDocument();
+  @$dom->loadHTML($html);
+  $xp = new DOMXPath($dom);
+
+  $ogImage = nr_meta_content($xp, "//meta[@property='og:image' or @name='og:image']");
+  $twImage = nr_meta_content($xp, "//meta[@name='twitter:image' or @property='twitter:image']");
+  $out['image_url'] = $ogImage !== '' ? $ogImage : $twImage;
+  $out['site_name'] = nr_meta_content($xp, "//meta[@property='og:site_name']");
+  $out['author'] = nr_meta_content($xp, "//meta[@name='author']");
+
+  $article = null;
+  $nodes = $xp->query('//article');
+  if ($nodes && $nodes->length) $article = $nodes->item(0);
+  if (!$article) {
+    $nodes = $xp->query("//*[@role='main']");
+    if ($nodes && $nodes->length) $article = $nodes->item(0);
+  }
+  if (!$article) {
+    $nodes = $xp->query('//main');
+    if ($nodes && $nodes->length) $article = $nodes->item(0);
+  }
+  if (!$article) {
+    $nodes = $xp->query('//body');
+    if ($nodes && $nodes->length) $article = $nodes->item(0);
+  }
+
+  if ($out['image_url'] === '' && $article instanceof DOMElement) {
+    $imgs = $xp->query('.//img[@src]', $article);
+    if ($imgs && $imgs->length) {
+      $src = trim($imgs->item(0)->getAttribute('src'));
+      if ($src !== '') $out['image_url'] = $src;
+    }
+  }
+
+  if ($article instanceof DOMElement) {
+    foreach (['script','style','noscript'] as $tag) {
+      $rm = $xp->query('.//' . $tag, $article);
+      if ($rm) {
+        for ($i = $rm->length - 1; $i >= 0; $i--) {
+          $node = $rm->item($i);
+          if ($node && $node->parentNode) $node->parentNode->removeChild($node);
+        }
+      }
+    }
+    $paras = $xp->query('.//p', $article);
+    $parts = [];
+    if ($paras) {
+      foreach ($paras as $p) {
+        $t = trim(preg_replace('/\s+/', ' ', $p->textContent) ?? $p->textContent);
+        if (mb_strlen($t, 'UTF-8') < 40) continue;
+        $parts[] = $t;
+        if (count($parts) >= 80) break;
+      }
+    }
+    $text = trim(implode("\n\n", $parts));
+    $text = mb_substr($text, 0, 16000, 'UTF-8');
+    $out['content_text'] = $text;
+    if ($text !== '') {
+      $htmlParts = [];
+      foreach (preg_split('/\n\n+/', $text) as $para) {
+        $para = trim($para);
+        if ($para === '') continue;
+        $htmlParts[] = '<p>' . htmlspecialchars($para, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
+      }
+      $out['content_html'] = implode('', $htmlParts);
+    }
+  }
+
+  if ($out['image_url'] !== '') $out['image_url'] = nr_canonical_url($out['image_url']);
+  return $out;
 }
 
 function nr_is_politics_item(string $title, string $desc, array $categories, ?string $topic): bool {
@@ -451,7 +618,7 @@ function nr_openrouter_analyze(string $title, string $desc): ?array {
 }
 
 function nr_ingest_run(): array {
-  $srcResp = sb_rest('/news_sources?select=id,name,feed_url,credibility_tier,is_active&is_active=eq.true&credibility_tier=not.eq.blocked', 'GET', [], null);
+  $srcResp = sb_rest('/news_sources?select=id,name,home_url,feed_url,credibility_tier,is_active,allow_full_text,allow_images,max_fetch_kb&is_active=eq.true&credibility_tier=not.eq.blocked', 'GET', [], null);
   if (!$srcResp['ok'] || !is_array($srcResp['json'])) return ['ok' => false, 'error' => 'Unable to load sources'];
   $sources = $srcResp['json'];
   $officialCandidates = nr_official_candidates();
@@ -465,19 +632,27 @@ function nr_ingest_run(): array {
     $sid = is_array($src) ? (string)($src['id'] ?? '') : '';
     if ($feed === '' || $sid === '') continue;
 
+    $allowFull = is_array($src) ? (bool)($src['allow_full_text'] ?? false) : false;
+    $allowImages = is_array($src) ? (bool)($src['allow_images'] ?? true) : true;
+    $maxKb = is_array($src) ? (int)($src['max_fetch_kb'] ?? 512) : 512;
+    if ($maxKb < 128) $maxKb = 128;
+    if ($maxKb > 2048) $maxKb = 2048;
+
     $xml = nr_fetch($feed, 25);
     if ($xml === '') { $errors[] = ['source_id' => $sid, 'error' => 'Unable to fetch feed']; continue; }
     $items = nr_parse_rss($xml);
     if (!count($items)) continue;
 
     $rows = [];
-    foreach (array_slice($items, 0, 30) as $it) {
+    $maxPerSource = ($allowFull || $allowImages) ? 12 : 30;
+    foreach (array_slice($items, 0, $maxPerSource) as $it) {
       $total++;
       $url = nr_canonical_url((string)$it['url']);
       if ($url === '') continue;
       $title = trim((string)$it['title']);
       $desc = trim((string)($it['description'] ?? ''));
       $cats = isset($it['categories']) && is_array($it['categories']) ? $it['categories'] : [];
+      $rssImage = trim((string)($it['image_url'] ?? ''));
       $published = nr_to_ts((string)($it['published_at'] ?? ''));
       $hashBase = mb_strtolower(preg_replace('/\s+/', ' ', $title . ' ' . $url), 'UTF-8');
       $contentHash = hash('sha256', $hashBase);
@@ -492,6 +667,19 @@ function nr_ingest_run(): array {
       $matches = array_slice(array_merge($matches1, $matches2), 0, 10);
       $matchSummary = count($matches) ? array_map(fn($m) => ['profile_type' => $m['profile_type'], 'profile_id' => $m['profile_id'], 'confidence' => $m['confidence']], $matches) : [];
 
+      $article = ['image_url' => '', 'site_name' => '', 'author' => '', 'content_text' => '', 'content_html' => ''];
+      if ($allowFull || $allowImages) {
+        $html = nr_fetch_html($url, $maxKb, 18);
+        if ($html !== '') {
+          $article = nr_extract_article($html);
+        }
+      }
+      $imageUrl = $article['image_url'] !== '' ? $article['image_url'] : ($rssImage !== '' ? nr_canonical_url($rssImage) : null);
+      $siteName = $article['site_name'] !== '' ? $article['site_name'] : null;
+      $author = $article['author'] !== '' ? $article['author'] : null;
+      $contentText = ($allowFull && $article['content_text'] !== '') ? $article['content_text'] : null;
+      $contentHtml = ($allowFull && $article['content_html'] !== '') ? $article['content_html'] : null;
+
       $rows[] = [
         'source_id' => $sid,
         'title' => $title,
@@ -505,6 +693,12 @@ function nr_ingest_run(): array {
         'categories' => count($cats) ? array_values($cats) : null,
         'is_politics' => $isPolitics,
         'matched_profiles' => count($matchSummary) ? $matchSummary : null,
+        'image_url' => $imageUrl,
+        'site_name' => $siteName,
+        'author' => $author,
+        'content_text' => $contentText,
+        'content_html' => $contentHtml,
+        'content_extracted_at' => ($contentText || $contentHtml || $imageUrl) ? gmdate('c') : null,
         'moderation_status' => 'pending',
       ];
     }
@@ -623,6 +817,11 @@ if ($action === 'upsert_source') {
   $feed = isset($payload['feed_url']) && is_string($payload['feed_url']) ? trim($payload['feed_url']) : '';
   $tier = isset($payload['credibility_tier']) && is_string($payload['credibility_tier']) ? trim($payload['credibility_tier']) : 'tier2';
   $active = isset($payload['is_active']) ? (bool)$payload['is_active'] : true;
+  $allowFull = isset($payload['allow_full_text']) ? (bool)$payload['allow_full_text'] : false;
+  $allowImages = isset($payload['allow_images']) ? (bool)$payload['allow_images'] : true;
+  $maxKb = isset($payload['max_fetch_kb']) ? (int)$payload['max_fetch_kb'] : 512;
+  if ($maxKb < 128) $maxKb = 128;
+  if ($maxKb > 2048) $maxKb = 2048;
   if ($name === '' || $home === '' || $feed === '') nr_json(400, ['error' => 'Missing required fields']);
   if (!in_array($tier, ['tier1','tier2','blocked'], true)) nr_json(400, ['error' => 'Invalid tier']);
   $row = [
@@ -632,6 +831,9 @@ if ($action === 'upsert_source') {
     'ingest_type' => 'rss',
     'credibility_tier' => $tier,
     'is_active' => $active,
+    'allow_full_text' => $allowFull,
+    'allow_images' => $allowImages,
+    'max_fetch_kb' => $maxKb,
   ];
   if ($id !== '' && preg_match('/^[0-9a-f\-]{36}$/i', $id)) $row['id'] = $id;
 

@@ -68,6 +68,7 @@
         <span id="topic-pill" class="report-tag" style="display:none;"></span>
         <span id="sentiment-pill" class="report-tag" style="display:none;"></span>
       </div>
+      <div id="hero" style="display:none;margin-bottom:1rem;"></div>
       <div id="summary" style="font-size:.95rem;line-height:1.9;color:var(--white);"></div>
       <div id="details" style="margin-top:1rem;color:rgba(255,255,255,.88);font-size:.9rem;line-height:1.8;"></div>
     </div>
@@ -134,7 +135,7 @@ function fmtDate(iso){
 async function loadItem(){
   const { data, error } = await supabase
     .from('news_items')
-    .select('id,title,url,published_at,created_at,summary,sentiment_score,topic,raw_json,news_sources(name,credibility_tier)')
+    .select('id,title,url,published_at,created_at,summary,sentiment_score,topic,raw_json,image_url,image_alt,author,site_name,content_text,content_html,news_sources(name,credibility_tier)')
     .eq('id', id)
     .single();
   if (error) throw error;
@@ -148,9 +149,11 @@ try{
   setMetaTitle(title);
 
   const src = it?.news_sources?.name || '';
+  const author = it?.author || '';
+  const siteName = it?.site_name || '';
   const tier = tierLabel(it?.news_sources?.credibility_tier);
   const when = fmtDate(it.published_at || it.created_at);
-  document.getElementById('meta').textContent = [src, when].filter(Boolean).join(' · ');
+  document.getElementById('meta').textContent = [src || siteName, author, when].filter(Boolean).join(' · ');
 
   const srcP = document.getElementById('source-pill');
   if (src) { srcP.style.display = ''; srcP.textContent = src; }
@@ -162,21 +165,31 @@ try{
   const s = sentimentLabel(it.sentiment_score);
   sentP.style.display = ''; sentP.textContent = s.text; sentP.style.borderColor = s.color + '55'; sentP.style.color = s.color;
 
+  const hero = document.getElementById('hero');
+  const img = sanitizeUrl(it.image_url || '');
+  if (hero && img) {
+    hero.style.display = '';
+    hero.innerHTML = `<img src="${escapeHtml(img)}" alt="${escapeHtml(it.image_alt || it.title || 'News image')}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.08);">`;
+  }
+
+  const contentHtml = String(it.content_html || '').trim();
+  const contentText = String(it.content_text || '').trim();
   const sum = String(it.summary || '').trim();
   const rawDesc = String((it.raw_json && it.raw_json.description) || '').trim();
   const summaryText = sum || rawDesc;
-  document.getElementById('summary').innerHTML = summaryText
-    ? `<div>${escapeHtml(summaryText).replace(/\n\n+/g,'</div><div style="margin-top:.85rem;">').replace(/\n/g,'<br>')}</div>`
-    : `<div style="color:var(--muted);">No summary available yet.</div>`;
+  const main = contentHtml || (contentText ? `<div>${escapeHtml(contentText).replace(/\n\n+/g,'</div><div style="margin-top:.85rem;">').replace(/\n/g,'<br>')}</div>` : '');
+  document.getElementById('summary').innerHTML = main
+    ? (contentHtml ? `<div>${contentHtml}</div>` : main)
+    : (summaryText ? `<div>${escapeHtml(summaryText).replace(/\n\n+/g,'</div><div style="margin-top:.85rem;">').replace(/\n/g,'<br>')}</div>` : `<div style="color:var(--muted);">No content available yet.</div>`);
 
   const details = [];
-  if (rawDesc && sum && rawDesc !== sum) {
+  if (!contentHtml && !contentText && rawDesc && sum && rawDesc !== sum) {
     details.push(`<div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem;">Extracted Details</div>`);
     details.push(`<div>${escapeHtml(rawDesc).replace(/\n\n+/g,'</div><div style="margin-top:.85rem;">').replace(/\n/g,'<br>')}</div>`);
   }
   document.getElementById('details').innerHTML = details.join('');
 
-  setMetaDesc(summaryText || title);
+  setMetaDesc((contentText || summaryText || title).slice(0, 220));
   const url = sanitizeUrl(it.url);
   const btn = document.getElementById('original-link');
   if (url) { btn.style.display = ''; btn.href = url; }
@@ -188,4 +201,3 @@ try{
 </script>
 </body>
 </html>
-

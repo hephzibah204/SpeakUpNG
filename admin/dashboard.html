@@ -106,6 +106,19 @@
         </div>
 
         <div class="card" style="padding:1rem;border:1px solid var(--border);">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Gemini</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;" id="st-gemini">—</div>
+          <div class="form-group" style="margin-top:.8rem;">
+            <label class="form-label">API Key</label>
+            <input class="form-control" id="s-gemini-key" type="password" placeholder="AIza...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Model</label>
+            <input class="form-control" id="s-gemini-model" placeholder="gemini-1.5-flash">
+          </div>
+        </div>
+
+        <div class="card" style="padding:1rem;border:1px solid var(--border);">
           <div style="font-family:'Syne',sans-serif;font-weight:800;">Supabase (Server)</div>
           <div style="font-size:.78rem;color:var(--muted);margin-top:.25rem;" id="st-supabase">—</div>
           <div class="form-group" style="margin-top:.8rem;">
@@ -271,11 +284,14 @@ async function loadSettingsStatus() {
   try {
     const st = await adminApiJson('/api/admin-secrets.php');
     document.getElementById('st-openrouter').textContent = st.openrouter_configured ? `Configured · Model: ${st.openrouter_model || '—'}` : 'Not configured';
+    document.getElementById('st-gemini').textContent = st.gemini_configured ? `Configured · Model: ${st.gemini_model || '—'}` : 'Not configured';
     document.getElementById('st-supabase').textContent = st.supabase_configured ? `Configured (${st.supabase_source || '—'})` : 'Not configured';
     document.getElementById('st-supabase-service').textContent = st.has_service_key ? 'Service key configured' : 'Service key not configured';
     document.getElementById('s-openrouter-model').value = st.openrouter_model || 'openai/gpt-4o-mini';
+    document.getElementById('s-gemini-model').value = st.gemini_model || 'gemini-1.5-flash';
   } catch (e) {
     document.getElementById('st-openrouter').textContent = 'Unable to load';
+    document.getElementById('st-gemini').textContent = 'Unable to load';
     document.getElementById('st-supabase').textContent = 'Unable to load';
     document.getElementById('st-supabase-service').textContent = 'Unable to load';
   }
@@ -292,6 +308,8 @@ document.getElementById('settings-refresh')?.addEventListener('click', loadSetti
 document.getElementById('settings-save')?.addEventListener('click', async () => {
   const key = String(document.getElementById('s-openrouter-key')?.value || '').trim();
   const model = String(document.getElementById('s-openrouter-model')?.value || '').trim();
+  const gKey = String(document.getElementById('s-gemini-key')?.value || '').trim();
+  const gModel = String(document.getElementById('s-gemini-model')?.value || '').trim();
   const sbUrl = String(document.getElementById('s-supabase-url')?.value || '').trim();
   const sbAnon = String(document.getElementById('s-supabase-anon')?.value || '').trim();
   const sbService = String(document.getElementById('s-supabase-service')?.value || '').trim();
@@ -301,6 +319,8 @@ document.getElementById('settings-save')?.addEventListener('click', async () => 
   const body = { action: 'set' };
   if (key) body.openrouter_api_key = key;
   if (model) body.openrouter_model = model;
+  if (gKey) body.gemini_api_key = gKey;
+  if (gModel) body.gemini_model = gModel;
   if (sbUrl) body.supabase_url = sbUrl;
   if (sbAnon) body.supabase_anon_key = sbAnon;
   if (sbService) body.supabase_service_role_key = sbService;
@@ -309,9 +329,11 @@ document.getElementById('settings-save')?.addEventListener('click', async () => 
   try {
     await adminApiJson('/api/admin-secrets.php', { method: 'POST', body });
     const keyEl = document.getElementById('s-openrouter-key');
+    const gKeyEl = document.getElementById('s-gemini-key');
     const sbAnonEl = document.getElementById('s-supabase-anon');
     const sbServiceEl = document.getElementById('s-supabase-service');
     if (keyEl) keyEl.value = '';
+    if (gKeyEl) gKeyEl.value = '';
     if (sbAnonEl) sbAnonEl.value = '';
     if (sbServiceEl) sbServiceEl.value = '';
     showToast('Saved.');

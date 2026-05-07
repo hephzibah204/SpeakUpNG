@@ -66,8 +66,8 @@
 
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Source</th><th>Tier</th><th>Active</th></tr></thead>
-          <tbody id="sources"><tr><td colspan="3"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+          <thead><tr><th>Source</th><th>Tier</th><th>Fetch</th><th>Active</th></tr></thead>
+          <tbody id="sources"><tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -111,6 +111,26 @@
           </select>
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+        <div class="form-group">
+          <label class="form-label">Full text</label>
+          <select class="form-control" id="src-full">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Images</label>
+          <select class="form-control" id="src-images">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Max fetch (KB)</label>
+          <input class="form-control" id="src-maxkb" type="number" value="512" min="128" max="2048">
+        </div>
+      </div>
       <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;">
         <button class="btn btn-ghost" onclick="closeSourceModal()">Cancel</button>
         <button class="btn btn-green" id="src-save">Save</button>
@@ -146,7 +166,7 @@ function timeAgo(ts) {
 async function loadSources() {
   const { data, error } = await supabase
     .from('news_sources')
-    .select('id,name,home_url,credibility_tier,is_active,feed_url')
+    .select('id,name,home_url,credibility_tier,is_active,feed_url,allow_full_text,allow_images,max_fetch_kb')
     .order('is_active', { ascending: false })
     .order('credibility_tier', { ascending: true })
     .order('name', { ascending: true });
@@ -190,7 +210,7 @@ function statusBadge(st) {
 function renderSources() {
   const mount = document.getElementById('sources');
   if (!sources.length) {
-    mount.innerHTML = '<tr><td colspan="3"><div class="empty">No sources configured.</div></td></tr>';
+    mount.innerHTML = '<tr><td colspan="4"><div class="empty">No sources configured.</div></td></tr>';
     return;
   }
   mount.innerHTML = sources.map((s) => {
@@ -200,6 +220,11 @@ function renderSources() {
         <div style="font-size:.74rem;color:var(--muted);word-break:break-all;">${esc(s.feed_url)}</div>
       </td>
       <td>${tierBadge(s.credibility_tier)}</td>
+      <td style="font-size:.78rem;white-space:nowrap;">
+        <span class="report-tag ${s.allow_full_text ? 'on' : ''}">Full</span>
+        <span class="report-tag ${s.allow_images ? 'on' : ''}">Images</span>
+        <span class="report-tag">${Number(s.max_fetch_kb || 512)}KB</span>
+      </td>
       <td>${s.is_active ? 'Yes' : 'No'}</td>
     </tr>`;
   }).join('');
@@ -259,6 +284,9 @@ function closeSourceModal() {
   document.getElementById('src-feed').value = '';
   document.getElementById('src-tier').value = 'tier2';
   document.getElementById('src-active').value = 'true';
+  document.getElementById('src-full').value = 'false';
+  document.getElementById('src-images').value = 'true';
+  document.getElementById('src-maxkb').value = '512';
 }
 
 async function saveSource() {
@@ -267,8 +295,11 @@ async function saveSource() {
   const feed_url = String(document.getElementById('src-feed')?.value || '').trim();
   const credibility_tier = String(document.getElementById('src-tier')?.value || 'tier2');
   const is_active = String(document.getElementById('src-active')?.value || 'true') === 'true';
+  const allow_full_text = String(document.getElementById('src-full')?.value || 'false') === 'true';
+  const allow_images = String(document.getElementById('src-images')?.value || 'true') === 'true';
+  const max_fetch_kb = Number(document.getElementById('src-maxkb')?.value || 512);
   try {
-    await adminApiJson('/api/news-admin.php', { method: 'POST', body: { action: 'upsert_source', id: editingSourceId, name, home_url, feed_url, credibility_tier, is_active } });
+    await adminApiJson('/api/news-admin.php', { method: 'POST', body: { action: 'upsert_source', id: editingSourceId, name, home_url, feed_url, credibility_tier, is_active, allow_full_text, allow_images, max_fetch_kb } });
     showToast('Saved.');
     closeSourceModal();
     await loadSources();
@@ -304,6 +335,9 @@ window.editSource = (id) => {
   document.getElementById('src-feed').value = s.feed_url || '';
   document.getElementById('src-tier').value = s.credibility_tier || 'tier2';
   document.getElementById('src-active').value = s.is_active ? 'true' : 'false';
+  document.getElementById('src-full').value = s.allow_full_text ? 'true' : 'false';
+  document.getElementById('src-images').value = s.allow_images === false ? 'false' : 'true';
+  document.getElementById('src-maxkb').value = String(Number(s.max_fetch_kb || 512));
   openSourceModal();
 };
 
