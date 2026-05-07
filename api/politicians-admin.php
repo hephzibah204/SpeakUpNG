@@ -73,6 +73,95 @@ function nr_http_json(string $url, string $method, array $headers, ?string $body
   return ['ok' => $code >= 200 && $code < 300, 'code' => $code, 'json' => is_array($json) ? $json : null, 'raw' => (string)$resp];
 }
 
+function nr_openrouter_key(): string {
+  $secrets = nr_load_secrets();
+  $k = (string)($secrets['OPENROUTER_API_KEY'] ?? '') ?: nr_env('OPENROUTER_API_KEY');
+  return trim($k);
+}
+
+function nr_openrouter_model(): string {
+  $secrets = nr_load_secrets();
+  $m = (string)($secrets['OPENROUTER_MODEL'] ?? '') ?: (nr_env('OPENROUTER_MODEL') ?: 'openai/gpt-4o-mini');
+  return trim($m);
+}
+
+function nr_openrouter_bio(string $name, string $wikiExtract, array $sourceSnippets): ?array {
+  $key = nr_openrouter_key();
+  if ($key === '') return null;
+  $model = nr_openrouter_model();
+
+  $snips = [];
+  foreach ($sourceSnippets as $s) {
+    if (!is_array($s)) continue;
+    $url = isset($s['url']) ? (string)$s['url'] : '';
+    $txt = isset($s['text']) ? (string)$s['text'] : '';
+    if (trim($txt) === '') continue;
+    $snips[] = "URL: {$url}\nTEXT: " . $txt;
+  }
+
+  $prompt = "Return strict JSON with keys: profile_bio (max 500 words), bio (max 120 words), key_facts (array of 6 short strings), sources_used (array of URLs).\n\nWrite a neutral biography for {$name}. Use the provided sources, do not copy long passages, and avoid speculation.\n\nWIKIPEDIA_EXTRACT:\n" . $wikiExtract . "\n\nSUPPORTING_SOURCES:\n" . implode("\n\n---\n\n", $snips);
+
+  $req = [
+    'model' => $model,
+    'messages' => [
+      ['role' => 'system', 'content' => 'You output JSON only.'],
+      ['role' => 'user', 'content' => $prompt],
+    ],
+    'temperature' => 0.2,
+    'max_tokens' => 1200,
+  ];
+
+  $siteUrl = (string)($_SERVER['HTTP_HOST'] ?? 'evote.ng');
+  $resp = nr_http_json('https://openrouter.ai/api/v1/chat/completions', 'POST', [
+    'Authorization' => 'Bearer ' . $key,
+    'Content-Type' => 'application/json',
+    'Accept' => 'application/json',
+    'HTTP-Referer' => 'https://' . $siteUrl,
+    'X-Title' => 'evote.ng Politician Bio',
+  ], json_encode($req, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 45);
+  if (!$resp['ok'] || !is_array($resp['json'])) return null;
+  $content = $resp['json']['choices'][0]['message']['content'] ?? '';
+  if (!is_string($content) || trim($content) === '') return null;
+  $json = json_decode($content, true);
+  return is_array($json) ? $json : null;
+}
+
+function nr_strip_html(string $html): string {
+  $html = preg_replace('#<script[\s\S]*?</script>#i', ' ', $html) ?? $html;
+  $html = preg_replace('#<style[\s\S]*?</style>#i', ' ', $html) ?? $html;
+  $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+  $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+  return trim($text);
+}
+
+function nr_fetch_source_snippets(array $urls, int $maxUrls = 3): array {
+  $out = [];
+  $seen = [];
+  foreach ($urls as $u) {
+    $url = is_string($u) ? trim($u) : '';
+    if ($url === '') continue;
+    if (!preg_match('#^https?://#i', $url)) continue;
+    $k = strtolower($url);
+    if (isset($seen[$k])) continue;
+    $seen[$k] = true;
+    $out[] = $url;
+    if (count($out) >= $maxUrls) break;
+  }
+  $snips = [];
+  foreach ($out as $url) {
+    $res = nr_http_json($url, 'GET', [
+      'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'User-Agent' => 'evote.ng-politicians-admin/1.0',
+    ], null, 18);
+    if (!$res['ok'] || !is_string($res['raw'] ?? null)) continue;
+    $txt = nr_strip_html((string)$res['raw']);
+    if ($txt === '') continue;
+    $txt = mb_substr($txt, 0, 1800, 'UTF-8');
+    $snips[] = ['url' => $url, 'text' => $txt];
+  }
+  return $snips;
+}
+
 function nr_supabase_cfg(): array {
   $secrets = nr_load_secrets();
   $url = (string)($secrets['SUPABASE_URL'] ?? '') ?: nr_env('SUPABASE_URL');
@@ -227,10 +316,13 @@ if ($action === 'upsert') {
   $active = isset($payload['is_active']) ? (bool)$payload['is_active'] : true;
   $aliases = isset($payload['aliases']) && is_array($payload['aliases']) ? $payload['aliases'] : [];
   $links = isset($payload['social_links']) && is_array($payload['social_links']) ? $payload['social_links'] : [];
+  $sourceUrls = isset($payload['source_urls']) && is_array($payload['source_urls']) ? $payload['source_urls'] : [];
+  $sourceNotes = isset($payload['source_notes']) && is_string($payload['source_notes']) ? trim($payload['source_notes']) : '';
 
   if ($full === '' || $party === '') nr_json(400, ['error' => 'full_name and party are required']);
   if (!preg_match('/^[A-Z0-9]{2,10}$/', $party)) nr_json(400, ['error' => 'Invalid party code']);
   $aliases = array_values(array_slice(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', $aliases), fn($x) => $x !== ''), 0, 12));
+  $sourceUrls = array_values(array_slice(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', $sourceUrls), fn($x) => $x !== ''), 0, 12));
 
   $aspiringFor = isset($payload['aspiring_for']) && is_string($payload['aspiring_for']) ? trim($payload['aspiring_for']) : '';
   $previousOffices = isset($payload['previous_offices']) && is_string($payload['previous_offices']) ? trim($payload['previous_offices']) : '';
@@ -246,6 +338,8 @@ if ($action === 'upsert') {
     'previous_offices' => ($previousOffices !== '' ? $previousOffices : null),
     'wiki_title' => ($wikiTitle !== '' ? $wikiTitle : null),
     'wiki_url' => ($wikiUrl !== '' ? $wikiUrl : null),
+    'source_urls' => $sourceUrls,
+    'source_notes' => ($sourceNotes !== '' ? $sourceNotes : null),
     'bio' => ($bio !== '' ? $bio : null),
     'photo_url' => ($photo !== '' ? $photo : null),
     'priority' => $priority,
@@ -294,12 +388,13 @@ if ($action === 'fetch_bio') {
   $id = isset($payload['id']) && is_string($payload['id']) ? trim($payload['id']) : '';
   if ($id === '' || !preg_match('/^[0-9a-f\-]{36}$/i', $id)) nr_json(400, ['error' => 'Invalid id']);
 
-  $get = sb_rest('/politicians?select=id,full_name,common_name,wiki_title,profile_bio,bio&limit=1&id=eq.' . rawurlencode($id), 'GET', [], null);
+  $get = sb_rest('/politicians?select=id,full_name,common_name,wiki_title,profile_bio,bio,source_urls&limit=1&id=eq.' . rawurlencode($id), 'GET', [], null);
   if (!$get['ok'] || !is_array($get['json']) || !count($get['json'])) nr_json(404, ['error' => 'Not found']);
   $p = $get['json'][0];
   $full = (string)($p['full_name'] ?? '');
   $common = (string)($p['common_name'] ?? '');
   $wikiTitle = (string)($p['wiki_title'] ?? '');
+  $sourceUrls = isset($p['source_urls']) && is_array($p['source_urls']) ? $p['source_urls'] : [];
 
   $ua = 'evote.ng-politicians-admin/1.0';
   $best = nr_wikipedia_best_match($wikiTitle, [$common, $full], $ua);
@@ -311,17 +406,21 @@ if ($action === 'fetch_bio') {
   $rawBio = nr_pick_wikipedia_extract($ex['json']);
   if ($rawBio === '') nr_json(200, ['ok' => true, 'updated' => false, 'message' => 'No Wikipedia extract found']);
 
-  $long = nr_words_limit($rawBio, 500);
-  $short = nr_words_limit($rawBio, 120);
+  $snips = nr_fetch_source_snippets($sourceUrls, 3);
+  $ai = nr_openrouter_bio($common !== '' ? $common : $full, $rawBio, $snips);
+  $long = $ai && isset($ai['profile_bio']) ? trim((string)$ai['profile_bio']) : nr_words_limit($rawBio, 500);
+  $short = $ai && isset($ai['bio']) ? trim((string)$ai['bio']) : nr_words_limit($rawBio, 120);
+  $used = $ai && isset($ai['sources_used']) && is_array($ai['sources_used']) ? $ai['sources_used'] : array_map(fn($x) => (string)$x['url'], $snips);
   $upd = sb_rest('/politicians?id=eq.' . rawurlencode($id), 'PATCH', [
     'Content-Type' => 'application/json',
     'Prefer' => 'return=representation',
   ], [[
     'profile_bio' => $long !== '' ? $long : null,
     'bio' => $short !== '' ? $short : null,
-    'bio_source' => 'wikipedia',
+    'bio_source' => $ai ? 'wikipedia+sources+ai' : (count($snips) ? 'wikipedia+sources' : 'wikipedia'),
     'bio_updated_at' => gmdate('c'),
     'wiki_title' => $title !== '' ? $title : null,
+    'source_urls' => is_array($used) ? array_values(array_slice(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', $used), fn($x) => $x !== ''), 0, 12)) : $sourceUrls,
   ]]);
   if (!$upd['ok'] || !is_array($upd['json']) || !count($upd['json'])) nr_json(500, ['error' => 'Update failed', 'details' => $upd['raw'] ?? null]);
   nr_json(200, ['ok' => true, 'updated' => true, 'politician' => $upd['json'][0]]);

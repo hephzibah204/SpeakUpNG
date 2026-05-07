@@ -272,7 +272,8 @@
 <!-- NAV -->
 <nav class="nav">
   <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
-  <div class="nav-links">
+  <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+  <div class="nav-links" id="nav-links">
     <a href="/" class="nav-link active show-mobile">Officials</a>
     <a href="/agencies" class="nav-link">Agencies</a>
     <a href="/politicians" class="nav-link">Politicians</a>
@@ -1522,6 +1523,28 @@ loadBestRatedSections();
 loadFeaturedLeaders();
 loadPoliticiansPreview();
 loadOfficials();
+
+// ── MOBILE NAV ──
+(() => {
+  const toggle = document.querySelector('.nav-toggle');
+  const links = document.getElementById('nav-links') || document.querySelector('.nav-links');
+  if (!toggle || !links) return;
+  const close = () => {
+    links.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  links.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  document.addEventListener('click', (e) => {
+    if (!links.classList.contains('open')) return;
+    if (links.contains(e.target) || toggle.contains(e.target)) return;
+    close();
+  });
+})();
 </script>
 </body>
 </html>

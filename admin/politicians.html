@@ -108,6 +108,13 @@
             <input class="form-control" id="pol-wiki-title" placeholder="Peter_Obi">
           </div>
         </div>
+
+        <div class="form-group">
+          <label class="form-label">Supporting sources (one URL per line)</label>
+          <textarea class="form-control" id="pol-sources" rows="3" placeholder="https://...
+https://..."></textarea>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.35rem;">Used to support biographies beyond Wikipedia.</div>
+        </div>
         <div class="form-group">
           <label class="form-label">Previous offices (one per line)</label>
           <textarea class="form-control" id="pol-prev" rows="3" placeholder="Former Governor of ...
@@ -187,6 +194,7 @@ Former Vice President of ..."></textarea>
       document.getElementById('pol-aspiring').value = '';
       document.getElementById('pol-prev').value = '';
       document.getElementById('pol-wiki-title').value = '';
+      document.getElementById('pol-sources').value = '';
       const wikiLink = document.getElementById('pol-wiki');
       if (wikiLink) { wikiLink.style.display = 'none'; wikiLink.href = '#'; }
       const addBtn = document.getElementById('promise-add');
@@ -248,7 +256,7 @@ Former Vice President of ..."></textarea>
     async function load() {
       const { data, error } = await supabase
         .from('politicians')
-        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,wiki_title,wiki_url,bio,photo_url,aliases,social_links,priority,is_active,created_at')
+        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,wiki_title,wiki_url,bio,profile_bio,photo_url,aliases,source_urls,social_links,priority,is_active,created_at')
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(200);
@@ -274,10 +282,14 @@ Former Vice President of ..."></textarea>
       const aspiring_for = String(document.getElementById('pol-aspiring')?.value || '').trim();
       const previous_offices = String(document.getElementById('pol-prev')?.value || '').trim();
       const wiki_title = String(document.getElementById('pol-wiki-title')?.value || '').trim();
+      const source_urls = String(document.getElementById('pol-sources')?.value || '')
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
       try {
         await adminApiJson('/api/politicians-admin.php', {
           method: 'POST',
-          body: { action: 'upsert', id: editingId, full_name, common_name, party, aspiration_title, aspiring_for, previous_offices, wiki_title, bio, photo_url, priority, is_active, aliases, social_links: {} }
+          body: { action: 'upsert', id: editingId, full_name, common_name, party, aspiration_title, aspiring_for, previous_offices, wiki_title, bio, photo_url, priority, is_active, aliases, source_urls, source_notes: '', social_links: {} }
         });
         showToast('Saved.');
         closePolModal();
@@ -508,6 +520,8 @@ Former Vice President of ..."></textarea>
       document.getElementById('pol-aspiring').value = p.aspiring_for || '';
       document.getElementById('pol-prev').value = p.previous_offices || '';
       document.getElementById('pol-wiki-title').value = p.wiki_title || '';
+      const srcs = Array.isArray(p.source_urls) ? p.source_urls : [];
+      document.getElementById('pol-sources').value = srcs.map((u) => String(u || '').trim()).filter(Boolean).join('\n');
       document.getElementById('pol-bio').value = p.bio || '';
       document.getElementById('pol-photo').value = p.photo_url || '';
       document.getElementById('pol-priority').value = String(p.priority ?? 0);

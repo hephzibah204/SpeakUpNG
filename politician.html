@@ -338,7 +338,7 @@
       }
       const { data, error } = await supabase
         .from('politicians')
-        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,profile_bio,photo_url,wiki_url')
+        .select('id,full_name,common_name,party,aspiration_title,aspiring_for,previous_offices,bio,profile_bio,photo_url,wiki_url,source_urls')
         .eq('id', politicianId)
         .limit(1);
       if(error || !data || !data.length){
@@ -370,6 +370,13 @@
       if (pol.previous_offices) extra.push(`<div class="card" style="margin-top:.9rem;"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Previous offices</div><div style="line-height:1.7;">${esc(pol.previous_offices).replace(/\n/g,'<br>')}</div></div>`);
       if (pol.aspiring_for || pol.aspiration_title) extra.push(`<div class="card" style="margin-top:.9rem;"><div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Aspiring for</div><div style="line-height:1.7;">${esc(pol.aspiring_for || pol.aspiration_title)}</div></div>`);
       if (pol.wiki_url) extra.push(`<div style="margin-top:.8rem;"><a href="${esc(pol.wiki_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);font-size:.85rem;">Wikipedia →</a></div>`);
+      const srcs = Array.isArray(pol.source_urls) ? pol.source_urls.map((u)=>String(u||'').trim()).filter(Boolean) : [];
+      if (srcs.length) {
+        extra.push(`<div class="card" style="margin-top:.9rem;">
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem;">Supporting sources</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">${srcs.slice(0,6).map((u)=>`<a href="${esc(u)}" target="_blank" rel="noopener noreferrer" style="color:var(--green-light);font-size:.85rem;">Source →</a>`).join('')}</div>
+        </div>`);
+      }
       const extraEl = document.getElementById('about-extra');
       if (extraEl) {
         extraEl.style.display = extra.length ? '' : 'none';
