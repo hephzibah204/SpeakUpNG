@@ -1,0 +1,40 @@
+{
+  "name": "speakupng-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:seed": "tsx scripts/seed-database.ts",
+    "analyze": "ANALYZE=true next build"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20250321.0",
+    "clsx": "^2.0.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tailwind-merge": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^16.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tsx": "^4.0.0",
+    "typescript": "^5",
+    "wrangler": "3.99.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
