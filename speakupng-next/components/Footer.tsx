@@ -1,33 +1,53 @@
 export function Footer() {
   return (
-    <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="border-t border-[#2c312a] bg-[#1d211b] mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
           <div>
-            <h3 className="font-bold text-zinc-900 dark:text-zinc-100 mb-3">evote.ng</h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Nigerian Civic Accountability Platform. All submissions are 100% anonymous. No personal data collected.
+            <h3 className="font-extrabold text-white mb-3 text-lg">evote.ng</h3>
+            <p className="text-sm text-[#6b7163] leading-relaxed">
+              Nigerian Civic Accountability Platform.<br />
+              All submissions are 100% anonymous.<br />
+              No personal data collected.
             </p>
           </div>
+
           <div>
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Quick Links</h3>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-3">Accountability</h4>
             <div className="space-y-2">
-              <a href="/" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">Officials</a>
-              <a href="/agencies" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">Agencies</a>
-              <a href="/politicians" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">Politicians</a>
-              <a href="/leaderboard" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">Rankings</a>
+              {[
+                { href: '/', label: 'Officials' },
+                { href: '/agencies', label: 'Agencies' },
+                { href: '/politicians', label: 'Politicians' },
+                { href: '/leaderboard', label: 'Rankings' },
+                { href: '/polls', label: 'Polls' },
+              ].map(({ href, label }) => (
+                <a key={href} href={href}
+                  className="block text-sm text-[#6b7163] hover:text-[#00b368] transition-colors">
+                  {label}
+                </a>
+              ))}
             </div>
           </div>
+
           <div>
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3">Content</h3>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-3">Content</h4>
             <div className="space-y-2">
-              <a href="/blog" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">Blog</a>
-              <a href="/news" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">News</a>
-              <a href="/news?tab=editorial" className="block text-sm text-zinc-600 dark:text-zinc-400 hover:text-green-600 transition-colors">Editorial</a>
+              {[
+                { href: '/news', label: 'News' },
+                { href: '/news?tab=editorial', label: 'Editorial' },
+                { href: '/blog', label: 'Blog' },
+              ].map(({ href, label }) => (
+                <a key={href} href={href}
+                  className="block text-sm text-[#6b7163] hover:text-[#00b368] transition-colors">
+                  {label}
+                </a>
+              ))}
             </div>
           </div>
         </div>
-        <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-600 dark:text-zinc-400">
+
+        <div className="mt-8 pt-6 border-t border-[#2c312a] text-center text-xs text-[#6b7163]">
           &copy; {new Date().getFullYear()} evote.ng — Nigerian Civic Accountability Platform
         </div>
       </div>

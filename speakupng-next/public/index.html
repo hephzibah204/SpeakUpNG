@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>evote.ng - Rate Nigerian Government Officials</title>
+<meta name="description" content="evote.ng helps citizens rate Nigerian government officials, compare rankings, vote in civic polls, and track public accountability with anonymous reviews.">
+<meta name="keywords" content="Nigeria politics, government ratings, public officials Nigeria, civic accountability, evote.ng, citizen polls Nigeria">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="author" content="evote.ng">
+<link rel="canonical" href="/" id="canonical-link">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="evote.ng">
+<meta property="og:locale" content="en_NG">
+<meta property="og:title" content="evote.ng - Civic Ratings and Accountability in Nigeria">
+<meta property="og:description" content="Rate officials, view rankings, and join anonymous civic polls that strengthen public accountability in Nigeria.">
+<meta property="og:image" content="/images/logo.png">
+<meta property="og:url" content="/" id="og-url">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="evote.ng - Civic Ratings and Accountability in Nigeria">
+<meta name="twitter:description" content="Rate officials, view rankings, and join anonymous civic polls that strengthen public accountability in Nigeria.">
+<meta name="twitter:image" content="/images/logo.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* Hero */
+  .hero {
+    padding: 5rem 0 3rem; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 55% at 50% -10%, rgba(0,135,81,.2) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: .5rem;
+    background: rgba(0,179,104,.1); border: 1px solid rgba(0,179,104,.28);
+    color: var(--green-light); font-size: .76rem; font-weight: 600;
+    padding: .32rem .9rem; border-radius: 100px; margin-bottom: 1.6rem;
+    letter-spacing: .05em;
+  }
+  .hero h1 {
+    font-size: clamp(2.2rem, 5.5vw, 4rem); font-weight: 800;
+    max-width: 760px; margin: 0 auto .9rem; line-height: 1.1;
+  }
+  .hero h1 em { font-style: normal; color: var(--green-light); }
+  .hero p { color: var(--muted); max-width: 500px; margin: 0 auto 2.2rem; font-size: 1.02rem; }
+  .hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .top-search {
+    max-width: 760px;
+    margin: 1.35rem auto 0;
+    display: flex;
+    gap: .6rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .top-search input {
+    flex: 1 1 360px;
+    min-width: 220px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    color: var(--white);
+    padding: .7rem 1rem;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+  }
+  .top-search input::placeholder { color: rgba(255,255,255,.55); }
+  .top-search select {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    color: var(--white);
+    padding: .7rem .9rem;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    cursor: pointer;
+  }
+  .top-search select option { background: var(--card); }
+
+  /* Politicians preview */
+  #politicians-preview{
+    margin-top:1rem;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:1rem;
+  }
+  @media (max-width: 980px){
+    #politicians-preview{grid-template-columns:repeat(2,minmax(0,1fr));}
+  }
+  @media (max-width: 640px){
+    #politicians-preview{grid-template-columns:1fr;}
+  }
+  .pol-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;gap:.9rem;}
+  .pol-avatar{width:56px;height:56px;border-radius:14px;flex-shrink:0;overflow:hidden;border:1px solid var(--border);background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;}
+  .pol-avatar img{width:100%;height:100%;object-fit:cover;}
+  .pol-name{font-family:'Syne',sans-serif;font-weight:800;line-height:1.2;}
+  .pol-meta{font-size:.78rem;color:var(--muted);margin-top:.15rem;}
+  .pol-pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:.72rem;border:1px solid var(--border);background:rgba(255,255,255,.05);}
+  .top-search .btn {
+    padding: .7rem 1.1rem;
+    border-radius: 10px;
+  }
+
+  /* Filter row */
+  .filter-row {
+    display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem;
+  }
+  .filter-row select {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--white); padding: .45rem 1rem; border-radius: 7px;
+    font-family: 'DM Sans', sans-serif; font-size: .85rem;
+    outline: none; cursor: pointer;
+  }
+  .filter-row select option { background: var(--card); }
+  .results-count { color: var(--muted); font-size: .82rem; margin-left: auto; }
+
+  /* Featured leaders */
+  .featured-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .featured-card {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    border-radius: 14px;
+    padding: 1rem;
+  }
+  .featured-head {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-bottom: .45rem;
+  }
+  .featured-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: #111;
+    flex: 0 0 44px;
+  }
+  .featured-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .featured-name {
+    font-family: Syne, sans-serif;
+    font-weight: 700;
+    font-size: .98rem;
+    margin-bottom: .18rem;
+  }
+  .featured-role {
+    color: var(--muted);
+    font-size: .78rem;
+    margin-bottom: .55rem;
+  }
+  .featured-metrics {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: .8rem;
+  }
+  .best-rated-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .best-rated-col {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    padding: 1rem;
+  }
+  .best-rated-col h3 {
+    font-family: Syne, sans-serif;
+    font-size: 1rem;
+    margin-bottom: .8rem;
+  }
+  .best-rated-list {
+    display: grid;
+    gap: .65rem;
+  }
+  .best-rated-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .6rem .7rem;
+    background: rgba(255,255,255,.02);
+  }
+  .best-rated-item a {
+    color: var(--white);
+    text-decoration: none;
+  }
+  .best-rated-item a:hover { color: var(--green-light); }
+  .best-rated-meta {
+    font-size: .74rem;
+    color: var(--muted);
+  }
+  .insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .insight-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    padding: 1rem;
+  }
+  .insight-kicker {
+    color: var(--green-light);
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: .35rem;
+  }
+  .insight-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    margin-bottom: .4rem;
+  }
+  .insight-copy {
+    color: var(--muted);
+    font-size: .83rem;
+    margin-bottom: .7rem;
+  }
+</style>
+<script>
+  (function setCanonicalMeta() {
+    var origin = window.location.origin || '';
+    var url = origin + '/';
+    var canonical = document.getElementById('canonical-link');
+    var ogUrl = document.getElementById('og-url');
+    if (canonical) canonical.href = url;
+    if (ogUrl) ogUrl.setAttribute('content', url);
+  })();
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "evote.ng",
+  "url": "/",
+  "inLanguage": "en-NG",
+  "description": "Citizen-powered platform to rate Nigerian public officials, monitor governance, and surface civic feedback."
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "evote.ng",
+  "url": "/",
+  "description": "Public accountability platform focused on Nigerian governance."
+}
+</script>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="/" class="nav-logo"><img src="/images/logo.png" alt="evote.ng logo"></a>
+  <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+  <div class="nav-links" id="nav-links">
+    <a href="/" class="nav-link active show-mobile">Officials</a>
+    <a href="/agencies" class="nav-link">Agencies</a>
+    <a href="/politicians" class="nav-link">Politicians</a>
+    <a href="/leaderboard" class="nav-link">Rankings</a>
+    <a href="/polls" class="nav-link">Polls</a>
+    <a href="/blog" class="nav-link">Blog</a>
+    <a href="/news" class="nav-link">News</a>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-eyebrow">🇳🇬 Civic Accountability Platform</div>
+    <h1>Rate Every <em>Government Official</em> in Nigeria</h1>
+    <p>From your local councillor to the President. Anonymous, transparent, and powered by citizens.</p>
+
+    <div class="hero-cta">
+      <button class="btn btn-green btn-lg" onclick="document.getElementById('officials-section').scrollIntoView({behavior:'smooth'})">Start Rating ↓</button>
+      <a href="/leaderboard" class="btn btn-ghost btn-lg">View Rankings</a>
+    </div>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat"><div class="stat-n" id="stat-ratings">—</div><div class="stat-l">Total Ratings</div></div>
+  <div class="stat"><div class="stat-n" id="stat-officials">—</div><div class="stat-l">Officials Listed</div></div>
+  <div class="stat"><div class="stat-n">36+</div><div class="stat-l">States Covered</div></div>
+  <div class="stat"><div class="stat-n">100%</div><div class="stat-l">Anonymous</div></div>
+</div>
+
+<!-- BEST RATED -->
+<div class="section" style="padding-top:1.2rem;">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;">
+      <h2 class="page-title">Best Rated Officials & Agencies</h2>
+      <p class="page-sub">Live rankings from citizen reviews submitted on evote.ng.</p>
+    </div>
+    <div class="best-rated-grid">
+      <div class="best-rated-col">
+        <h3>🏛️ Best Rated Officials</h3>
+        <div class="best-rated-list" id="best-rated-officials">
+          <div class="loading"><div class="spinner"></div><br>Loading best rated officials...</div>
+        </div>
+      </div>
+      <div class="best-rated-col">
+        <h3>🏢 Best Rated Agencies</h3>
+        <div class="best-rated-list" id="best-rated-agencies">
+          <div class="loading"><div class="spinner"></div><br>Loading best rated agencies...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURED LEADERS -->
+<div class="section" style="padding-top:1.2rem;">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;">
+      <h2 class="page-title">Featured Leader Ratings</h2>
+      <p class="page-sub">Live leader spotlight powered by real user ratings.</p>
+    </div>
+    <div class="featured-grid" id="featured-leaders">
+      <div class="loading"><div class="spinner"></div><br>Loading featured ratings...</div>
+    </div>
+  </div>
+</div>
+
+<!-- POLITICIANS PREVIEW -->
+<div class="section" style="padding-top:1.2rem;">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;display:flex;justify-content:space-between;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <h2 class="page-title">Prominent Politicians (Aspirants)</h2>
+        <p class="page-sub">Not currently in office. Prioritized by relevance and updated with verified news.</p>
+      </div>
+      <a href="/politicians" class="btn btn-ghost" style="height:42px;display:inline-flex;align-items:center;">View all →</a>
+    </div>
+
+    <div id="politicians-preview">
+      <div class="loading"><div class="spinner"></div><br>Loading politicians...</div>
+    </div>
+    <div id="politicians-preview-empty" class="card" style="display:none;margin-top:1rem;">
+      <div class="empty">No politicians available yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- OFFICIALS SECTION -->
+<div id="officials-section" class="section">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;">
+      <h2 class="page-title">Browse Officials</h2>
+      <p class="page-sub">Search, filter by tier or state, then rate or report any official.</p>
+    </div>
+
+    <!-- Tier tabs -->
+    <div class="tabs" id="tier-tabs">
+      <button class="tab active" data-tier="">All Tiers</button>
+      <button class="tab" data-tier="federal_executive">Federal Executive</button>
+      <button class="tab" data-tier="federal_legislature">National Assembly</button>
+      <button class="tab" data-tier="federal_judiciary">Judiciary</button>
+      <button class="tab" data-tier="state_executive">Governors</button>
+      <button class="tab" data-tier="state_legislature">State Assembly</button>
+      <button class="tab" data-tier="local_government">Local Govt</button>
+      <button class="tab" data-tier="federal_agency">Agencies</button>
+      <button class="tab" data-tier="military_security">Military & Security</button>
+    </div>
+
+    <!-- Filters row -->
+    <div class="filter-row">
+      <div class="search-wrap" style="flex:1;min-width:200px;margin:0;">
+        <span class="search-icon">🔎</span>
+        <input type="text" id="search-input" placeholder="Search officials & agencies (name, role, state, website)...">
+      </div>
+      <select id="state-filter">
+        <option value="">All States</option>
+        <option>Abia</option><option>Adamawa</option><option>Akwa Ibom</option>
+        <option>Anambra</option><option>Bauchi</option><option>Bayelsa</option>
+        <option>Benue</option><option>Borno</option><option>Cross River</option>
+        <option>Delta</option><option>Ebonyi</option><option>Edo</option>
+        <option>Ekiti</option><option>Enugu</option><option>FCT</option>
+        <option>Gombe</option><option>Imo</option><option>Jigawa</option>
+        <option>Kaduna</option><option>Kano</option><option>Katsina</option>
+        <option>Kebbi</option><option>Kogi</option><option>Kwara</option>
+        <option>Lagos</option><option>Nasarawa</option><option>Niger</option>
+        <option>Ogun</option><option>Ondo</option><option>Osun</option>
+        <option>Oyo</option><option>Plateau</option><option>Rivers</option>
+        <option>Sokoto</option><option>Taraba</option><option>Yobe</option>
+        <option>Zamfara</option>
+      </select>
+      <select id="sort-filter">
+        <option value="rating_count">Most Rated</option>
+        <option value="rating_avg_desc">Highest Rated</option>
+        <option value="rating_avg_asc">Lowest Rated</option>
+        <option value="name">A–Z</option>
+      </select>
+      <span class="results-count" id="results-count"></span>
+    </div>
+
+    <!-- Grid -->
+    <div class="officials-grid" id="officials-grid">
+      <div class="loading"><div class="spinner"></div><br>Loading officials...</div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:2rem;flex-wrap:wrap;"></div>
+  </div>
+</div>
+
+<!-- CIVIC INSIGHTS -->
+<div class="section" style="padding-top:.8rem;">
+  <div class="container">
+    <div class="page-header" style="border:none;padding-bottom:0;">
+      <h2 class="page-title">Civic Insights and Updates</h2>
+      <p class="page-sub">Follow policy explainers and fresh political updates linked to the officials you rate.</p>
+    </div>
+    <div class="insights-grid">
+      <article class="insight-card">
+        <div class="insight-kicker">Blog</div>
+        <h3 class="insight-title">Governance Explainers and Accountability Guides</h3>
+        <p class="insight-copy">Read practical breakdowns on budgets, service delivery, elections, and how to evaluate office performance.</p>
+        <a href="/blog" style="font-size:.8rem;color:var(--green-light);">Visit Blog →</a>
+      </article>
+      <article class="insight-card">
+        <div class="insight-kicker">News</div>
+        <h3 class="insight-title">Daily Nigerian Governance News Roundup</h3>
+        <p class="insight-copy">Track recent policy moves, campaign events, and institutional changes shaping citizen priorities.</p>
+        <a href="/news" style="font-size:.8rem;color:var(--green-light);">View News Updates →</a>
+      </article>
+      <article class="insight-card">
+        <div class="insight-kicker">Editorial</div>
+        <h3 class="insight-title">Curated Updates and Context for Citizens</h3>
+        <p class="insight-copy">Editorial updates with context — less noise, more signal about governance changes that affect you.</p>
+        <a href="/news?tab=editorial" style="font-size:.8rem;color:var(--green-light);">Read Editorial →</a>
+      </article>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <strong>evote.ng</strong> — Nigerian Civic Accountability Platform<br>
+  All submissions are 100% anonymous · No personal data collected<br>
+  <a href="/blog" style="color:var(--green-light);">Blog</a> ·
+  <a href="/news" style="color:var(--green-light);">News</a> ·
+  <a href="/news?tab=editorial" style="color:var(--green-light);">Editorial</a> ·
+  <a href="/polls" style="color:var(--green-light);">Polls</a>
+</footer>
+
+<!-- ══════════ RATING MODAL ══════════ -->
+<div class="modal-overlay" id="rate-modal" onclick="if(event.target===this)closeModal('rate-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⭐ Rate Official</h2>
+      <button class="modal-close" onclick="closeModal('rate-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-official" id="modal-info"></div>
+
+      <div class="form-label" style="margin-top:0.5rem;margin-bottom:0.8rem;font-size:0.92rem;">Rate by Category</div>
+      <div class="cat-grid">
+        <div><div class="cat-label">Accountability</div><div class="cat-stars" data-cat="accountability"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Service Delivery</div><div class="cat-stars" data-cat="service"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Transparency</div><div class="cat-stars" data-cat="transparency"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Responsiveness</div><div class="cat-stars" data-cat="responsiveness"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Power</div><div class="cat-stars" data-cat="power"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Security</div><div class="cat-stars" data-cat="security"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Economic Stability</div><div class="cat-stars" data-cat="economic_stability"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Education</div><div class="cat-stars" data-cat="education"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+        <div><div class="cat-label">Healthcare</div><div class="cat-stars" data-cat="healthcare"><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span><span class="cat-star">★</span></div></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Your Review <span style="font-weight:300;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <textarea class="form-control" id="review-text" placeholder="Share your honest experience or observation about this official..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Your State</label>
+        <select class="form-control" id="reviewer-state">
+          <option value="">Select your state</option>
+          <option>Abia</option><option>Adamawa</option><option>Akwa Ibom</option>
+          <option>Anambra</option><option>Bauchi</option><option>Bayelsa</option>
+          <option>Benue</option><option>Borno</option><option>Cross River</option>
+          <option>Delta</option><option>Ebonyi</option><option>Edo</option>
+          <option>Ekiti</option><option>Enugu</option><option>FCT</option>
+          <option>Gombe</option><option>Imo</option><option>Jigawa</option>
+          <option>Kaduna</option><option>Kano</option><option>Katsina</option>
+          <option>Kebbi</option><option>Kogi</option><option>Kwara</option>
+          <option>Lagos</option><option>Nasarawa</option><option>Niger</option>
+          <option>Ogun</option><option>Ondo</option><option>Osun</option>
+          <option>Oyo</option><option>Plateau</option><option>Rivers</option>
+          <option>Sokoto</option><option>Taraba</option><option>Yobe</option>
+          <option>Zamfara</option>
+        </select>
+      </div>
+
+      <div class="toggle-row" onclick="toggleAnon()">
+        <div class="toggle on" id="anon-toggle"></div>
+        <div>
+          <div style="font-size:.87rem;font-weight:500;">Submit Anonymously</div>
+          <div style="font-size:.72rem;color:var(--muted);">Your identity will not be linked to this rating</div>
+        </div>
+      </div>
+
+      <div class="form-group" id="name-group" style="display:none;margin-top:1rem;">
+        <label class="form-label">Your Name</label>
+        <input class="form-control" id="reviewer-name" placeholder="Enter your name">
+      </div>
+
+      <div id="already-rated" style="display:none;text-align:center;padding:.8rem;background:rgba(0,135,81,.1);border-radius:8px;color:var(--green-light);font-size:.85rem;margin-bottom:1rem;">
+        ✓ This device has already rated this official.
+      </div>
+
+      <button class="submit-btn" id="submit-rate-btn" onclick="submitRating()" disabled>Select a rating to continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ REPORT MODAL ══════════ -->
+<div class="modal-overlay" id="report-modal" onclick="if(event.target===this)closeModal('report-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🚨 Report Misconduct</h2>
+      <button class="modal-close" onclick="closeModal('report-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-official" id="report-modal-info"></div>
+
+      <div class="form-group">
+        <div class="form-label">Category of Misconduct</div>
+        <div class="report-tags" id="report-tags">
+          <span class="report-tag">Corruption / Bribery</span>
+          <span class="report-tag">Abuse of Office</span>
+          <span class="report-tag">Embezzlement</span>
+          <span class="report-tag">Negligence of Duty</span>
+          <span class="report-tag">Harassment</span>
+          <span class="report-tag">Election Malpractice</span>
+          <span class="report-tag">Human Rights Abuse</span>
+          <span class="report-tag">Financial Misconduct</span>
+          <span class="report-tag">Other</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" id="report-desc" style="min-height:120px;" placeholder="Describe the misconduct. Be specific — dates, locations, amounts if known..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Evidence / Source Link <span style="font-weight:300;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input type="url" class="form-control" id="evidence-url" placeholder="https://...">
+      </div>
+
+      <div class="toggle-row" onclick="toggleReportAnon()">
+        <div class="toggle on" id="report-anon-toggle"></div>
+        <div>
+          <div style="font-size:.87rem;font-weight:500;">Submit Anonymously</div>
+          <div style="font-size:.72rem;color:var(--muted);">Enabled by default for your protection</div>
+        </div>
+      </div>
+
+      <button class="submit-btn danger-btn" onclick="submitReport()">Submit Misconduct Report</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { getAnonId, TIER_LABELS, TIER_COLORS, renderStars, showToast, fmt } from './js/supabase-client.js';
+import { getDeviceHash } from './js/device-fingerprint.js';
+
+// ── STATE ──
+const S = {
+  officials: [], filtered: [], page: 1, perPage: 25,
+  tier: '', search: '', state: '', sort: 'rating_count', type: 'all',
+  currentOfficial: null,
+  mainStar: 0, catStars: {}, anonOn: true, reportAnonOn: true, alreadyRated: false,
+};
+const STAR_LABELS = ['','Very Poor','Poor','Average','Good','Excellent'];
+const anonId = getAnonId();
+const CATEGORY_KEYS = ['accountability','service','transparency','responsiveness','power','security','economic_stability','education','healthcare'];
+const CATEGORY_LABELS_DEFAULT = {
+  accountability: 'Accountability',
+  service: 'Service Delivery',
+  transparency: 'Transparency',
+  responsiveness: 'Responsiveness',
+  power: 'Power',
+  security: 'Security',
+  economic_stability: 'Economic Stability',
+  education: 'Education',
+  healthcare: 'Healthcare',
+};
+const CATEGORY_LABELS_POWER = {
+  accountability: 'Billing Fairness',
+  service: 'Fault Resolution',
+  transparency: 'Communication Transparency',
+  responsiveness: 'Outage Response',
+  power: 'Supply Reliability',
+  security: 'Grid Security',
+  economic_stability: 'Tariff Affordability',
+  education: 'Customer Communication',
+  healthcare: 'Safety Compliance',
+};
+const CATEGORY_PROFILES = {
+  general: { labels: CATEGORY_LABELS_DEFAULT, visible: CATEGORY_KEYS },
+  president: {
+    labels: {
+      ...CATEGORY_LABELS_DEFAULT,
+      economic_stability: 'Economy / Inflation',
+      service: 'Jobs / Employment',
+      security: 'Security',
+      power: 'Power',
+      responsiveness: 'Foreign Policy',
+      accountability: 'Governance Delivery',
+    },
+    visible: ['accountability','transparency','economic_stability','service','security','power','responsiveness'],
+  },
+  governor: {
+    labels: {
+      ...CATEGORY_LABELS_DEFAULT,
+      power: 'Roads',
+      education: 'Education',
+      healthcare: 'Health',
+      security: 'Security',
+      service: 'Waste Management',
+      responsiveness: 'Transport',
+    },
+    visible: ['accountability','transparency','power','education','healthcare','security','service','responsiveness'],
+  },
+  local: {
+    labels: {
+      ...CATEGORY_LABELS_DEFAULT,
+      service: 'Sanitation',
+      power: 'Roads',
+      economic_stability: 'Markets',
+      healthcare: 'Primary Health',
+      responsiveness: 'Water',
+    },
+    visible: ['accountability','transparency','service','power','economic_stability','healthcare','responsiveness'],
+  },
+  dept_generic: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Mandate Delivery', responsiveness:'Stakeholder Responsiveness', economic_stability:'Budget Efficiency' },
+    visible: ['accountability','service','transparency','responsiveness','economic_stability'],
+  },
+  power: { labels: CATEGORY_LABELS_POWER, visible: ['accountability','service','transparency','responsiveness','power','security','economic_stability'] },
+  education_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Learning Delivery', education:'Learning Outcomes', economic_stability:'Funding Sustainability', responsiveness:'Stakeholder Engagement' },
+    visible: ['accountability','service','transparency','responsiveness','education','economic_stability'],
+  },
+  health_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Care Quality', healthcare:'Public Health Outcomes', responsiveness:'Emergency Response' },
+    visible: ['accountability','service','transparency','responsiveness','healthcare','security'],
+  },
+  economy_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Policy Execution', economic_stability:'Macro Stability', power:'Business Climate' },
+    visible: ['accountability','service','transparency','responsiveness','economic_stability','power'],
+  },
+  security_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Operational Delivery', security:'Public Safety Outcomes', responsiveness:'Incident Response' },
+    visible: ['accountability','service','transparency','responsiveness','security'],
+  },
+  infrastructure_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Project Delivery', power:'Infrastructure Quality', economic_stability:'Value for Money' },
+    visible: ['accountability','service','transparency','responsiveness','power','economic_stability'],
+  },
+  agriculture_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Farmer Support', economic_stability:'Food Price Stability', security:'Food Security' },
+    visible: ['accountability','service','transparency','responsiveness','economic_stability','security'],
+  },
+  transport_dept: {
+    labels: { ...CATEGORY_LABELS_DEFAULT, service:'Transport Service Reliability', power:'Network Quality', security:'Travel Safety' },
+    visible: ['accountability','service','transparency','responsiveness','power','security'],
+  },
+};
+const AGENCY_TIERS = new Set(['federal_agency', 'state_agency']);
+let ratedOfficialsCache = null;
+let ratingsAggCache = null;
+const FEATURED_LEADER_FULL_NAMES = [
+  'Bola Ahmed Tinubu',
+  'Seyi Makinde',
+  'Babajide Sanwo-Olu',
+  'Nyesom Wike',
+  'Dapo Abiodun',
+  'Alex Otti',
+  'Godswill Akpabio',
+  'Wale Edun',
+];
+const FEATURED_DEFENSE_ROLE_MATCH = '%minister%defen%';
+
+function invalidateRatedOfficialsCache() {
+  ratedOfficialsCache = null;
+}
+
+function invalidateRatingsAggCache() {
+  ratingsAggCache = null;
+}
+
+async function getRatingsAggregates() {
+  if (ratingsAggCache instanceof Map) return ratingsAggCache;
+  
+  const map = new Map();
+  try {
+    const res = await fetch('/api/ratings?limit=10000');
+    if (!res.ok) throw new Error('API error');
+    const { ratings } = await res.json();
+    
+    for (const row of ratings || []) {
+      const id = row?.official_id;
+      if (!id) continue;
+      const overall = Number(row?.overall || 0);
+      const prev = map.get(id) || { count: 0, sum: 0, avg: 0 };
+      prev.count += 1;
+      prev.sum += overall;
+      map.set(id, prev);
+    }
+    for (const agg of map.values()) {
+      agg.avg = agg.count ? (agg.sum / agg.count) : 0;
+    }
+    ratingsAggCache = map;
+  } catch (err) {
+    console.error(err);
+  }
+  return map;
+}
+
+async function enrichOfficialsWithAggregates(list) {
+  const aggMap = await getRatingsAggregates();
+  for (const o of list || []) {
+    const agg = aggMap.get(o.id);
+    if (!agg) continue;
+    o.rating_count = agg.count || 0;
+    o.rating_avg = agg.avg || 0;
+  }
+}
+
+function isPowerSectorOfficial(o) {
+  const hay = `${o?.full_name || ''} ${o?.common_name || ''} ${o?.role || ''} ${o?.website || ''}`.toLowerCase();
+  return /electricity|disco|distribution company|transmission company of nigeria|nerc|nbet|rea|nemsa|niso|ikeja electric|eko electricity|ibedc|aedc|phed|kaedco|kedco|yedc|eedc|jos electric|benin electricity/.test(hay);
+}
+
+function detectDepartmentSector(role) {
+  if (/education|school|university|polytechnic|teaching/.test(role)) return 'education';
+  if (/health|medical|hospital|phc|nphcda|nafdac|aids/.test(role)) return 'health';
+  if (/finance|budget|econom|revenue|tax|customs|trade|industry|investment|fiscal|cbn|firs|sec/.test(role)) return 'economy';
+  if (/interior|defen[cs]e|police|security|intelligence|immigration|nscdc|ndlea|military/.test(role)) return 'security';
+  if (/works|housing|infrastructure|urban|water resources|environment/.test(role)) return 'infrastructure';
+  if (/agric|livestock|food/.test(role)) return 'agriculture';
+  if (/transport|aviation|marine|maritime|rail|ports|waterways/.test(role)) return 'transport';
+  return '';
+}
+
+function detectCategoryProfile(o) {
+  const role = `${o?.role || ''}`.toLowerCase();
+  const tier = `${o?.tier || ''}`.toLowerCase();
+
+  if (isPowerSectorOfficial(o)) return 'power';
+  if (/president|vice president/.test(role)) return 'president';
+  if (tier === 'state_executive' && /governor|deputy governor/.test(role)) return 'governor';
+  if (tier === 'local_government') return 'local';
+
+  const isDepartmentOffice = /minister|commissioner|director general|\bdg\b|managing director|\bmd\b|ceo|executive secretary|chairman|comptroller-general|inspector general|administrator/.test(role)
+    || tier.includes('agency');
+  if (isDepartmentOffice) {
+    const sector = detectDepartmentSector(role);
+    if (sector) return `${sector}_dept`;
+    return 'dept_generic';
+  }
+
+  return 'general';
+}
+
+function getCategoryProfile(o) {
+  return CATEGORY_PROFILES[detectCategoryProfile(o)] || CATEGORY_PROFILES.general;
+}
+
+function getCategoryValues(o) {
+  return {
+    accountability: Number(o.accountability_avg || 0),
+    service: Number(o.service_avg || 0),
+    transparency: Number(o.transparency_avg || 0),
+    responsiveness: Number(o.responsiveness_avg || 0),
+    power: Number(o.power_avg || 0),
+    security: Number(o.security_avg || 0),
+    economic_stability: Number(o.economic_stability_avg || 0),
+    education: Number(o.education_avg || 0),
+    healthcare: Number(o.healthcare_avg || 0),
+  };
+}
+
+function applyCategoryLabelsForOfficial(o) {
+  const profile = getCategoryProfile(o);
+  const labels = profile.labels || CATEGORY_LABELS_DEFAULT;
+  const visible = profile.visible || CATEGORY_KEYS;
+  document.querySelectorAll('.cat-stars').forEach((row) => {
+    const wrap = row.parentElement;
+    const labelEl = row.previousElementSibling;
+    if (labelEl && labelEl.classList.contains('cat-label')) {
+      labelEl.textContent = labels[row.dataset.cat] || CATEGORY_LABELS_DEFAULT[row.dataset.cat] || row.dataset.cat;
+    }
+    const active = visible.includes(row.dataset.cat);
+    if (wrap) wrap.style.display = active ? '' : 'none';
+    if (!active) {
+      row.querySelectorAll('.cat-star').forEach((cs) => cs.classList.remove('on'));
+      delete S.catStars[row.dataset.cat];
+    }
+  });
+}
+
+function getStoredRatings() {
+  try {
+    return JSON.parse(localStorage.getItem('nr_rated_officials') || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function getStoredRating(id) {
+  return getStoredRatings()[id] || null;
+}
+
+function saveStoredRating(id, payload) {
+  const ratings = getStoredRatings();
+  ratings[id] = payload;
+  localStorage.setItem('nr_rated_officials', JSON.stringify(ratings));
+}
+
+// ── LOAD ──
+async function loadStats() {
+  try {
+    const res = await fetch('/api/stats');
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    document.getElementById('stat-ratings').textContent = fmt(data.ratings);
+    document.getElementById('stat-officials').textContent = fmt(data.officials);
+  } catch (err) {
+    showToast('Unable to load stats. Check your server connection.', 'error');
+  }
+}
+
+async function loadOfficials() {
+  document.getElementById('officials-grid').innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading officials...</div>';
+  const url = new URL('/api/officials', window.location.origin);
+  if (S.tier) url.searchParams.set('tier', S.tier);
+  if (S.state) url.searchParams.set('state', S.state);
+  url.searchParams.set('limit', '3000');
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API error');
+    const { officials } = await res.json();
+    S.officials = officials || [];
+    try {
+      await enrichOfficialsWithAggregates(S.officials);
+    } catch {}
+    applyFilters();
+  } catch(error) {
+    document.getElementById('officials-grid').innerHTML = `
+      <div class="empty">
+        Error loading officials.<br>
+        <span style="color:var(--muted);font-size:.82rem;">
+          ${error.message || 'Check your connection.'}
+        </span>
+      </div>`;
+    showToast('Error loading officials.', 'error');
+  }
+}
+
+async function loadPoliticiansPreview() {
+  const mount = document.getElementById('politicians-preview');
+  const empty = document.getElementById('politicians-preview-empty');
+  if (!mount) return;
+  mount.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading politicians...</div>';
+  if (empty) empty.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/politicians?limit=9');
+    if (!res.ok) throw new Error('API error');
+    const { politicians: rows } = await res.json();
+    if (!rows.length) {
+      mount.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+
+    const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const initials = (name) => {
+      const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+      return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+    };
+    const slugify = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60);
+
+    mount.innerHTML = rows.map((p) => {
+      const nm = p.common_name || p.full_name;
+      const slug = slugify(nm);
+      const href = '/politician/' + slug + '--' + encodeURIComponent(p.id);
+      return `
+        <div class="pol-card card-hover">
+          <div class="pol-avatar">${p.photo_url ? `<img alt="${esc(nm)}" src="${esc(p.photo_url)}">` : esc(initials(nm))}</div>
+          <div style="min-width:0;flex:1;">
+            <div class="pol-name">${esc(nm)}</div>
+            <div class="pol-meta">${esc(p.aspiration_title || 'Politician')} · <span class="pol-pill">${esc(p.party || '')}</span></div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.65rem;">
+              <a class="btn btn-green btn-sm" href="${href}">View Profile</a>
+              <a class="btn btn-ghost btn-sm" href="/politicians">More</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    const msg = String(e?.message || '').toLowerCase();
+    if (msg.includes('relation') && msg.includes('politicians')) {
+      mount.innerHTML = '<div class="empty">Politicians feature is not enabled yet. Apply the `non_office_politicians.sql` migration.</div>';
+      return;
+    }
+    mount.innerHTML = `<div class="empty">Unable to load politicians right now. <span style="color:var(--muted);font-size:.82rem;">${String(e?.message || '')}</span></div>`;
+  }
+}
+
+async function loadFeaturedLeaders() {
+  const mount = document.getElementById('featured-leaders');
+  if (!mount) return;
+  try {
+    const res = await fetch('/api/officials?sort=rating_avg_desc&limit=6');
+    if (!res.ok) throw new Error('API error');
+    const { officials: leaders } = await res.json();
+    
+    if (!leaders || !leaders.length) {
+      mount.innerHTML = '<div class="empty">Featured leaders are not available yet.</div>';
+      return;
+    }
+    
+    mount.innerHTML = leaders.map((o) => {
+      const rating = Number(o.rating_avg || 0);
+      const tier = TIER_LABELS[o.tier] || o.tier;
+      const state = o.states?.name ? ` · ${o.states.name}` : '';
+      const imgStyle = 'width:100%;height:100%;object-fit:cover;';
+      const avatar = o.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(o.full_name)}&background=random`;
+      return `
+        <div class="featured-card">
+          <div class="featured-head">
+            <div class="featured-avatar">
+              <img src="${avatar}" alt="${o.full_name}" loading="lazy" style="${imgStyle}">
+            </div>
+            <div>
+              <div class="featured-name">${o.full_name}</div>
+              <div class="featured-role">${o.role}</div>
+            </div>
+          </div>
+          <div class="featured-metrics">
+            <span>${renderStars(rating, 5)}</span>
+            <strong>${rating ? rating.toFixed(1) : '—'}</strong>
+            <span style="color:var(--muted);">(${fmt(o.rating_count)} ratings)</span>
+          </div>
+          <div style="margin-top:.55rem;font-size:.74rem;color:var(--muted);">${tier}${state}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    mount.innerHTML = `<div class="empty">Unable to load featured ratings.<br><span style="color:var(--muted);font-size:.82rem;">${error?.message || ''}</span></div>`;
+  }
+}
+
+async function getRatedOfficialsData() {
+  if (Array.isArray(ratedOfficialsCache)) return ratedOfficialsCache;
+  const res = await fetch('/api/officials?limit=500&sort=rating_avg_desc');
+  if (!res.ok) throw new Error('API error');
+  const { officials } = await res.json();
+  ratedOfficialsCache = officials || [];
+  return ratedOfficialsCache;
+}
+
+function renderBestRatedList(mountId, rows, emptyText) {
+  const mount = document.getElementById(mountId);
+  if (!mount) return;
+  if (!rows.length) {
+    mount.innerHTML = `<div class="empty">${emptyText}</div>`;
+    return;
+  }
+  mount.innerHTML = rows.map((o) => {
+    const rating = Number(o.rating_avg || 0);
+    const tier = TIER_LABELS[o.tier] || o.tier;
+    const state = o.states?.name ? ` · ${o.states.name}` : '';
+    return `
+      <div class="best-rated-item">
+        <div style="min-width:0;">
+          <a href="${officialPath(o)}">${o.full_name}</a>
+          <div class="best-rated-meta">${o.role}</div>
+          <div class="best-rated-meta">${tier}${state}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:Syne,sans-serif;font-weight:800;">${rating.toFixed(1)}</div>
+          <div class="best-rated-meta">${fmt(o.rating_count)} ratings</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadBestRatedSections() {
+  try {
+    const aggMap = await getRatingsAggregates();
+    const entries = [...aggMap.entries()]
+      .map(([id, agg]) => ({ id, rating_count: agg.count || 0, rating_avg: agg.avg || 0 }))
+      .sort((a, b) => {
+        const byScore = Number(b.rating_avg || 0) - Number(a.rating_avg || 0);
+        if (byScore !== 0) return byScore;
+        return Number(b.rating_count || 0) - Number(a.rating_count || 0);
+      });
+
+    const minCount = 3;
+    const strict = entries.filter((o) => Number(o.rating_count || 0) >= minCount);
+    const base = strict.length ? strict : entries;
+
+    // Just fetch them in bulk and map them
+    const res = await fetch('/api/officials?limit=150');
+    if (!res.ok) throw new Error('API error');
+    const { officials: officialsData } = await res.json();
+    const byId = new Map((officialsData || []).map((o) => [o.id, o]));
+    const rankedRows = base
+      .map((r) => {
+        const o = byId.get(r.id);
+        if (!o) return null;
+        return { ...o, rating_count: r.rating_count, rating_avg: r.rating_avg };
+      })
+      .filter(Boolean);
+
+    const officials = rankedRows.filter((o) => !AGENCY_TIERS.has(String(o.tier || '').toLowerCase())).slice(0, 5);
+    const agencies = rankedRows.filter((o) => isAgencyBody(o)).slice(0, 5);
+
+    renderBestRatedList('best-rated-officials', officials, 'No rated officials yet.');
+    renderBestRatedList('best-rated-agencies', agencies, 'No rated agencies yet.');
+  } catch (error) {
+    const msg = error?.message || 'Unable to load ranked results.';
+    renderBestRatedList('best-rated-officials', [], `Error loading officials: ${msg}`);
+    renderBestRatedList('best-rated-agencies', [], `Error loading agencies: ${msg}`);
+  }
+}
+
+function applyFilters() {
+  let list = [...S.officials];
+  const q = S.search.toLowerCase();
+  if (q) {
+    list = list.filter((o) => {
+      const name = String(o?.full_name || '').toLowerCase();
+      const common = String(o?.common_name || '').toLowerCase();
+      const role = String(o?.role || '').toLowerCase();
+      const state = String(o?.states?.name || '').toLowerCase();
+      const domain = domainFromUrl(String(o?.website || '')) || '';
+      const hay = `${name} ${common} ${role} ${state} ${domain}`.trim();
+      return hay.includes(q);
+    });
+  }
+  if (S.state) list = list.filter(o => (o.states?.name||'') === S.state);
+  const type = String(S.type || 'all');
+  if (type === 'agencies') list = list.filter((o) => isAgencyBody(o));
+  else if (type === 'agency_heads') list = list.filter((o) => isAgencyHead(o));
+  else if (type === 'officials') list = list.filter(o => !String(o?.tier || '').includes('agency'));
+
+  if (S.sort === 'rating_avg_desc') list.sort((a,b) => (b.rating_avg||0) - (a.rating_avg||0));
+  else if (S.sort === 'rating_avg_asc') list.sort((a,b) => (a.rating_avg||0) - (b.rating_avg||0));
+  else if (S.sort === 'name') list.sort((a,b) => a.full_name.localeCompare(b.full_name));
+  else list.sort((a,b) => (b.rating_count||0) - (a.rating_count||0));
+
+  S.filtered = list;
+  S.page = 1;
+  renderOfficials();
+}
+
+function avatarImgStyle(tier) {
+  return String(tier || '').includes('agency')
+    ? 'width:100%;height:100%;border-radius:50%;object-fit:contain;background:#fff;padding:4px;'
+    : 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+}
+
+function agencyLike(o) {
+  return String(o?.tier || '').includes('agency');
+}
+
+const AGENCY_HEAD_ROLE_RE = /minister|commissioner|director general|\bdg\b|managing director|\bmd\b|ceo|executive secretary|chairman|comptroller-?general|inspector general|administrator|head/i;
+const AGENCY_ORG_NAME_RE = /agency|authority|commission|corporation|company|plc|ltd|limited|board|service|department|ministry|bureau|office|council|secretariat|bank|electricity|distribution|transmission|power|disco|discos|nnpc|nafdac/i;
+function isAgencyBodyName(name) {
+  const s = String(name || '').trim();
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  if (AGENCY_ORG_NAME_RE.test(lower)) return true;
+  if (/^[A-Z0-9]{2,12}$/.test(s)) return true;
+  return false;
+}
+function isAgencyHead(o) {
+  if (!agencyLike(o)) return false;
+  if (AGENCY_HEAD_ROLE_RE.test(String(o?.role || ''))) return true;
+  return !isAgencyBodyName(o?.full_name);
+}
+function isAgencyBody(o) {
+  return agencyLike(o) && isAgencyBodyName(o?.full_name) && !AGENCY_HEAD_ROLE_RE.test(String(o?.role || ''));
+}
+
+function domainFromUrl(url) {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+function generatedAvatarUrl(o) {
+  if (agencyLike(o)) {
+    const domain = domainFromUrl(o.website);
+    if (domain) return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+  }
+  const name = encodeURIComponent(o.full_name || o.common_name || 'Official');
+  return `https://ui-avatars.com/api/?name=${name}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg`;
+}
+
+function avatarSrc(o) {
+  return o.photo_url || generatedAvatarUrl(o);
+}
+
+function slugifyOfficialName(name) {
+  return String(name || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+function supportsPrettyRoutes() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  if (window.location.protocol === 'file:') return false;
+  if (host === 'localhost' || host === '127.0.0.1') return false;
+  return true;
+}
+
+function officialPath(o) {
+  if (!supportsPrettyRoutes()) return `/official.html?id=${encodeURIComponent(o.id)}`;
+  const common = String(o?.common_name || '').trim();
+  const useCommon = agencyLike(o) && common && /^[A-Za-z0-9]{2,12}$/.test(common);
+  const slug = slugifyOfficialName(useCommon ? common : (o.full_name || o.common_name || 'official')) || 'official';
+  return `/official/${slug}`;
+}
+
+function renderOfficials() {
+  const grid = document.getElementById('officials-grid');
+  const { page, perPage, filtered } = S;
+  const total = filtered.length;
+  const start = (page-1)*perPage, end = start+perPage;
+  const slice = filtered.slice(start, end);
+
+  document.getElementById('results-count').textContent = `${fmt(total)} profile${total!==1?'s':''}`;
+
+  if (!slice.length) { grid.innerHTML = '<div class="empty">No officials found. Try a different search.</div>'; renderPagination(0); return; }
+
+  grid.innerHTML = slice.map((o,i) => {
+    const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+    const color = TIER_COLORS[o.tier] || '#888';
+    const tier = TIER_LABELS[o.tier] || o.tier;
+    const rating = parseFloat(o.rating_avg)||0;
+    const profile = getCategoryProfile(o);
+    const values = getCategoryValues(o);
+    const rows = (profile.visible || CATEGORY_KEYS).map((key) => {
+      const pct = Math.round(((values[key] || 0) / 5) * 100);
+      return `<div class="perf-row"><span class="perf-label">${profile.labels[key] || CATEGORY_LABELS_DEFAULT[key] || key}</span><div class="perf-track"><div class="perf-fill" style="width:${pct}%"></div></div><span class="perf-pct">${pct}%</span></div>`;
+    }).join('');
+    return `
+    <div class="official-card card-hover fade-up fade-up-${Math.min(i+1,5)}" onclick="window.location.href='${officialPath(o)}'" style="cursor:pointer;">
+      <div class="card-head">
+        <div class="avatar" style="background:${color}22;color:${color};">
+          <img src="${avatarSrc(o)}" alt="${o.full_name}" loading="lazy" style="${avatarImgStyle(o.tier)}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent((o.full_name||'Official'))}&size=256&background=0B5D43&color=ffffff&rounded=true&bold=true&format=svg'">
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="card-name">${o.full_name}</div>
+          <div class="card-role">${o.role}</div>
+          <span class="tier-badge" style="color:${color};border-color:${color}44;background:${color}11;">${tier}</span>
+        </div>
+      </div>
+      <div class="stars-row">
+        <div class="stars">${renderStarsHTML(rating)}</div>
+        <span class="rating-num">${rating ? rating.toFixed(1) : '—'}</span>
+        <span class="rating-count">(${fmt(o.rating_count)} ratings)</span>
+      </div>
+      <div class="perf-bars">${rows}</div>
+      ${o.report_count > 0 ? `<div style="font-size:.72rem;color:#e57368;margin-bottom:.6rem;">⚠ ${o.report_count} misconduct report${o.report_count>1?'s':''}</div>` : ''}
+      <div class="card-footer">
+        <button class="btn-rate" onclick="event.stopPropagation();openRateModal('${o.id}')">⭐ Rate</button>
+        <button class="btn-report" onclick="event.stopPropagation();openReportModal('${o.id}')">🚨 Report</button>
+        <a href="${officialPath(o)}" onclick="event.stopPropagation()" style="flex:1;background:rgba(255,255,255,.06);color:var(--white);border-radius:6px;font-size:.78rem;font-weight:500;padding:.4rem;text-align:center;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">👁 Profile</a>
+      </div>
+    </div>`;
+  }).join('');
+  renderPagination(total);
+}
+
+function renderStarsHTML(r) {
+  return [1,2,3,4,5].map(i => {
+    const cls = r >= i ? 'on' : r >= i-.5 ? 'half' : '';
+    return `<span class="star ${cls}">★</span>`;
+  }).join('');
+}
+
+function renderPagination(total) {
+  const pages = Math.ceil(total / S.perPage);
+  const el = document.getElementById('pagination');
+  if (pages <= 1) { el.innerHTML=''; return; }
+  
+  const current = S.page;
+  const range = [];
+  const delta = 2;
+
+  range.push(1);
+  for (let i = Math.max(2, current - delta); i <= Math.min(pages - 1, current + delta); i++) {
+    range.push(i);
+  }
+  if (pages > 1) {
+    range.push(pages);
+  }
+
+  const getRangeLabel = (p) => {
+    const start = (p - 1) * S.perPage + 1;
+    const end = Math.min(p * S.perPage, total);
+    return `${start}-${end}`;
+  };
+
+  let html = '';
+  html += `<button class="tab" ${current === 1 ? 'disabled' : ''} onclick="${current > 1 ? `goPage(${current - 1})` : ''}">&larr; Prev</button>`;
+
+  let l;
+  for (let i of range) {
+    if (l) {
+      if (i - l === 2) {
+        html += `<button class="tab" onclick="goPage(${l + 1})">${getRangeLabel(l + 1)}</button>`;
+      } else if (i - l > 2) {
+        html += `<span style="padding: 0 .4rem; display: flex; align-items: center; color: var(--muted);">...</span>`;
+      }
+    }
+    html += `<button class="tab ${i === current ? 'active' : ''}" onclick="goPage(${i})">${getRangeLabel(i)}</button>`;
+    l = i;
+  }
+
+  html += `<button class="tab" ${current === pages ? 'disabled' : ''} onclick="${current < pages ? `goPage(${current + 1})` : ''}">Next &rarr;</button>`;
+
+  el.innerHTML = html;
+}
+
+window.goPage = (p) => { S.page=p; renderOfficials(); window.scrollTo({top:document.getElementById('officials-section').offsetTop-70,behavior:'smooth'}); };
+
+// ── TIER TABS ──
+document.querySelectorAll('#tier-tabs .tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tier-tabs .tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    S.tier = btn.dataset.tier || '';
+    if (!S.tier) S.type = 'all';
+    else if (S.tier === 'federal_agency') S.type = 'agencies';
+    else S.type = 'all';
+    loadOfficials();
+  });
+});
+
+// ── SEARCH & FILTERS ──
+let searchTimer;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { S.search = e.target.value; applyFilters(); }, 280);
+});
+document.getElementById('state-filter').addEventListener('change', e => { S.state = e.target.value; applyFilters(); });
+document.getElementById('sort-filter').addEventListener('change', e => { S.sort = e.target.value; applyFilters(); });
+
+// ── RATE MODAL ──
+window.openRateModal = async (id) => {
+  S.currentOfficial = S.officials.find(o=>o.id===id);
+  S.catStars = {}; S.anonOn = true;
+  const o = S.currentOfficial;
+  applyCategoryLabelsForOfficial(o);
+  const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+  const color = TIER_COLORS[o.tier]||'#888';
+  document.getElementById('modal-info').innerHTML = `
+    <div class="avatar" style="background:${color}22;color:${color};">${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}</div>
+    <div><div style="font-weight:700;font-family:Syne,sans-serif;">${o.full_name}</div><div style="font-size:.8rem;color:var(--muted);">${o.role}</div></div>`;
+  document.querySelectorAll('.cat-star').forEach(s=>s.classList.remove('on'));
+  document.getElementById('review-text').value='';
+  document.getElementById('reviewer-state').value='';
+  document.getElementById('anon-toggle').className='toggle on';
+  const btn = document.getElementById('submit-rate-btn');
+  btn.disabled=true; btn.textContent='Select a rating to continue';
+  const existingRating = getStoredRating(id);
+  S.alreadyRated = !!existingRating;
+  document.getElementById('already-rated').style.display = existingRating ? 'block' : 'none';
+  if (existingRating) {
+    // Fill in category stars if we had any, or just disable the button
+    updateSubmitButtonState();
+  }
+  document.getElementById('rate-modal').classList.add('open');
+};
+
+function updateSubmitButtonState() {
+  const hasCat = Object.values(S.catStars).some(v => v > 0);
+  const nameVal = document.getElementById('reviewer-name').value.trim();
+  const nameOk = S.anonOn || nameVal !== '';
+  const btn = document.getElementById('submit-rate-btn');
+  const disabled = S.alreadyRated || !hasCat || !nameOk;
+  btn.disabled = disabled;
+  if (S.alreadyRated) {
+    btn.textContent = 'Already rated on this device';
+  } else if (!hasCat) {
+    btn.textContent = 'Select category ratings to continue';
+  } else if (!nameOk) {
+    btn.textContent = 'Please enter your name';
+  } else {
+    btn.textContent = 'Submit Rating';
+  }
+}
+
+document.getElementById('reviewer-name').addEventListener('input', updateSubmitButtonState);
+
+document.querySelectorAll('.cat-stars').forEach(row => {
+  row.querySelectorAll('.cat-star').forEach((s,i) => {
+    s.addEventListener('click', () => {
+      S.catStars[row.dataset.cat] = i+1;
+      row.querySelectorAll('.cat-star').forEach((cs,ci) => cs.classList.toggle('on', ci<=i));
+      updateSubmitButtonState();
+    });
+  });
+});
+
+window.toggleAnon = () => { 
+  S.anonOn=!S.anonOn; 
+  document.getElementById('anon-toggle').className='toggle'+(S.anonOn?' on':''); 
+  document.getElementById('name-group').style.display = S.anonOn ? 'none' : 'block';
+  updateSubmitButtonState();
+};
+
+window.submitRating = async () => {
+  const hasCat = Object.values(S.catStars).some(v => v > 0);
+  const nameVal = document.getElementById('reviewer-name').value.trim();
+  const nameOk = S.anonOn || nameVal !== '';
+  if (!hasCat || !S.currentOfficial || !nameOk) return;
+  if (S.alreadyRated) { showToast('This device has already rated this official.','error'); return; }
+  const btn = document.getElementById('submit-rate-btn');
+  btn.disabled=true; btn.textContent='Submitting...';
+  let deviceHash = null;
+  try { deviceHash = await getDeviceHash(); } catch {}
+  if (!deviceHash) deviceHash = anonId || 'anon-' + Math.random().toString(36).substring(2, 12);
+  
+  const vals = Object.values(S.catStars).filter(v => v > 0);
+  const finalOverall = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+  
+  const payload = {
+    official_id: S.currentOfficial.id,
+    anon_id: anonId,
+    device_hash: deviceHash,
+    overall: finalOverall,
+    accountability: S.catStars.accountability||null,
+    service: S.catStars.service||null,
+    transparency: S.catStars.transparency||null,
+    responsiveness: S.catStars.responsiveness||null,
+    power: S.catStars.power||null,
+    security: S.catStars.security||null,
+    economic_stability: S.catStars.economic_stability||null,
+    education: S.catStars.education||null,
+    healthcare: S.catStars.healthcare||null,
+    review_text: document.getElementById('review-text').value.trim()||null,
+    reviewer_state: document.getElementById('reviewer-state').value||null,
+    reviewer_name: S.anonOn ? 'Anonymous' : nameVal || 'Anonymous',
+    is_anonymous: S.anonOn,
+  };
+  const res = await fetch('/api/ratings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+   let error = null; if (!res.ok) error = await res.json();
+  if (error && String(error.message||'').toLowerCase().includes('column')) {
+    const fallback = { ...payload };
+    delete fallback.device_hash;
+    delete fallback.power;
+    delete fallback.security;
+    delete fallback.economic_stability;
+    delete fallback.education;
+    delete fallback.healthcare;
+    { const res = await fetch('/api/ratings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fallback) }); if (!res.ok) error = await res.json(); }
+  }
+  if (error) { showToast('This device has already rated this official or an error occurred.','error'); btn.disabled=false; btn.textContent='Submit Rating'; return; }
+  saveStoredRating(S.currentOfficial.id, { overall: S.mainStar, created_at: new Date().toISOString() });
+  S.alreadyRated = true;
+  closeModal('rate-modal');
+  showToast(`Rating submitted ${S.anonOn?'anonymously ':''}✓`);
+  invalidateRatedOfficialsCache();
+  invalidateRatingsAggCache();
+  loadOfficials(); loadStats(); loadBestRatedSections(); loadFeaturedLeaders(); loadPoliticiansPreview();
+};
+
+// ── REPORT MODAL ──
+window.openReportModal = (id) => {
+  S.currentOfficial = S.officials.find(o=>o.id===id);
+  S.reportAnonOn = true;
+  const o = S.currentOfficial;
+  const initials = o.full_name.split(' ').slice(0,2).map(w=>w[0]).join('');
+  const color = TIER_COLORS[o.tier]||'#888';
+  document.getElementById('report-modal-info').innerHTML = `
+    <div class="avatar" style="background:${color}22;color:${color};">${o.photo_url?`<img src="${o.photo_url}" style="${avatarImgStyle(o.tier)}">`:`${initials}`}</div>
+    <div><div style="font-weight:700;font-family:Syne,sans-serif;">${o.full_name}</div><div style="font-size:.8rem;color:var(--muted);">${o.role}</div></div>`;
+  document.querySelectorAll('.report-tag').forEach(t=>t.classList.remove('on'));
+  document.getElementById('report-desc').value='';
+  document.getElementById('evidence-url').value='';
+  document.getElementById('report-anon-toggle').className='toggle on';
+  document.getElementById('report-modal').classList.add('open');
+};
+
+document.querySelectorAll('.report-tag').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+window.toggleReportAnon = () => { S.reportAnonOn=!S.reportAnonOn; document.getElementById('report-anon-toggle').className='toggle'+(S.reportAnonOn?' on':''); };
+
+window.submitReport = async () => {
+  const cats = [...document.querySelectorAll('.report-tag.on')].map(t=>t.textContent);
+  const desc = document.getElementById('report-desc').value.trim();
+  if (!cats.length || !desc) { showToast('Please select a category and describe the misconduct.','error'); return; }
+  const res = await fetch('/api/reports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      official_id: S.currentOfficial.id,
+      anon_id: anonId,
+      categories: cats,
+      description: desc,
+      evidence_url: document.getElementById('evidence-url').value.trim()||null,
+      is_anonymous: S.reportAnonOn
+    })
+  });
+  const error = res.ok ? null : await res.json();
+  if (error) { showToast('Error submitting report. Please try again.','error'); return; }
+  closeModal('report-modal');
+  showToast('Misconduct report submitted ✓');
+};
+
+// ── UTILS ──
+window.closeModal = (id) => document.getElementById(id).classList.remove('open');
+
+// ── INIT ──
+loadStats();
+loadBestRatedSections();
+loadFeaturedLeaders();
+loadPoliticiansPreview();
+loadOfficials();
+
+// ── MOBILE NAV ──
+(() => {
+  const toggle = document.querySelector('.nav-toggle');
+  const links = document.getElementById('nav-links') || document.querySelector('.nav-links');
+  if (!toggle || !links) return;
+  const close = () => {
+    links.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+  toggle.addEventListener('click', () => {
+    const open = links.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  links.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  document.addEventListener('click', (e) => {
+    if (!links.classList.contains('open')) return;
+    if (links.contains(e.target) || toggle.contains(e.target)) return;
+    close();
+  });
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"22933f5524814b27a7ed8824f53b2982","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>

@@ -4,18 +4,27 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "evote.ng - Rate Nigerian Government Officials",
+  metadataBase: new URL('https://evote.ng'),
+  title: {
+    default: "evote.ng - Rate Nigerian Government Officials",
+    template: "%s | evote.ng"
+  },
   description:
     "evote.ng helps citizens rate Nigerian government officials, compare rankings, vote in civic polls, and track public accountability with anonymous reviews.",
-  keywords:
-    "Nigeria politics, government ratings, public officials Nigeria, civic accountability, evote.ng, citizen polls Nigeria",
+  keywords: ["nigeria", "government", "officials", "rating", "evote", "politics", "accountability"],
+  authors: [{ name: "evote.ng" }],
   openGraph: {
-    title: "evote.ng - Civic Ratings and Accountability in Nigeria",
-    description:
-      "Rate officials, view rankings, and join anonymous civic polls that strengthen public accountability in Nigeria.",
-    type: "website",
-    locale: "en_NG",
-    siteName: "evote.ng",
+    title: "evote.ng - Rate Nigerian Government Officials",
+    description: "evote.ng helps citizens rate Nigerian government officials, compare rankings, vote in civic polls, and track public accountability with anonymous reviews.",
+    url: 'https://evote.ng',
+    siteName: 'evote.ng',
+    locale: 'en_NG',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "evote.ng - Rate Nigerian Government Officials",
+    description: "evote.ng helps citizens rate Nigerian government officials, compare rankings, vote in civic polls, and track public accountability with anonymous reviews.",
   },
 };
 
@@ -25,13 +34,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className="h-full antialiased"
-    >
-      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+    <html lang="en">
+      <head>
+        <meta name="robots" content="index,follow,max-image-preview:large" />
+      </head>
+      <body className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1">{children}</main>
+        <div id="toast" className="toast" />
+        <main className="flex-1">
+          {children}
+        </main>
         <Footer />
       </body>
     </html>

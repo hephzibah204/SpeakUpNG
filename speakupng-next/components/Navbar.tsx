@@ -1,50 +1,102 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
+const NAV_LINKS = [
+  { href: '/', label: 'Officials' },
+  { href: '/agencies', label: 'Agencies' },
+  { href: '/politicians', label: 'Politicians' },
+  { href: '/compare', label: 'Compare' },
+  { href: '/tracker', label: 'Tracker' },
+  { href: '/manifestos', label: 'Manifestos' },
+  { href: '/candidates', label: 'Candidates' },
+  { href: '/elections', label: 'Elections' },
+  { href: '/elections/2027', label: '2027 Race' },
+  { href: '/heatmap', label: 'Heat Map' },
+  { href: '/states', label: 'States' },
+  { href: '/parties', label: 'Parties' },
+  { href: '/bills', label: 'Bills' },
+  { href: '/budgets', label: 'Budgets' },
+  { href: '/performance', label: 'Performance' },
+  { href: '/learn', label: 'Learn' },
+  { href: '/incidents', label: 'Incidents' },
+  { href: '/fact-check', label: 'Fact Check' },
+  { href: '/political-events', label: 'Defections' },
+  { href: '/influence-index', label: 'Influence' },
+  { href: '/dna', label: 'DNA Score' },
+  { href: '/leaderboard', label: 'Rankings' },
+  { href: '/champions', label: 'Champions' },
+  { href: '/polls', label: 'Polls' },
+  { href: '/news', label: 'News' },
+  { href: '/blog', label: 'Blog' },
+];
+
 export function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
-    <nav className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-green-600">evote.ng</span>
-          </Link>
+    <nav
+      style={{ background: 'rgba(20,23,20,.96)', backdropFilter: 'blur(14px)' }}
+      className="sticky top-0 z-50 border-b border-[#2c312a]"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+          <img src="/images/logo.png" alt="evote.ng" className="h-10 w-auto object-contain" />
+        </Link>
 
-          <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-green-600 transition-colors">Officials</Link>
-            <Link href="/agencies" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-green-600 transition-colors">Agencies</Link>
-            <Link href="/politicians" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-green-600 transition-colors">Politicians</Link>
-            <Link href="/leaderboard" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-green-600 transition-colors">Rankings</Link>
-            <Link href="/blog" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-green-600 transition-colors">Blog</Link>
-            <Link href="/news" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-green-600 transition-colors">News</Link>
-          </div>
-
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            aria-label="Toggle menu"
-          >
-            <svg className="w-6 h-6 text-zinc-700 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-            </svg>
-          </button>
+        <div className="hidden md:flex items-center gap-1">
+          {NAV_LINKS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isActive(href)
+                  ? 'text-[#00b368] bg-[#008751]/10'
+                  : 'text-[#6b7163] hover:text-[#f8f7f2] hover:bg-[#1d211b]'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
 
-        {menuOpen && (
-          <div className="md:hidden pb-4 space-y-2">
-            <Link href="/" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">Officials</Link>
-            <Link href="/agencies" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">Agencies</Link>
-            <Link href="/politicians" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">Politicians</Link>
-            <Link href="/leaderboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">Rankings</Link>
-            <Link href="/blog" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">Blog</Link>
-            <Link href="/news" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">News</Link>
-          </div>
-        )}
+        <button
+          onClick={() => setOpen(!open)}
+          aria-label="Toggle menu"
+          aria-expanded={open}
+          className="md:hidden p-2 rounded-lg border border-[#2c312a] text-[#f8f7f2] hover:bg-[#1d211b] transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d={open ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
+          </svg>
+        </button>
       </div>
+
+      {open && (
+        <div className="md:hidden bg-[#1d211b] border-t border-[#2c312a] px-4 pb-4 pt-2 space-y-1">
+          {NAV_LINKS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive(href)
+                  ? 'text-[#00b368] bg-[#008751]/10'
+                  : 'text-[#6b7163] hover:text-[#f8f7f2] hover:bg-[#2c312a]'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }

@@ -1,70 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  summary?: string;
+  category?: string;
+  author?: string;
+  published_at?: string;
+  created_at: string;
+}
 
 export default function BlogPage() {
   const [search, setSearch] = useState('');
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const blogPosts = [
-    {
-      id: '1',
-      title: 'How to Evaluate Government Officials Effectively',
-      url: 'https://example.com/blog/evaluate-officials',
-      published_at: '2024-12-15T10:00:00Z',
-      content_hash: 'blog123',
-      summary: 'A comprehensive guide for citizens on how to effectively evaluate and rate government officials.',
-      sentiment_score: 0.9,
-      topic: 'guide',
-      categories: ['civic engagement', 'guide'],
-      is_politics: false,
-      matched_profiles: [],
-      image_url: 'https://example.com/blog/evaluate-officials.jpg',
-      site_name: 'evote.ng Blog',
-      author: 'Civic Engagement Team',
-      content_text: 'Evaluating government officials is a crucial part of civic engagement. This guide provides practical tips for citizens on how to assess official performance, from tracking service delivery to analyzing policy outcomes.',
-      content_html: '<p>Evaluating government officials is a crucial part of civic engagement. This guide provides practical tips for citizens on how to assess official performance, from tracking service delivery to analyzing policy outcomes.</p>',
-      content_extracted_at: '2024-12-15T10:05:00Z',
-      moderation_status: 'approved',
-    },
-    {
-      id: '2',
-      title: 'Understanding the Nigerian Political System',
-      url: 'https://example.com/blog/nigerian-politics',
-      published_at: '2024-12-10T14:30:00Z',
-      content_hash: 'blog456',
-      summary: 'An overview of Nigeria\'s political structure and how different branches of government interact.',
-      sentiment_score: 0.8,
-      topic: 'education',
-      categories: ['education', 'politics'],
-      is_politics: false,
-      matched_profiles: [],
-      image_url: 'https://example.com/blog/nigerian-politics.jpg',
-      site_name: 'evote.ng Blog',
-      author: 'Political Analyst',
-      content_text: 'Nigeria\'s political system is complex but understanding it is essential for effective civic engagement. This article breaks down the federal structure and explains how different branches of government interact.',
-      content_html: '<p>Nigeria\'s political system is complex but understanding it is essential for effective civic engagement. This article breaks down the federal structure and explains how different branches of government interact.</p>',
-      content_extracted_at: '2024-12-10T14:35:00Z',
-      moderation_status: 'approved',
-    },
-  ];
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      fetch(`/api/blog?${params}`)
+        .then(res => res.json())
+        .then(data => setPosts(data.posts || []))
+        .catch(() => setPosts([]))
+        .finally(() => setLoading(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const filtered = blogPosts.filter(post =>
-    post.title.toLowerCase().includes(search.toLowerCase()) ||
-    post.summary.toLowerCase().includes(search.toLowerCase()) ||
-    post.categories.some(cat => cat.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-800">
+    <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-4">Blog</h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+        <div className="mb-10">
+          <h1 className="text-4xl font-extrabold font-display text-white mb-3">Blog</h1>
+          <p className="text-[#6b7163] text-lg max-w-2xl">
             Governance explainers and accountability guides for Nigerian citizens.
           </p>
         </div>
@@ -76,76 +55,55 @@ export default function BlogPage() {
               placeholder="Search blog posts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-3 pl-10 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-3 pl-10 border border-[#2c312a] rounded-lg bg-[#1d211b] text-[#f8f7f2] placeholder-[#6b7163] focus:outline-none focus:border-[#00b368] transition-colors text-sm"
             />
-            <svg
-              className="absolute left-3 top-3.5 h-5 w-5 text-zinc-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="absolute left-3.5 top-3.5 h-4 w-4 text-[#6b7163]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {filtered.map((post) => (
-            <article key={post.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-lg transition-shadow">
-              {post.image_url && (
-                <div className="aspect-video overflow-hidden">
-                  <img
-                    src={post.image_url}
-                    alt={post.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00b368]"></div>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-20 bg-[#1d211b] border border-[#2c312a] rounded-xl">
+            <p className="text-[#6b7163] text-lg font-medium">No blog posts found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {posts.map((post) => (
+              <article key={post.id} className="bg-[#1d211b] border border-[#2c312a] hover:border-zinc-700 rounded-xl overflow-hidden transition-all flex flex-col">
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-3 text-xs text-[#6b7163] font-bold uppercase tracking-wider">
+                      <span>{formatDate(post.published_at || post.created_at)}</span>
+                      {post.category && (
+                        <span className="px-2 py-0.5 bg-[#008751]/10 text-[#00b368] rounded-full text-[10px]">{post.category}</span>
+                      )}
+                    </div>
 
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-sm text-zinc-500 dark:text-zinc-500">
-                    {formatDate(post.published_at)}
-                  </span>
-                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-xs font-medium">
-                    Blog
-                  </span>
-                </div>
+                    <h2 className="text-xl font-bold text-white font-display mb-3 leading-snug">
+                      <Link href={`/blog/${post.slug}`} className="hover:text-[#00b368] transition-colors">
+                        {post.title}
+                      </Link>
+                    </h2>
 
-                <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
-                  <a href={post.url} className="hover:text-green-600 transition-colors">
-                    {post.title}
-                  </a>
-                </h2>
-
-                <p className="text-zinc-600 dark:text-zinc-400 mb-4 line-clamp-3">
-                  {post.summary}
-                </p>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-wrap gap-2">
-                    {post.categories.map((category, index) => (
-                      <span key={index} className="text-xs text-zinc-500 dark:text-zinc-500">
-                        {category}
-                      </span>
-                    ))}
+                    {post.summary && (
+                      <p className="text-sm text-zinc-400 leading-relaxed mb-4 line-clamp-3">{post.summary}</p>
+                    )}
                   </div>
 
-                  <a
-                    href={post.url}
-                    className="text-green-600 dark:text-green-400 font-medium hover:underline"
-                  >
-                    Read more →
-                  </a>
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-xs text-[#6b7163] font-semibold">{post.author || ''}</span>
+                    <Link href={`/blog/${post.slug}`} className="text-sm font-bold text-[#00b368] hover:underline">
+                      Read more →
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-zinc-600 dark:text-zinc-400 text-lg">No blog posts found matching your search.</p>
+              </article>
+            ))}
           </div>
         )}
       </div>
