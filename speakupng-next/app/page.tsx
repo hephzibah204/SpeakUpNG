@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RatingModal } from '@/components/RatingModal';
 import { ReportModal } from '@/components/ReportModal';
+import { ElectionCountdown } from '@/components/ElectionCountdown';
 
 interface Official {
   id: string;
@@ -144,6 +145,11 @@ export default function Home() {
             </Link>
           </div>
         </div>
+      </section>
+
+      {/* ── ELECTION COUNTDOWN ── */}
+      <section className="px-4 pb-16">
+        <ElectionCountdown />
       </section>
 
       {/* ── STATS BAR ── */}

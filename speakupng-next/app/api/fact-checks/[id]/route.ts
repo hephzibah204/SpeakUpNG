@@ -27,7 +27,7 @@ export async function PUT(request: Request, context: any) {
   try {
     const { status, label, expert_note, reviewed_by } = await request.json();
     await queryRun(
-      `UPDATE fact_checks SET status = ?, label = ?, expert_note = ?, reviewed_by = ?, updated_at = NOW() WHERE id = ?`,
+      `UPDATE fact_checks SET status = ?, label = ?, expert_notes = ?, reviewed_by = ?, updated_at = NOW() WHERE id = ?`,
       [status || 'resolved', label || null, expert_note || null, reviewed_by || null, params.id]
     );
     return NextResponse.json({ ok: true });

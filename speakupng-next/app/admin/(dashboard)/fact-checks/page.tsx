@@ -12,7 +12,7 @@ interface Claim {
   status: string;
   label?: string;
   ai_assessment?: string;
-  expert_note?: string;
+  expert_notes?: string;
   credible_votes: number;
   not_credible_votes: number;
   created_at: string;
@@ -45,7 +45,7 @@ export default function AdminFactChecksPage() {
   const openReview = (c: Claim) => {
     setEditingId(c.id);
     setLabelDraft(c.label || 'unverified');
-    setNoteDraft(c.expert_note || '');
+    setNoteDraft(c.expert_notes || '');
   };
 
   const submitReview = async (id: string) => {
