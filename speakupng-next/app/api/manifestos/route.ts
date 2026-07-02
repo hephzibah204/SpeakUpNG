@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const manifestos = await queryAll(
       `SELECT m.*, 
               COALESCE(p.full_name, o.full_name) as politician_name, 
-              COALESCE(p.party, 'APC') as party 
+              p.party as party
        FROM official_manifestos m
        LEFT JOIN politicians p ON m.politician_id = p.id
        LEFT JOIN officials o ON m.official_id = o.id
@@ -18,6 +18,18 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('Manifestos API Error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+    await execute('DELETE FROM official_manifestos WHERE id = ?', [id]);
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 

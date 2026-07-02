@@ -34,6 +34,7 @@ const NAV_LINKS = [
   { href: '/polls', label: 'Polls' },
   { href: '/news', label: 'News' },
   { href: '/blog', label: 'Blog' },
+  { href: '/media', label: 'Media & Data' },
 ];
 
 export function Navbar() {

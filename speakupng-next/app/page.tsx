@@ -360,7 +360,15 @@ export default function Home() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex flex-wrap justify-center gap-2 mt-8">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+            {(() => {
+              const maxVisible = 10;
+              let start = Math.max(1, page - Math.floor(maxVisible / 2));
+              let end = Math.min(totalPages, start + maxVisible - 1);
+              if (end - start + 1 < maxVisible) {
+                start = Math.max(1, end - maxVisible + 1);
+              }
+              return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+            })().map(p => (
               <button key={p} onClick={() => { setPage(p); document.getElementById('officials-section')?.scrollIntoView({ behavior: 'smooth' }); }}
                 className={`w-9 h-9 rounded-lg text-sm font-bold border transition-colors ${
                   page === p

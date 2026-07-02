@@ -19,6 +19,7 @@ const MENU_ITEMS = [
   { href: '/admin/fact-checks', label: 'Fact Checks', icon: '🔍' },
   { href: '/admin/incidents', label: 'Election Incidents', icon: '🗳️' },
   { href: '/admin/political-events', label: 'Defections & Coalitions', icon: '🔀' },
+  { href: '/admin/manifestos', label: 'Manifestos', icon: '📜' },
   { href: '/admin/ai-manager', label: 'AI Manager', icon: '🤖' },
 ];
 
