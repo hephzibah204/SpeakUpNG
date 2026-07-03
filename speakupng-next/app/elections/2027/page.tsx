@@ -21,6 +21,13 @@ interface GovVoteTotal {
   vote_count: string | number;
 }
 
+interface Candidate {
+  id?: string;
+  candidate_name: string;
+  party: string;
+  state?: string;
+}
+
 export default function Race2027Page() {
   const [activeTab, setActiveTab] = useState<'presidential' | 'governorship'>('presidential');
   
@@ -30,13 +37,30 @@ export default function Race2027Page() {
   const [votingFor, setVotingFor] = useState<{ name: string; party: string } | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string>('South West');
   const [hasVotedPres, setHasVotedPres] = useState(false);
+  const [presidentialList, setPresidentialList] = useState<Candidate[]>([]);
 
   // Governorship State
   const [govTotals, setGovTotals] = useState<GovVoteTotal[]>([]);
   const [selectedState, setSelectedState] = useState<string>('Lagos');
   const [hasVotedGov, setHasVotedGov] = useState<Record<string, boolean>>({});
+  const [governorshipList, setGovernorshipList] = useState<Candidate[]>([]);
 
   const [loading, setLoading] = useState(true);
+
+  // Fetch candidates from the database
+  const fetchCandidates = async () => {
+    try {
+      const presRes = await fetch('/api/election-candidates?year=2027&type=presidential');
+      const presData = await presRes.json();
+      setPresidentialList(presData.candidates || []);
+
+      const govRes = await fetch('/api/election-candidates?year=2027&type=governorship');
+      const govData = await govRes.json();
+      setGovernorshipList(govData.candidates || []);
+    } catch (err) {
+      console.error('Failed to load candidates:', err);
+    }
+  };
 
   const fetchVotes = () => {
     setLoading(true);
@@ -59,6 +83,10 @@ export default function Race2027Page() {
         .finally(() => setLoading(false));
     }
   };
+
+  useEffect(() => {
+    fetchCandidates();
+  }, []);
 
   useEffect(() => {
     fetchVotes();
@@ -114,53 +142,27 @@ export default function Race2027Page() {
     }
   };
 
-  const presidentialList = [
-    { name: 'Bola Ahmed Tinubu', party: 'APC', description: 'Incumbent President seeking re-election under the ruling All Progressives Congress (APC).', color: 'border-[#00b368]' },
-    { name: 'Peter Obi & Rabiu Kwankwaso', party: 'NDC', description: 'Unified opposition ticket under the New Democratic Coalition (NDC), featuring Peter Obi as Presidential Flagbearer and Rabiu Kwankwaso as VP.', color: 'border-[#e8a020]' },
-    { name: 'Atiku Abubakar', party: 'PDP', description: 'Former Vice President representing the Peoples Democratic Party (PDP).', color: 'border-[#e57368]' }
-  ];
+  // UI Helpers
+  const getPartyColor = (party: string) => {
+    const p = party?.toUpperCase();
+    if (p === 'APC') return 'border-[#00b368]';
+    if (p === 'PDP') return 'border-[#e57368]';
+    if (p === 'LP') return 'border-[#e8a020]';
+    if (p === 'NDC') return 'border-[#e8a020]';
+    if (p === 'NNPP') return 'border-[#8e44ad]';
+    if (p === 'ADC') return 'border-[#f39c12]';
+    return 'border-zinc-500';
+  };
 
-  const governorshipList = [
-    { name: "Mbah Peter Ndubuisi", party: "APC", state: "Enugu", description: "Contesting under the All Progressives Congress in Enugu State." },
-    { name: "Sani Uba", party: "APC", state: "Kaduna", description: "Contesting under the All Progressives Congress in Kaduna State." },
-    { name: "Aliyu Ahmed", party: "APC", state: "Sokoto", description: "Contesting under the All Progressives Congress in Sokoto State." },
-    { name: "Aliyu Wadada Ahmed", party: "APC", state: "Nasarawa", description: "Contesting under the All Progressives Congress in Nasarawa State." },
-    { name: "Chinda Kingsley Ogundu", party: "APC", state: "Rivers", description: "Contesting under the All Progressives Congress in Rivers State." },
-    { name: "Jamilu Isyaku Gwamna", party: "APC", state: "Gombe", description: "Contesting under the All Progressives Congress in Gombe State." },
-    { name: "Yusuf Abba Kabir", party: "APC", state: "Kano", description: "Contesting under the All Progressives Congress in Kano State." },
-    { name: "Umaru Dikko Radda", party: "APC", state: "Katsina", description: "Contesting under the All Progressives Congress in Katsina State." },
-    { name: "Idris Nasir", party: "APC", state: "Kebbi", description: "Contesting under the All Progressives Congress in Kebbi State." },
-    { name: "Namadi Umar Alhaji", party: "APC", state: "Jigawa", description: "Contesting under the All Progressives Congress in Jigawa State." },
-    { name: "Lawal Dauda", party: "APC", state: "Zamfara", description: "Contesting under the All Progressives Congress in Zamfara State." },
-    { name: "Mustapha Gubio", party: "APC", state: "Borno", description: "Contesting under the All Progressives Congress in Borno State." },
-    { name: "Baba Wali", party: "APC", state: "Yobe", description: "Contesting under the All Progressives Congress in Yobe State." },
-    { name: "Mohammed Abdullahi Abubakar", party: "APC", state: "Bauchi", description: "Contesting under the All Progressives Congress in Bauchi State." },
-    { name: "Ahmed Galadima", party: "APC", state: "Adamawa", description: "Contesting under the All Progressives Congress in Adamawa State." },
-    { name: "Kefas Agbu", party: "APC", state: "Taraba", description: "Contesting under the All Progressives Congress in Taraba State." },
-    { name: "Salihu Danladi", party: "APC", state: "Kwara", description: "Contesting under the All Progressives Congress in Kwara State." },
-    { name: "Mohammed Umaru Bago", party: "APC", state: "Niger", description: "Contesting under the All Progressives Congress in Niger State." },
-    { name: "Alia Hyacinth Iormem", party: "APC", state: "Benue", description: "Contesting under the All Progressives Congress in Benue State." },
-    { name: "Mutfwang Caleb Manasseh", party: "APC", state: "Plateau", description: "Contesting under the All Progressives Congress in Plateau State." },
-    { name: "Obafemi Hamzat", party: "APC", state: "Lagos", description: "Contesting under the All Progressives Congress in Lagos State." },
-    { name: "Adeola Solomon Olamilekan", party: "APC", state: "Ogun", description: "Contesting under the All Progressives Congress in Ogun State." },
-    { name: "Alli Sharafadeen Abiodun", party: "APC", state: "Oyo", description: "Contesting under the All Progressives Congress in Oyo State." },
-    { name: "Eno Umo Bassey", party: "APC", state: "Akwa Ibom", description: "Contesting under the All Progressives Congress in Akwa Ibom State." },
-    { name: "Oborevwori Sheriff Francis Orohwedor", party: "APC", state: "Delta", description: "Contesting under the All Progressives Congress in Delta State." },
-    { name: "Otu Bassey Edet", party: "APC", state: "Cross River", description: "Contesting under the All Progressives Congress in Cross River State." },
-    { name: "Eric Opah", party: "APC", state: "Abia", description: "Contesting under the All Progressives Congress in Abia State." },
-    { name: "Nwifuru Francis Ogbonna", party: "APC", state: "Ebonyi", description: "Contesting under the All Progressives Congress in Ebonyi State." },
-    { name: "Oladipupo Adebutu", party: "PDP", state: "Ogun", description: "Contesting under the Peoples Democratic Party in Ogun State." },
-    { name: "Garba Yakubu Lado", party: "PDP", state: "Katsina", description: "Contesting under the Peoples Democratic Party in Katsina State." },
-    { name: "Lamido Mustapha Sule", party: "PDP", state: "Jigawa", description: "Contesting under the Peoples Democratic Party in Jigawa State." },
-    { name: "Maurice Vunobolki", party: "PDP", state: "Adamawa", description: "Contesting under the Peoples Democratic Party in Adamawa State." },
-    { name: "Adedeji Doherty", party: "PDP", state: "Lagos", description: "Contesting under the Peoples Democratic Party in Lagos State." },
-    { name: "Michael Aondoakaa", party: "PDP", state: "Benue", description: "Contesting under the Peoples Democratic Party in Benue State." },
-    { name: "Hazeem Gbolarumi", party: "PDP", state: "Oyo", description: "Contesting under the Peoples Democratic Party in Oyo State." },
-    { name: "Ogboru Great Ovedje", party: "ADC", state: "Delta", description: "Contesting under the African Democratic Congress in Delta State." },
-    { name: "Taofeek Adegoke", party: "ADC", state: "Oyo", description: "Contesting under the African Democratic Congress in Oyo State." }
-  ];
+  const getCandidateDescription = (cand: Candidate, isGov: boolean) => {
+    if (isGov) {
+      return `Contesting under the ${cand.party} in ${cand.state} State.`;
+    }
+    return `Presidential candidate representing the ${cand.party} in the 2027 General Elections.`;
+  };
 
-  const statesWithRaces = Array.from(new Set(governorshipList.map(c => c.state))).sort();
+  // Derived state calculations
+  const statesWithRaces = Array.from(new Set(governorshipList.map(c => c.state || ''))).filter(Boolean).sort();
 
   const totalVoteCount = activeTab === 'presidential' 
     ? totals.reduce((acc, t) => acc + Number(t.vote_count), 0)
@@ -228,43 +230,50 @@ export default function Race2027Page() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-8 space-y-6">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#6b7163]">Select and Cast Your Vote</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {presidentialList.map((cand) => {
-                  const totalMatch = totals.find((t) => t.candidate_name === cand.name);
-                  const count = totalMatch ? Number(totalMatch.vote_count) : 0;
-                  const percentage = totalVoteCount > 0 ? ((count / totalVoteCount) * 100).toFixed(1) : '0';
+              
+              {presidentialList.length === 0 ? (
+                <div className="bg-[#1d211b] border border-[#2c312a] rounded-xl p-6 text-center text-zinc-500">
+                  No presidential candidates found in database.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {presidentialList.map((cand) => {
+                    const totalMatch = totals.find((t) => t.candidate_name === cand.candidate_name);
+                    const count = totalMatch ? Number(totalMatch.vote_count) : 0;
+                    const percentage = totalVoteCount > 0 ? ((count / totalVoteCount) * 100).toFixed(1) : '0';
 
-                  return (
-                    <div
-                      key={cand.name}
-                      className={`bg-[#1d211b] border border-[#2c312a] rounded-2xl p-5 shadow-2xl flex flex-col justify-between hover:border-zinc-700 transition-all ${cand.color}`}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-extrabold text-base text-white">{cand.name}</h4>
-                            <span className="text-[10px] text-zinc-500 font-extrabold uppercase mt-0.5 inline-block">{cand.party}</span>
-                          </div>
-                          <span className="px-2.5 py-1 bg-zinc-900 border border-[#2c312a] text-zinc-300 font-black text-xs rounded-lg">
-                            {percentage}%
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-400 leading-relaxed">
-                          {cand.description}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => setVotingFor(cand)}
-                        disabled={hasVotedPres}
-                        className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] disabled:bg-zinc-800 disabled:text-zinc-550 text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider"
+                    return (
+                      <div
+                        key={cand.id || cand.candidate_name}
+                        className={`bg-[#1d211b] border border-[#2c312a] rounded-2xl p-5 shadow-2xl flex flex-col justify-between hover:border-zinc-700 transition-all ${getPartyColor(cand.party)}`}
                       >
-                        {hasVotedPres ? 'Vote Cast' : 'Vote Candidate'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-extrabold text-base text-white">{cand.candidate_name}</h4>
+                              <span className="text-[10px] text-zinc-500 font-extrabold uppercase mt-0.5 inline-block">{cand.party}</span>
+                            </div>
+                            <span className="px-2.5 py-1 bg-zinc-900 border border-[#2c312a] text-zinc-300 font-black text-xs rounded-lg">
+                              {percentage}%
+                            </span>
+                          </div>
+                          <p className="text-xs text-zinc-400 leading-relaxed">
+                            {getCandidateDescription(cand, false)}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => setVotingFor({ name: cand.candidate_name, party: cand.party })}
+                          disabled={hasVotedPres}
+                          className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] disabled:bg-zinc-800 disabled:text-zinc-550 text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider"
+                        >
+                          {hasVotedPres ? 'Vote Cast' : 'Vote Candidate'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="lg:col-span-4 bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 shadow-2xl space-y-6">
@@ -307,31 +316,35 @@ export default function Race2027Page() {
             {/* Sidebar State Selector */}
             <div className="lg:col-span-4 bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 shadow-2xl space-y-4 max-h-[600px] overflow-y-auto">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#6b7163]">Select State Race</h3>
-              <div className="flex flex-col gap-2">
-                {statesWithRaces.map((st) => {
-                  const isActive = st === selectedState;
-                  const votesMatch = govTotals
-                    .filter(t => t.state === st)
-                    .reduce((acc, t) => acc + Number(t.vote_count), 0);
+              {statesWithRaces.length === 0 ? (
+                <div className="text-zinc-500 text-sm">No governorship races found.</div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {statesWithRaces.map((st) => {
+                    const isActive = st === selectedState;
+                    const votesMatch = govTotals
+                      .filter(t => t.state === st)
+                      .reduce((acc, t) => acc + Number(t.vote_count), 0);
 
-                  return (
-                    <button
-                      key={st}
-                      onClick={() => setSelectedState(st)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center ${
-                        isActive 
-                          ? 'bg-[#008751]/10 border-[#00b368] text-white' 
-                          : 'bg-[#141714] border-[#2c312a] text-zinc-400 hover:border-zinc-700'
-                      }`}
-                    >
-                      <span className="font-bold text-xs">{st} State</span>
-                      <span className="text-[10px] bg-zinc-900 border border-[#2c312a] px-2 py-0.5 rounded text-zinc-300 font-extrabold">
-                        {votesMatch} votes
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    return (
+                      <button
+                        key={st}
+                        onClick={() => setSelectedState(st)}
+                        className={`w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center ${
+                          isActive 
+                            ? 'bg-[#008751]/10 border-[#00b368] text-white' 
+                            : 'bg-[#141714] border-[#2c312a] text-zinc-400 hover:border-zinc-700'
+                        }`}
+                      >
+                        <span className="font-bold text-xs">{st} State</span>
+                        <span className="text-[10px] bg-zinc-900 border border-[#2c312a] px-2 py-0.5 rounded text-zinc-300 font-extrabold">
+                          {votesMatch} votes
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* State Head-to-Head Comparison */}
@@ -341,52 +354,52 @@ export default function Race2027Page() {
                 <span className="text-[10px] uppercase font-bold text-[#00b368]">Live Matchup</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {activeGovCandidates.map((cand) => {
-                  const totalMatch = govTotals.find((t) => t.candidate_name === cand.name && t.state === cand.state);
-                  const count = totalMatch ? Number(totalMatch.vote_count) : 0;
-                  const percentage = stateTotalVotes > 0 ? ((count / stateTotalVotes) * 100).toFixed(1) : '0';
+              {activeGovCandidates.length === 0 ? (
+                <div className="bg-[#1d211b] border border-[#2c312a] rounded-xl p-6 text-center text-zinc-500">
+                  Select a state to view contestants.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {activeGovCandidates.map((cand) => {
+                    const totalMatch = govTotals.find((t) => t.candidate_name === cand.candidate_name && t.state === cand.state);
+                    const count = totalMatch ? Number(totalMatch.vote_count) : 0;
+                    const percentage = stateTotalVotes > 0 ? ((count / stateTotalVotes) * 100).toFixed(1) : '0';
 
-                  const partyColor = cand.party === 'APC' 
-                    ? 'border-[#00b368]' 
-                    : cand.party === 'PDP' 
-                      ? 'border-[#e57368]' 
-                      : 'border-[#e8a020]';
-
-                  return (
-                    <div
-                      key={cand.name}
-                      className={`bg-[#1d211b] border border-[#2c312a] rounded-2xl p-5 shadow-2xl flex flex-col justify-between hover:border-zinc-700 transition-all ${partyColor}`}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-extrabold text-base text-white">{cand.name}</h4>
-                            <span className="text-[10px] text-zinc-550 font-extrabold uppercase mt-0.5 inline-block">{cand.party}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="px-2.5 py-1 bg-zinc-900 border border-[#2c312a] text-zinc-300 font-black text-xs rounded-lg inline-block">
-                              {percentage}%
-                            </span>
-                            <span className="block text-[9px] text-zinc-500 mt-1 font-bold">{count} votes</span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-zinc-400 leading-relaxed">
-                          {cand.description}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => handleGovVoteSubmit(cand)}
-                        disabled={hasVotedGov[selectedState]}
-                        className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] disabled:bg-zinc-800 disabled:text-zinc-550 text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider"
+                    return (
+                      <div
+                        key={cand.id || cand.candidate_name}
+                        className={`bg-[#1d211b] border border-[#2c312a] rounded-2xl p-5 shadow-2xl flex flex-col justify-between hover:border-zinc-700 transition-all ${getPartyColor(cand.party)}`}
                       >
-                        {hasVotedGov[selectedState] ? 'Vote Cast' : 'Vote Candidate'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-extrabold text-base text-white">{cand.candidate_name}</h4>
+                              <span className="text-[10px] text-zinc-550 font-extrabold uppercase mt-0.5 inline-block">{cand.party}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="px-2.5 py-1 bg-zinc-900 border border-[#2c312a] text-zinc-300 font-black text-xs rounded-lg inline-block">
+                                {percentage}%
+                              </span>
+                              <span className="block text-[9px] text-zinc-500 mt-1 font-bold">{count} votes</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-zinc-400 leading-relaxed">
+                            {getCandidateDescription(cand, true)}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => handleGovVoteSubmit({ name: cand.candidate_name, party: cand.party, state: cand.state! })}
+                          disabled={hasVotedGov[selectedState]}
+                          className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] disabled:bg-zinc-800 disabled:text-zinc-550 text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider"
+                        >
+                          {hasVotedGov[selectedState] ? 'Vote Cast' : 'Vote Candidate'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
           </div>

@@ -17,6 +17,18 @@ export default function PredictionsPage() {
   const [securityIndex, setSecurityIndex] = useState(50); // 0-100
   const [oppositionConsolidation, setOppositionConsolidation] = useState(50); // 0-100
   const [voterTurnout, setVoterTurnout] = useState(45); // 0-100 %
+  const [baselines, setBaselines] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/predictions')
+      .then(res => res.json())
+      .then(data => {
+        if (data.baselines) {
+          setBaselines(data.baselines);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Presets
   const applyPreset = (eco: number, sec: number, opp: number, turn: number) => {
@@ -36,13 +48,13 @@ export default function PredictionsPage() {
     // North East baseline: APC: 45%, NDC: 20%, PDP: 35%
     // North Central baseline: APC: 40%, NDC: 35%, PDP: 25%
 
-    const zones = [
-      { name: 'South West', apc: 55, ndc: 35, pdp: 10 },
-      { name: 'South East', apc: 10, ndc: 80, pdp: 10 },
-      { name: 'South South', apc: 20, ndc: 55, pdp: 25 },
-      { name: 'North West', apc: 50, ndc: 35, pdp: 15 },
-      { name: 'North East', apc: 45, ndc: 20, pdp: 35 },
-      { name: 'North Central', apc: 40, ndc: 35, pdp: 25 }
+    const zones = baselines.length > 0 ? baselines : [
+      { name: 'South West', apc: 55, ndc: 35, pdp: 10, weight: 0.19 },
+      { name: 'South East', apc: 10, ndc: 80, pdp: 10, weight: 0.14 },
+      { name: 'South South', apc: 20, ndc: 55, pdp: 25, weight: 0.15 },
+      { name: 'North West', apc: 50, ndc: 35, pdp: 15, weight: 0.24 },
+      { name: 'North East', apc: 45, ndc: 20, pdp: 35, weight: 0.14 },
+      { name: 'North Central', apc: 40, ndc: 35, pdp: 25, weight: 0.14 }
     ];
 
     // Multipliers
@@ -84,15 +96,12 @@ export default function PredictionsPage() {
       };
     });
 
-    // Compute national totals based on electoral weights (voter population weights)
-    // NW: 24%, SW: 19%, SS: 15%, NC: 14%, NE: 14%, SE: 14%
-    const weights = { 'North West': 0.24, 'South West': 0.19, 'South South': 0.15, 'North Central': 0.14, 'North East': 0.14, 'South East': 0.14 };
     let nationalApc = 0;
     let nationalNdc = 0;
     let nationalPdp = 0;
 
-    projectedZones.forEach(z => {
-      const w = weights[z.zone as keyof typeof weights] || 0.16;
+    projectedZones.forEach((z, i) => {
+      const w = zones.find(b => b.name === z.zone)?.weight || 0.16;
       nationalApc += z.apc * w;
       nationalNdc += z.ndc * w;
       nationalPdp += z.pdp * w;
