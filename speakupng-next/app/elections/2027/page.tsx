@@ -108,7 +108,7 @@ export default function Race2027Page() {
       if (res.ok) {
         setHasVotedPres(true);
         setVotingFor(null);
-        alert('Mock presidential vote cast successfully! Thank you for participating.');
+        alert('Presidential vote cast successfully! Thank you for participating.');
         fetchVotes();
       } else {
         alert('Failed to cast vote.');
@@ -132,7 +132,7 @@ export default function Race2027Page() {
 
       if (res.ok) {
         setHasVotedGov(prev => ({ ...prev, [cand.state]: true }));
-        alert(`Mock vote for ${cand.name} in ${cand.state} State cast successfully!`);
+        alert(`Vote for ${cand.name} in ${cand.state} State cast successfully!`);
         fetchVotes();
       } else {
         alert('Failed to cast vote.');
@@ -191,11 +191,11 @@ export default function Race2027Page() {
             <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#00b368]">Preview Elections</span>
             <h1 className="text-4xl font-extrabold font-display text-white mb-3 mt-1">2027 General Elections</h1>
             <p className="text-lg text-[#6b7163]">
-              Cast a mock vote for your preferred candidate to preview regional voting trends. (Not an official ballot).
+              Cast a vote for your preferred candidate to preview regional voting trends. (Not an official ballot).
             </p>
           </div>
           <div className="bg-[#1d211b] border border-[#2c312a] px-6 py-4 rounded-xl text-center shadow-xl">
-            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-550 block">Total Mock Votes</span>
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-550 block">Total Votes</span>
             <span className="text-3xl font-black text-white">{totalVoteCount}</span>
           </div>
         </div>
