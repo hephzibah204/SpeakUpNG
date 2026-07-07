@@ -31,12 +31,13 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-3">Content</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-3">Content & Legal</h4>
             <div className="space-y-2">
               {[
                 { href: '/news', label: 'News' },
-                { href: '/news?tab=editorial', label: 'Editorial' },
                 { href: '/blog', label: 'Blog' },
+                { href: '/privacy', label: 'Privacy Policy' },
+                { href: '/terms', label: 'Terms of Service' },
               ].map(({ href, label }) => (
                 <a key={href} href={href}
                   className="block text-sm text-[#6b7163] hover:text-[#00b368] transition-colors">
