@@ -52,6 +52,7 @@ const MENU: NavCategory[] = [
       { href: '/heatmap', label: 'Heat Map', desc: 'Geographic sentiment' },
       { href: '/states', label: 'States', desc: 'State-level metrics' },
       { href: '/governance', label: 'Petitions', desc: 'Civic action & requests' },
+      { href: '/ask', label: 'Ask AI', desc: 'Ask civic questions' },
       { href: '/incidents', label: 'Incidents', desc: 'Reported civic issues' },
     ]
   },
