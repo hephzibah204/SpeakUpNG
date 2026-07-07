@@ -38,14 +38,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="robots" content="index,follow,max-image-preview:large" />
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7561066830588126" crossOrigin="anonymous"></script>
       </head>
       <body className="min-h-screen flex flex-col">
-        <Script 
-          async 
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7561066830588126" 
-          crossOrigin="anonymous" 
-          strategy="afterInteractive"
-        />
         <Navbar />
         <div id="toast" className="toast" />
         <main className="flex-1">
