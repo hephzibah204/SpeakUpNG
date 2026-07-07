@@ -12,6 +12,7 @@ const MENU: NavCategory[] = [
     title: 'Directory',
     items: [
       { href: '/', label: 'Officials', desc: 'Elected leaders in office' },
+      { href: '/who-rep', label: 'Who Rep', desc: 'Find your representatives' },
       { href: '/politicians', label: 'Politicians', desc: 'Profiles of all politicians' },
       { href: '/candidates', label: 'Candidates', desc: 'Election contenders' },
       { href: '/agencies', label: 'Agencies', desc: 'Government institutions' },
