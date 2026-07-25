@@ -61,6 +61,7 @@ const MENU: NavCategory[] = [
     items: [
       { href: '/news', label: 'News', desc: 'Latest governance updates' },
       { href: '/blog', label: 'Blog', desc: 'In-depth civic articles' },
+      { href: '/admin/blog', label: 'Blog Admin', desc: 'Admin posts & SEO editor' },
       { href: '/media', label: 'Media & Data', desc: 'Open data downloads' },
       { href: '/learn', label: 'Learn', desc: 'Civic education hub' },
     ]
