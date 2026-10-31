@@ -52,7 +52,7 @@ export default function BlogDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: 'Untitled Post',
+          title: 'Untitled post',
           slug: `untitled-post-${Math.random().toString(36).substring(2, 7)}`,
           status: 'draft'
         })
@@ -110,104 +110,104 @@ export default function BlogDashboard() {
   });
 
   const getSeoBadgeClass = (score: number) => {
-    if (score >= 80) return 'text-[#00b368] bg-[#008751]/10 border-[#008751]/20';
-    if (score >= 50) return 'text-[#e8a020] bg-[#e8a020]/10 border-[#e8a020]/20';
-    return 'text-[#e57368] bg-[#e57368]/10 border-[#e57368]/20';
+    if (score >= 80) return 'text-accent-light bg-paper-3 border-rule';
+    if (score >= 50) return 'text-gold bg-paper-3 border-rule';
+    return 'text-error bg-paper-3 border-rule';
   };
 
   return (
-    <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
+    <div className="min-h-screen bg-paper text-ink font-body pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#2c312a] pb-6 mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-rule pb-6 mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold font-display text-white">Posts Dashboard</h1>
-            <p className="text-sm text-[#6b7163] mt-1">Manage platform blog posts, SEO configurations, and publications.</p>
+            <h1 className="text-3xl font-extrabold font-display text-ink">Posts directory</h1>
+            <p className="text-sm text-muted mt-1">Manage platform blog posts, SEO configurations, and publications.</p>
           </div>
           <button
             onClick={handleAddNew}
-            className="bg-[#008751] hover:bg-[#00b368] text-white font-bold px-5 py-2.5 rounded-xl transition-all text-xs uppercase tracking-wider"
+            className="bg-accent hover:bg-accent-light text-accent-ink font-bold px-5 py-2.5 rounded-xl transition-colors text-xs focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
           >
-            Add New Post
+            Add new post
           </button>
         </div>
 
         {/* Dashboard Tabs */}
-        <div className="flex border-b border-[#2c312a] pb-3 mb-6 gap-6 text-xs font-bold uppercase tracking-wider">
+        <div className="flex border-b border-rule pb-3 mb-6 gap-6 text-xs font-semibold">
           {(['all', 'published', 'draft', 'pending_review'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`pb-3 border-b-2 transition-all ${
-                tab === t ? 'border-[#00b368] text-white' : 'border-transparent text-[#6b7163] hover:text-zinc-300'
+              className={`pb-3 border-b-2 transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50 ${
+                tab === t ? 'border-accent-light text-ink' : 'border-transparent text-muted hover:text-ink'
               }`}
             >
-              {t.replace('_', ' ')}
+              {t === 'all' ? 'All posts' : t === 'pending_review' ? 'Pending review' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
 
         {/* Posts Table */}
         {loading ? (
-          <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#00b368]"></div>
+          <div className="text-center py-20 text-muted">
+            <div className="inline-block motion-safe:animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
           </div>
         ) : (
-          <div className="bg-[#1d211b] border border-[#2c312a] rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-paper-2 border border-rule rounded-2xl overflow-hidden shadow-card">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-[#2c312a] bg-[#141714] text-[10px] uppercase tracking-wider font-extrabold text-[#6b7163]">
+                  <tr className="border-b border-rule bg-paper text-xs font-semibold text-muted">
                     <th className="px-6 py-4">Title</th>
                     <th className="px-6 py-4">Author</th>
-                    <th className="px-6 py-4 text-center">SEO Score</th>
+                    <th className="px-6 py-4 text-center">SEO score</th>
                     <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Last Modified</th>
+                    <th className="px-6 py-4 text-right">Last modified</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#2c312a]/50 text-xs">
+                <tbody className="divide-y divide-rule text-xs">
                   {filteredPosts.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 font-bold">
-                        No posts found. Click "Add New Post" to start.
+                      <td colSpan={5} className="px-6 py-12 text-center text-muted font-medium">
+                        No posts found. Select “Add new post” to write an article.
                       </td>
                     </tr>
                   ) : (
                     filteredPosts.map(p => (
-                      <tr key={p.id} className="hover:bg-[#141714]/30 transition-colors group">
+                      <tr key={p.id} className="hover:bg-paper-3/40 transition-colors group">
                         <td className="px-6 py-4 max-w-md">
-                          <span className="font-bold text-white block truncate">{p.title}</span>
-                          <span className="text-[10px] text-zinc-500 block mt-0.5 truncate">{p.slug}</span>
-                          {/* WordPress hover actions */}
-                          <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold text-[#6b7163]">
-                            <Link href={`/admin/blog/edit/${p.id}`} className="text-[#00b368] hover:underline">Edit</Link>
-                            <button onClick={() => openQuickEdit(p)} className="text-[#e8a020] hover:underline">Quick Edit</button>
-                            <button onClick={() => handleDelete(p.id)} className="text-[#e57368] hover:underline">Trash</button>
-                            <Link href={`/blog/${p.slug}`} target="_blank" className="text-zinc-400 hover:underline">View</Link>
+                          <span className="font-bold text-ink block truncate">{p.title}</span>
+                          <span className="text-xs text-muted block mt-0.5 truncate">{p.slug}</span>
+                          {/* Hover actions */}
+                          <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold text-muted">
+                            <Link href={`/admin/blog/edit/${p.id}`} className="text-accent-light hover:underline focus-visible:outline-2 focus-visible:outline-focus">Edit</Link>
+                            <button onClick={() => openQuickEdit(p)} className="text-gold hover:underline focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50">Quick edit</button>
+                            <button onClick={() => handleDelete(p.id)} className="text-error hover:underline focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50">Delete</button>
+                            <Link href={`/blog/${p.slug}`} target="_blank" className="text-ink-2 hover:underline focus-visible:outline-2 focus-visible:outline-focus">View</Link>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-zinc-300">
+                        <td className="px-6 py-4 text-ink-2">
                           <span className="font-semibold block">{p.author_name || 'Chief Editor'}</span>
-                          <span className="text-[9px] text-zinc-500 uppercase">{p.author_role || 'Admin'}</span>
+                          <span className="text-xs text-muted">{p.author_role || 'Admin'}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`inline-block border px-2.5 py-1 rounded-full text-[10px] font-bold ${getSeoBadgeClass(p.seo_score)}`}>
+                          <span className={`inline-block border px-2.5 py-1 rounded-full text-xs font-bold tabular-nums ${getSeoBadgeClass(p.seo_score)}`}>
                             {p.seo_score} / 100
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-block px-2.5 py-1 rounded-lg text-[9px] uppercase font-bold ${
+                          <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                             p.status === 'published' 
-                              ? 'bg-[#008751]/10 text-[#00b368] border border-[#008751]/20'
+                              ? 'bg-paper-3 text-accent-light border-rule'
                               : p.status === 'pending_review'
-                              ? 'bg-[#e8a020]/10 text-[#e8a020] border border-[#e8a020]/20'
-                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                              ? 'bg-paper-3 text-gold border-rule'
+                              : 'bg-paper text-muted border-rule'
                           }`}>
-                            {p.status.replace('_', ' ')}
+                            {p.status === 'pending_review' ? 'Pending review' : p.status.charAt(0).toUpperCase() + p.status.slice(1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right text-zinc-400 font-mono text-[10px]">
+                        <td className="px-6 py-4 text-right text-muted tabular-nums text-xs">
                           {new Date(p.updated_at).toLocaleDateString()}
                         </td>
                       </tr>
@@ -219,14 +219,18 @@ export default function BlogDashboard() {
           </div>
         )}
 
-        {/* WordPress Quick Edit Dialog */}
+        {/* Quick Edit Dialog */}
         {quickEditPost && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#1d211b] border border-[#2c312a] w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-6">
-              <div className="flex justify-between items-center border-b border-[#2c312a] pb-3">
-                <h3 className="font-extrabold text-white text-sm uppercase tracking-wider">Quick Edit</h3>
-                <button onClick={() => setQuickEditPost(null)} className="text-zinc-500 hover:text-white">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="fixed inset-0 z-50 bg-paper/80 flex items-center justify-center p-4">
+            <div className="bg-paper-2 border border-rule w-full max-w-lg rounded-2xl p-6 shadow-card space-y-6">
+              <div className="flex justify-between items-center border-b border-rule pb-3">
+                <h3 className="font-extrabold text-ink text-sm font-display">Quick edit metadata</h3>
+                <button
+                  onClick={() => setQuickEditPost(null)}
+                  aria-label="Close dialog"
+                  className="text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
+                >
+                  <svg aria-hidden="true" className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -234,51 +238,51 @@ export default function BlogDashboard() {
 
               <form onSubmit={handleQuickSave} className="space-y-4 text-xs">
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-zinc-400">Post Title</label>
+                  <label className="font-semibold text-muted">Post title</label>
                   <input
                     type="text"
                     value={quickTitle}
                     onChange={(e) => setQuickTitle(e.target.value)}
                     required
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#00b368]"
+                    className="bg-paper border border-rule rounded-xl px-4 py-2.5 text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-zinc-400">Slug</label>
+                  <label className="font-semibold text-muted">URL slug</label>
                   <input
                     type="text"
                     value={quickSlug}
                     onChange={(e) => setQuickSlug(e.target.value)}
                     required
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#00b368]"
+                    className="bg-paper border border-rule rounded-xl px-4 py-2.5 text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-zinc-400">Status</label>
+                  <label className="font-semibold text-muted">Publication status</label>
                   <select
                     value={quickStatus}
                     onChange={(e) => setQuickStatus(e.target.value as any)}
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#00b368]"
+                    className="bg-paper border border-rule rounded-xl px-4 py-2.5 text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   >
                     <option value="draft">Draft</option>
-                    <option value="pending_review">Pending Review</option>
+                    <option value="pending_review">Pending review</option>
                     <option value="published">Published</option>
                   </select>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#2c312a] mt-6">
+                <div className="flex justify-end gap-3 pt-4 border-t border-rule mt-6">
                   <button
                     type="button"
                     onClick={() => setQuickEditPost(null)}
-                    className="border border-[#2c312a] text-zinc-400 hover:text-white px-4 py-2 rounded-xl font-bold transition-colors"
+                    className="border border-rule text-muted hover:text-ink px-4 py-2 rounded-xl font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#008751] hover:bg-[#00b368] text-white px-5 py-2 rounded-xl font-bold transition-all"
+                    className="bg-accent hover:bg-accent-light text-accent-ink px-5 py-2 rounded-xl font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
                   >
                     Update
                   </button>

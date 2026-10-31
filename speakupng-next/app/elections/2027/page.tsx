@@ -25,6 +25,8 @@ interface Candidate {
   id?: string;
   candidate_name: string;
   party: string;
+  party_code?: string;
+  running_mate?: string;
   state?: string;
 }
 
@@ -156,9 +158,13 @@ export default function Race2027Page() {
 
   const getCandidateDescription = (cand: Candidate, isGov: boolean) => {
     if (isGov) {
-      return `Contesting under the ${cand.party} in ${cand.state} State.`;
+      return cand.running_mate
+        ? `Contesting under the ${cand.party} with running mate ${cand.running_mate} in ${cand.state} State.`
+        : `Contesting under the ${cand.party} in ${cand.state} State.`;
     }
-    return `Presidential candidate representing the ${cand.party} in the 2027 General Elections.`;
+    return cand.running_mate
+      ? `Presidential candidate for ${cand.party} running with Vice-Presidential candidate ${cand.running_mate}.`
+      : `Presidential candidate representing the ${cand.party} in the 2027 General Elections.`;
   };
 
   // Derived state calculations
@@ -260,6 +266,12 @@ export default function Race2027Page() {
                           <p className="text-xs text-zinc-400 leading-relaxed">
                             {getCandidateDescription(cand, false)}
                           </p>
+                          {cand.running_mate && (
+                            <div className="mt-2 text-[11px] text-[#00b368] bg-[#008751]/10 border border-[#008751]/20 px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 font-medium">
+                              <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold">Running Mate:</span>
+                              <span className="font-semibold">{cand.running_mate}</span>
+                            </div>
+                          )}
                         </div>
 
                         <button
@@ -386,6 +398,12 @@ export default function Race2027Page() {
                           <p className="text-xs text-zinc-400 leading-relaxed">
                             {getCandidateDescription(cand, true)}
                           </p>
+                          {cand.running_mate && (
+                            <div className="mt-2 text-[11px] text-[#00b368] bg-[#008751]/10 border border-[#008751]/20 px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 font-medium">
+                              <span className="text-[9px] uppercase tracking-wider text-zinc-400 font-bold">Deputy:</span>
+                              <span className="font-semibold">{cand.running_mate}</span>
+                            </div>
+                          )}
                         </div>
 
                         <button

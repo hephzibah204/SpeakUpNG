@@ -83,7 +83,7 @@ export default function BlogEditPage() {
     if (kwInTitle) score += 10;
 
     const kwInDesc = seo.metaDescription.toLowerCase().includes(kw);
-    checks.push({ label: 'Focus keyword in Meta Description', passed: kwInDesc });
+    checks.push({ label: 'Focus keyword in meta description', passed: kwInDesc });
     if (kwInDesc) score += 10;
 
     const kwInUrl = seo.slug.toLowerCase().includes(kw.replace(/\s+/g, '-'));
@@ -97,7 +97,7 @@ export default function BlogEditPage() {
 
     // --- 2. Additional (30 Points) ---
     const kwInHeadings = blocks.some(b => b.type === 'heading' && b.content.toLowerCase().includes(kw));
-    checks.push({ label: 'Focus keyword in Subheadings (H2, H3)', passed: kwInHeadings });
+    checks.push({ label: 'Focus keyword in subheadings (H2, H3)', passed: kwInHeadings });
     if (kwInHeadings) score += 10;
 
     const imageAltCheck = blocks.some(b => b.type === 'image' && b.meta?.toLowerCase().includes(kw));
@@ -105,17 +105,17 @@ export default function BlogEditPage() {
     if (imageAltCheck) score += 10;
 
     const internalLinkCheck = textContent.includes('evote.ng') || textContent.includes('href="/');
-    checks.push({ label: 'Contains internal linking', passed: internalLinkCheck });
+    checks.push({ label: 'Contains internal references', passed: internalLinkCheck });
     if (internalLinkCheck) score += 10;
 
     // --- 3. Readability (30 Points) ---
     const longSentences = textContent.split(/[.!?]/).filter(s => s.split(/\s+/).length > 20).length;
     const readabilityPassed = longSentences < 3;
-    checks.push({ label: 'Sentence complexity (short sentences)', passed: readabilityPassed });
+    checks.push({ label: 'Sentence complexity (concise phrasing)', passed: readabilityPassed });
     if (readabilityPassed) score += 15;
 
     const richMedia = blocks.some(b => b.type === 'image');
-    checks.push({ label: 'Rich media (images, embeds) included', passed: richMedia });
+    checks.push({ label: 'Rich media included', passed: richMedia });
     if (richMedia) score += 15;
 
     return { score: Math.min(100, score), checks };
@@ -156,8 +156,8 @@ export default function BlogEditPage() {
     const newBlock: Block = {
       id: `b-${Math.random().toString(36).substring(2, 7)}`,
       type,
-      content: type === 'paragraph' ? 'Add paragraph text...' : type === 'heading' ? 'Heading Text' : '',
-      meta: type === 'heading' ? 'H2' : type === 'image' ? 'Image Alt Description' : ''
+      content: type === 'paragraph' ? 'Write article text here…' : type === 'heading' ? 'Heading text' : '',
+      meta: type === 'heading' ? 'H2' : type === 'image' ? 'Image description' : ''
     };
     setBlocks(prev => [...prev, newBlock]);
   };
@@ -175,7 +175,7 @@ export default function BlogEditPage() {
     setBlocks(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // HTML5 Drag-and-Drop Handlers for Block Reordering
+  // Drag-and-Drop Handlers
   const handleDragStart = (idx: number) => {
     setDraggedBlockIdx(idx);
   };
@@ -184,7 +184,6 @@ export default function BlogEditPage() {
     e.preventDefault();
     if (draggedBlockIdx === null || draggedBlockIdx === idx) return;
 
-    // Swap items in state to reflect reorder instantly
     setBlocks(prev => {
       const copy = [...prev];
       const draggedItem = copy[draggedBlockIdx];
@@ -200,47 +199,50 @@ export default function BlogEditPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
+    <div className="min-h-screen bg-paper text-ink font-body pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col h-[90vh]">
         
         {/* Top Control Bar */}
-        <div className="flex justify-between items-center border-b border-[#2c312a] pb-4 mb-6 flex-shrink-0">
+        <div className="flex justify-between items-center border-b border-rule pb-4 mb-6 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <Link href="/admin/blog" className="text-zinc-500 hover:text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-              ← Back to Posts
+            <Link
+              href="/admin/blog"
+              className="text-muted hover:text-ink text-xs font-semibold flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-focus"
+            >
+              Back to posts
             </Link>
-            <span className="text-zinc-700">|</span>
-            <span className="text-xs text-[#6b7163] font-mono">ID: {id}</span>
+            <span className="text-rule">|</span>
+            <span className="text-xs text-muted">ID: {id}</span>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => handleSave('draft')}
               disabled={saving}
-              className="border border-[#2c312a] hover:bg-[#2c312a] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+              className="border border-rule hover:bg-paper-3 text-ink text-xs font-semibold px-4 py-2 rounded-xl transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
             >
-              Save Draft
+              Save draft
             </button>
             <button
               onClick={() => handleSave('published')}
               disabled={saving}
-              className="bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+              className="bg-accent hover:bg-accent-light text-accent-ink text-xs font-semibold px-4 py-2 rounded-xl transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
             >
-              {saving ? 'Publishing...' : 'Publish'}
+              {saving ? 'Publishing…' : 'Publish'}
             </button>
           </div>
         </div>
 
         {/* Loading Spinner */}
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00b368]"></div>
+          <div className="flex-1 flex items-center justify-center text-muted">
+            <div className="motion-safe:animate-spin rounded-full h-8 w-8 border-2 border-accent border-t-transparent" />
           </div>
         ) : (
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-hidden min-h-0">
             
-            {/* Left Content Canvas (WordPress Block Editor) */}
-            <div className="lg:col-span-8 flex flex-col bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 overflow-y-auto">
+            {/* Left Content Canvas (Block Editor) */}
+            <div className="lg:col-span-8 flex flex-col bg-paper-2 border border-rule rounded-2xl p-6 overflow-y-auto">
               
               {/* Post Title */}
               <input
@@ -248,13 +250,12 @@ export default function BlogEditPage() {
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
-                  // Generate automatic slug
                   if (!seo.slug.startsWith('custom-')) {
                     setSeo(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') }));
                   }
                 }}
-                placeholder="Enter post title here..."
-                className="w-full bg-transparent text-3xl font-black font-display text-white border-b border-[#2c312a]/50 pb-4 mb-8 focus:outline-none focus:border-[#00b368] transition-colors"
+                placeholder="Enter post title here…"
+                className="w-full bg-transparent text-3xl font-extrabold font-display text-ink border-b border-rule pb-4 mb-8 focus-visible:outline-2 focus-visible:outline-focus transition-colors"
               />
 
               {/* Block Canvas Area */}
@@ -266,13 +267,18 @@ export default function BlogEditPage() {
                     onDragStart={() => handleDragStart(idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnd={handleDragEnd}
-                    className={`group relative flex gap-4 p-3 rounded-xl border border-transparent hover:border-[#2c312a] hover:bg-[#141714]/20 transition-all ${
-                      draggedBlockIdx === idx ? 'opacity-40 border-[#00b368]' : ''
+                    className={`group relative flex gap-4 p-3 rounded-xl border transition-colors ${
+                      draggedBlockIdx === idx ? 'opacity-40 border-accent' : 'border-transparent hover:border-rule hover:bg-paper-3/30'
                     }`}
                   >
                     {/* Drag Grab Handle */}
-                    <div className="cursor-grab opacity-0 group-hover:opacity-100 flex items-center text-zinc-600 hover:text-white transition-opacity select-none">
-                      ☰
+                    <div
+                      aria-label="Drag block handle"
+                      className="cursor-grab opacity-0 group-hover:opacity-100 flex items-center text-muted hover:text-ink transition-opacity select-none"
+                    >
+                      <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                      </svg>
                     </div>
 
                     {/* Block inputs */}
@@ -281,7 +287,7 @@ export default function BlogEditPage() {
                         <textarea
                           value={b.content}
                           onChange={(e) => updateBlock(idx, e.target.value)}
-                          className="w-full bg-transparent text-sm text-zinc-300 focus:outline-none resize-none leading-relaxed"
+                          className="w-full bg-transparent text-sm text-ink-2 focus-visible:outline-2 focus-visible:outline-focus resize-none leading-relaxed"
                           rows={3}
                         />
                       )}
@@ -294,8 +300,8 @@ export default function BlogEditPage() {
                                 key={h}
                                 type="button"
                                 onClick={() => updateBlock(idx, b.content, h)}
-                                className={`px-2 py-0.5 rounded text-[9px] font-bold border ${
-                                  b.meta === h ? 'bg-[#008751] border-[#00b368] text-white' : 'border-[#2c312a] text-zinc-500'
+                                className={`px-2 py-0.5 rounded text-xs font-semibold border transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50 ${
+                                  b.meta === h ? 'bg-accent border-accent text-accent-ink' : 'border-rule text-muted'
                                 }`}
                               >
                                 {h}
@@ -306,7 +312,7 @@ export default function BlogEditPage() {
                             type="text"
                             value={b.content}
                             onChange={(e) => updateBlock(idx, e.target.value)}
-                            className="w-full bg-transparent text-xl font-bold text-white focus:outline-none"
+                            className="w-full bg-transparent text-xl font-bold text-ink focus-visible:outline-2 focus-visible:outline-focus font-display"
                           />
                         </div>
                       )}
@@ -317,15 +323,15 @@ export default function BlogEditPage() {
                             type="text"
                             value={b.content}
                             onChange={(e) => updateBlock(idx, e.target.value)}
-                            placeholder="Paste image URL here..."
-                            className="w-full bg-[#141714] border border-[#2c312a] text-xs text-white px-3 py-2 rounded-lg focus:outline-none"
+                            placeholder="Paste image URL here…"
+                            className="w-full bg-paper border border-rule text-xs text-ink px-3 py-2 rounded-lg focus-visible:outline-2 focus-visible:outline-focus"
                           />
                           <input
                             type="text"
                             value={b.meta || ''}
                             onChange={(e) => updateBlock(idx, b.content, e.target.value)}
-                            placeholder="Image Alt text (Yoast keyword alt check)..."
-                            className="w-full bg-transparent border-b border-[#2c312a] text-[10px] text-zinc-500 focus:outline-none"
+                            placeholder="Image description (alt text)…"
+                            className="w-full bg-transparent border-b border-rule text-xs text-muted focus-visible:outline-2 focus-visible:outline-focus"
                           />
                         </div>
                       )}
@@ -334,7 +340,7 @@ export default function BlogEditPage() {
                         <textarea
                           value={b.content}
                           onChange={(e) => updateBlock(idx, e.target.value)}
-                          className="w-full bg-transparent border-l-4 border-[#00b368] pl-4 italic text-sm text-zinc-400 focus:outline-none resize-none"
+                          className="w-full bg-transparent border-l-2 border-accent pl-4 italic text-sm text-ink-2 focus-visible:outline-2 focus-visible:outline-focus resize-none"
                           rows={2}
                         />
                       )}
@@ -343,7 +349,7 @@ export default function BlogEditPage() {
                     {/* Block Delete Control */}
                     <button
                       onClick={() => removeBlock(idx)}
-                      className="opacity-0 group-hover:opacity-100 text-zinc-600 hover:text-[#e57368] text-[10px] transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 text-muted hover:text-error text-xs transition-opacity focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
                     >
                       Delete
                     </button>
@@ -352,13 +358,13 @@ export default function BlogEditPage() {
               </div>
 
               {/* Block Addition Control Bar */}
-              <div className="flex gap-2 justify-center border-t border-[#2c312a]/50 pt-4 mt-6">
+              <div className="flex gap-2 justify-center border-t border-rule pt-4 mt-6">
                 {(['paragraph', 'heading', 'image', 'blockquote'] as const).map(type => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => addBlock(type)}
-                    className="bg-[#141714] hover:bg-[#2c312a] border border-[#2c312a] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors capitalize"
+                    className="bg-paper hover:bg-paper-3 border border-rule text-ink text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors capitalize focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 disabled:opacity-50"
                   >
                     + {type}
                   </button>
@@ -368,28 +374,27 @@ export default function BlogEditPage() {
             </div>
 
             {/* Right Section (RankMath SEO Sidebar Panel) */}
-            <div className="lg:col-span-4 flex flex-col bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 overflow-y-auto space-y-6">
+            <div className="lg:col-span-4 flex flex-col bg-paper-2 border border-rule rounded-2xl p-6 overflow-y-auto space-y-6">
               
               {/* Radial SEO Score Indicator */}
-              <div className="flex flex-col items-center border-b border-[#2c312a] pb-6">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#6b7163] mb-3">RankMath SEO Score</span>
+              <div className="flex flex-col items-center border-b border-rule pb-6">
+                <span className="text-xs font-semibold text-muted mb-3">SEO scorecard</span>
                 <div className="relative w-28 h-28 flex items-center justify-center">
-                  {/* Radial SVG Progress bar */}
-                  <svg className="w-full h-full transform -rotate-90">
-                    <circle cx="56" cy="56" r="46" fill="transparent" stroke="#141714" strokeWidth="6" />
+                  <svg aria-hidden="true" className="w-full h-full transform -rotate-90">
+                    <circle cx="56" cy="56" r="46" fill="transparent" stroke="var(--color-paper)" strokeWidth="6" />
                     <circle 
                       cx="56" cy="56" r="46" 
                       fill="transparent" 
-                      stroke={seoScore >= 80 ? '#00b368' : seoScore >= 50 ? '#e8a020' : '#e57368'} 
+                      stroke={seoScore >= 80 ? 'var(--color-accent-light)' : seoScore >= 50 ? 'var(--color-gold)' : 'var(--color-error)'} 
                       strokeWidth="6"
                       strokeDasharray={2 * Math.PI * 46}
                       strokeDashoffset={(2 * Math.PI * 46) * (1 - seoScore / 100)}
-                      className="transition-all duration-500"
+                      className="transition-[stroke-dashoffset] duration-300"
                     />
                   </svg>
                   <div className="absolute text-center">
-                    <span className="text-3xl font-black text-white">{seoScore}</span>
-                    <span className="text-[10px] text-zinc-500 block">/ 100</span>
+                    <span className="text-3xl font-black text-ink font-display tabular-nums">{seoScore}</span>
+                    <span className="text-xs text-muted block">/ 100</span>
                   </div>
                 </div>
               </div>
@@ -397,78 +402,78 @@ export default function BlogEditPage() {
               {/* Keyword Settings */}
               <div className="space-y-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-400">Focus Keyword</label>
+                  <label className="text-xs font-semibold text-muted">Focus keyword</label>
                   <input
                     type="text"
                     value={seo.focusKeyword}
                     onChange={(e) => setSeo(prev => ({ ...prev, focusKeyword: e.target.value }))}
-                    placeholder="Enter focus keyword..."
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00b368]"
+                    placeholder="Enter focus keyword…"
+                    className="bg-paper border border-rule rounded-xl px-3 py-2 text-xs text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-400">Custom URL Slug</label>
+                  <label className="text-xs font-semibold text-muted">URL slug</label>
                   <input
                     type="text"
                     value={seo.slug}
                     onChange={(e) => setSeo(prev => ({ ...prev, slug: 'custom-' + e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
                     placeholder="custom-url-slug"
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#00b368]"
+                    className="bg-paper border border-rule rounded-xl px-3 py-2 text-xs text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   />
                 </div>
               </div>
 
               {/* Snippet Preview Selector */}
-              <div className="bg-[#141714] border border-[#2c312a] rounded-xl p-4 space-y-3">
-                <span className="text-[9px] uppercase font-extrabold tracking-wider text-[#00b368] block">Google SERP Snippet Preview</span>
+              <div className="bg-paper border border-rule rounded-xl p-4 space-y-3">
+                <span className="text-xs font-semibold text-accent-light block">Search snippet preview</span>
                 <div className="space-y-1">
-                  <span className="text-xs text-sky-400 font-semibold block hover:underline truncate">
-                    {seo.metaTitle || title || 'Untitled Post'}
+                  <span className="text-xs text-accent-light font-semibold block hover:underline truncate">
+                    {seo.metaTitle || title || 'Untitled post'}
                   </span>
-                  <span className="text-[10px] text-green-600 block truncate">
+                  <span className="text-xs text-muted block truncate font-mono">
                     https://evote.ng/blog/{seo.slug || 'slug'}
                   </span>
-                  <p className="text-[10px] text-zinc-400 leading-snug line-clamp-2">
-                    {seo.metaDescription || 'Add custom meta description below to customize this preview snippet...'}
+                  <p className="text-xs text-muted leading-snug line-clamp-2">
+                    {seo.metaDescription || 'Add custom meta description below to customize this preview snippet…'}
                   </p>
                 </div>
               </div>
 
               {/* Meta Inputs */}
-              <div className="space-y-4 pt-4 border-t border-[#2c312a]/50">
+              <div className="space-y-4 pt-4 border-t border-rule">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-400">Meta Title</label>
+                  <label className="text-xs font-semibold text-muted">Meta title</label>
                   <input
                     type="text"
                     value={seo.metaTitle}
                     onChange={(e) => setSeo(prev => ({ ...prev, metaTitle: e.target.value }))}
-                    placeholder="Meta Title"
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    placeholder="Meta title"
+                    className="bg-paper border border-rule rounded-xl px-3 py-2 text-xs text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-400">Meta Description</label>
+                  <label className="text-xs font-semibold text-muted">Meta description</label>
                   <textarea
                     value={seo.metaDescription}
                     onChange={(e) => setSeo(prev => ({ ...prev, metaDescription: e.target.value }))}
-                    placeholder="Write meta description..."
+                    placeholder="Write meta description…"
                     rows={3}
-                    className="bg-[#141714] border border-[#2c312a] rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    className="bg-paper border border-rule rounded-xl px-3 py-2 text-xs text-ink focus-visible:outline-2 focus-visible:outline-focus"
                   />
                 </div>
               </div>
 
               {/* Accordion Checklist */}
-              <div className="space-y-3 pt-4 border-t border-[#2c312a]/50">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#6b7163] block">SEO Performance Indicators</span>
+              <div className="space-y-3 pt-4 border-t border-rule">
+                <span className="text-xs font-semibold text-muted block">SEO indicators</span>
                 <div className="space-y-2.5 max-h-[220px] overflow-y-auto text-xs pr-1">
                   {seoChecks.map((check, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-zinc-400 leading-normal">
+                    <div key={idx} className="flex items-center justify-between text-ink-2 leading-normal">
                       <span className="truncate pr-3">{check.label}</span>
-                      <span className={`font-bold font-mono shrink-0 ${check.passed ? 'text-[#00b368]' : 'text-[#e57368]'}`}>
-                        {check.passed ? '✓ Passed' : '✗ Failed'}
+                      <span className={`font-semibold shrink-0 ${check.passed ? 'text-accent-light' : 'text-error'}`}>
+                        {check.passed ? 'Passed' : 'Pending'}
                       </span>
                     </div>
                   ))}

@@ -38,46 +38,44 @@ function AdminLoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md bg-[#1d211b] border border-[#2c312a] p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-      {/* Subtle background glow */}
-      <div className="absolute -top-24 -left-24 w-48 h-48 bg-[#00b368]/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[#e8a020]/5 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="w-full max-w-md bg-paper-2 border border-rule p-8 rounded-2xl shadow-card relative overflow-hidden font-body">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-[#008751]/10 rounded-xl border border-[#00b368]/25 mb-4">
-          <span className="text-2xl">🔒</span>
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-paper-3 rounded-xl border border-rule mb-4 text-accent-light">
+          <svg aria-hidden="true" className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
         </div>
-        <h1 className="text-2xl font-bold font-display text-white">SpeakUpNG Admin</h1>
-        <p className="text-[#6b7163] text-sm mt-1">Authorized personnel only</p>
+        <h1 className="text-2xl font-bold font-display text-ink">EVOTE.NG Administration</h1>
+        <p className="text-muted text-sm mt-1">Authorized personnel only</p>
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-[#c0392b]/15 border border-[#c0392b]/35 text-[#e57368] text-xs rounded-lg">
+        <div className="mb-6 p-4 bg-paper-3 border border-error text-error text-xs rounded-lg">
           {error}
         </div>
       )}
 
       <form onSubmit={handleLogin} className="space-y-5">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-2">Username</label>
+          <label className="block text-xs font-semibold text-muted mb-2">Username</label>
           <input
             type="text"
             required
             value={username}
             onChange={e => setUsername(e.target.value)}
-            className="w-full px-4 py-3 border border-[#2c312a] rounded-lg bg-[#141714] text-[#f8f7f2] placeholder-zinc-600 focus:outline-none focus:border-[#00b368] transition-colors text-sm"
+            className="w-full px-4 py-3 border border-rule rounded-lg bg-paper text-ink placeholder-muted focus-visible:outline-2 focus-visible:outline-focus transition-colors text-sm"
             placeholder="Enter username"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-2">Password</label>
+          <label className="block text-xs font-semibold text-muted mb-2">Password</label>
           <input
             type="password"
             required
             value={password}
             onChange={e => setPassword(e.target.value)}
-            className="w-full px-4 py-3 border border-[#2c312a] rounded-lg bg-[#141714] text-[#f8f7f2] placeholder-zinc-600 focus:outline-none focus:border-[#00b368] transition-colors text-sm"
+            className="w-full px-4 py-3 border border-rule rounded-lg bg-paper text-ink placeholder-muted focus-visible:outline-2 focus-visible:outline-focus transition-colors text-sm"
             placeholder="Enter password"
           />
         </div>
@@ -85,9 +83,9 @@ function AdminLoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-[#008751] hover:bg-[#00b368] disabled:bg-[#008751]/50 text-white font-bold rounded-lg transition-all text-sm mt-2 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-accent hover:bg-accent-light disabled:opacity-50 text-accent-ink font-bold rounded-lg transition-colors text-sm mt-2 flex items-center justify-center gap-2 focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5"
         >
-          {loading ? 'Authenticating...' : 'Sign In'}
+          {loading ? 'Authenticating…' : 'Sign in'}
         </button>
       </form>
     </div>
@@ -96,10 +94,10 @@ function AdminLoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <div className="min-h-screen bg-[#141714] text-[#f8f7f2] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-paper text-ink flex items-center justify-center p-4 font-body">
       <Suspense fallback={
-        <div className="text-center text-[#6b7163] text-sm">
-          Loading login portal...
+        <div className="text-center text-muted text-sm">
+          Loading login portal…
         </div>
       }>
         <AdminLoginForm />
