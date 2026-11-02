@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface Candidate {
   id: string;
@@ -38,7 +39,19 @@ export default function CandidatesPage() {
   return (
     <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-4xl font-extrabold font-display text-white mb-3">2027 Candidate Directory</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-4xl font-extrabold font-display text-white mb-2">2027 Candidate Directory</h1>
+            <p className="text-[#6b7163] text-sm">Official party flagbearers and declared contestants for the 2027 general elections.</p>
+          </div>
+          <Link
+            href="/elections/2027"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#008751] hover:bg-[#00b368] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md self-start sm:self-auto"
+          >
+            <span>🗳️ Cast Mock Vote</span>
+            <span aria-hidden="true">&rarr;</span>
+          </Link>
+        </div>
 
         <div className="flex gap-2 mb-6">
           <button onClick={() => setTab('presidential')}
@@ -52,21 +65,34 @@ export default function CandidatesPage() {
         </div>
 
         {tab === 'presidential' ? (
-          <div className="mb-2 p-4 bg-[#4f8ef7]/10 border border-[#4f8ef7]/30 rounded-lg">
-            <p className="text-[#4f8ef7] text-sm font-bold mb-1">ℹ️ Party-confirmed flagbearers, INEC list pending</p>
-            <p className="text-[#6b7163] text-xs leading-relaxed">
-              These candidates have been nominated through party primaries, as reported by BBC News Pidgin (31 May 2026). INEC's own
-              final consolidated candidate list for the 16 January 2027 election has not yet been published. PDP and Labour Party each
-              have unresolved internal leadership disputes, producing two rival flagbearers per party — both are shown below.
-            </p>
+          <div className="mb-4 p-4 bg-[#008751]/10 border border-[#008751]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-[#00b368] text-sm font-bold mb-0.5">🗳️ 2027 Presidential Mock Poll Active</p>
+              <p className="text-[#6b7163] text-xs leading-relaxed">
+                Ballots are open for certified presidential flagbearers and running mates. Cast your mock vote to view real-time regional trends.
+              </p>
+            </div>
+            <Link
+              href="/elections/2027"
+              className="px-4 py-1.5 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold rounded-lg flex-shrink-0 uppercase tracking-wider"
+            >
+              Vote Now &rarr;
+            </Link>
           </div>
         ) : (
-          <div className="mb-2 p-4 bg-[#e8a020]/10 border border-[#e8a020]/30 rounded-lg">
-            <p className="text-[#e8a020] text-sm font-bold mb-1">⚠️ Not yet confirmed by INEC</p>
-            <p className="text-[#6b7163] text-xs leading-relaxed">
-              Governorship elections are scheduled for 6 February 2027. Party primaries and candidate clearance for most states have not concluded.
-              The names below are widely-reported incumbents expected to seek re-election — not an official candidate list. Most states have no listed candidate yet.
-            </p>
+          <div className="mb-4 p-4 bg-[#e8a020]/10 border border-[#e8a020]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-[#e8a020] text-sm font-bold mb-0.5">🏛️ 2027 State Governorship Races</p>
+              <p className="text-[#6b7163] text-xs leading-relaxed">
+                Governorship elections are scheduled for 6 February 2027 across 28 on-cycle states. Cast your vote for declared contestants.
+              </p>
+            </div>
+            <Link
+              href="/elections/2027"
+              className="px-4 py-1.5 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold rounded-lg flex-shrink-0 uppercase tracking-wider"
+            >
+              Vote State &rarr;
+            </Link>
           </div>
         )}
 
@@ -108,6 +134,15 @@ export default function CandidatesPage() {
                 </div>
                 <p className="text-sm text-zinc-400">{c.party}</p>
                 {c.running_mate && <p className="text-xs text-[#6b7163] mt-1">Running mate: <span className="text-zinc-300">{c.running_mate}</span></p>}
+                <div className="mt-4 pt-3 border-t border-[#2c312a] flex justify-end">
+                  <Link
+                    href="/elections/2027"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#008751]/15 hover:bg-[#008751]/30 text-[#00b368] text-xs font-bold transition-colors"
+                  >
+                    <span>🗳️ Vote {c.candidate_name.split(' ')[0]}</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

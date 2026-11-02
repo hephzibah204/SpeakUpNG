@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface CountdownTarget {
   label: string;
@@ -73,6 +74,19 @@ export function ElectionCountdown() {
       ) : (
         <p className="text-center text-sm text-[#00b368] font-bold py-4">Election day has arrived.</p>
       )}
+
+      <div className="mt-5 text-center border-t border-[#2c312a] pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <span className="text-xs text-zinc-400">
+          The 2027 Mock Voting Ballot is now live nationwide.
+        </span>
+        <Link
+          href="/elections/2027"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-black uppercase tracking-wider rounded-lg transition-colors shadow-md active:translate-y-0.5"
+        >
+          <span>🗳️ Cast Your Mock Vote</span>
+          <span aria-hidden="true">&rarr;</span>
+        </Link>
+      </div>
     </div>
   );
 }

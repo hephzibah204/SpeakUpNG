@@ -150,6 +150,16 @@ export function Navbar() {
           ))}
         </div>
 
+        {/* Mock Vote CTA */}
+        <div className="hidden sm:flex items-center gap-3 ml-4">
+          <Link
+            href="/elections/2027"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider bg-[#008751] hover:bg-[#00b368] text-white transition-all shadow-sm active:translate-y-0.5"
+          >
+            <span>🗳️ Mock Vote 2027</span>
+          </Link>
+        </div>
+
         {/* Mobile Toggle */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -166,7 +176,15 @@ export function Navbar() {
 
       {/* Mobile Accordion Menu */}
       {mobileOpen && (
-        <div className="lg:hidden bg-paper-2 border-t border-rule px-4 pb-6 pt-2 space-y-2 max-h-[80vh] overflow-y-auto">
+        <div className="lg:hidden bg-paper-2 border-t border-rule px-4 pb-6 pt-3 space-y-2 max-h-[80vh] overflow-y-auto">
+          <div className="pb-2">
+            <Link
+              href="/elections/2027"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-[#008751] hover:bg-[#00b368] text-white font-bold text-xs uppercase tracking-wider shadow-sm"
+            >
+              <span>🗳️ Cast 2027 Mock Vote</span>
+            </Link>
+          </div>
           {MENU.map((category) => {
             const isExpanded = openCategory === category.title;
             const hasActiveItem = isCategoryActive(category);
