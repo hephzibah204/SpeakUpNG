@@ -81,6 +81,35 @@ export const CANDIDATE_PORTRAITS: Record<string, string> = {
   'isa ashiru kudan': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Isa_Ashiru_Kudan.jpg/640px-Isa_Ashiru_Kudan.jpg',
   'isa ashiru': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Isa_Ashiru_Kudan.jpg/640px-Isa_Ashiru_Kudan.jpg',
   'bayo lawal': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Bayo_Lawal.jpg/640px-Bayo_Lawal.jpg',
+
+  // Senate Leaders & Contenders
+  'godswill akpabio': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Godswill_Akpabio.jpg/640px-Godswill_Akpabio.jpg',
+  'barau jibrin': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Barau_Jibrin.jpg/640px-Barau_Jibrin.jpg',
+  'ireti kingibe': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Ireti_Kingibe.jpg/640px-Ireti_Kingibe.jpg',
+  'adams oshiomhole': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Adams_Oshiomhole.jpg/640px-Adams_Oshiomhole.jpg',
+  'gbenga daniel': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Gbenga_Daniel_new.jpg/640px-Gbenga_Daniel_new.jpg',
+  'victor umeh': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Victor_Umeh.jpg/640px-Victor_Umeh.jpg',
+  'ned nwoko': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Prince_Ned_Nwoko.jpg/640px-Prince_Ned_Nwoko.jpg',
+  'tokunbo abiru': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Tokunbo_Abiru.jpg/640px-Tokunbo_Abiru.jpg',
+  'mohammed ali ndume': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Ali_Ndume.jpg/640px-Ali_Ndume.jpg',
+  'ali ndume': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Ali_Ndume.jpg/640px-Ali_Ndume.jpg',
+  'philip aduda': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Philip_Aduda.jpg/640px-Philip_Aduda.jpg',
+  'uche ekwunife': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Uche_Ekwunife.jpg/640px-Uche_Ekwunife.jpg',
+
+  // House of Representatives & State Assembly Leaders
+  'tajudeen abbas': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Tajudeen_Abbas.jpg/640px-Tajudeen_Abbas.jpg',
+  'benjamin okezie kalu': 'https://commons.wikimedia.org/wiki/Special:FilePath/Benjamin%20Okezie%20Kalu.jpg',
+  'benjamin kalu': 'https://commons.wikimedia.org/wiki/Special:FilePath/Benjamin%20Okezie%20Kalu.jpg',
+  'kingsley chinda': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Kingsley_Chinda.jpg/640px-Kingsley_Chinda.jpg',
+  'julius ihonvbere': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Julius_Ihonvbere.jpg/640px-Julius_Ihonvbere.jpg',
+  'bankole wellington (banky w)': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Banky_W_in_2017.jpg/640px-Banky_W_in_2017.jpg',
+  'bankole wellington': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Banky_W_in_2017.jpg/640px-Banky_W_in_2017.jpg',
+  'banky w': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Banky_W_in_2017.jpg/640px-Banky_W_in_2017.jpg',
+  'desmond elliot': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Desmond_Elliot_2014.jpg/640px-Desmond_Elliot_2014.jpg',
+  'mudashiru obasa': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Mudashiru_Obasa.jpg/640px-Mudashiru_Obasa.jpg',
+  'james abiodun faleke': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/James_Faleke.jpg/640px-James_Faleke.jpg',
+  'james faleke': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/James_Faleke.jpg/640px-James_Faleke.jpg',
+  'adebo ogundoyin': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Adebo_Ogundoyin.jpg/640px-Adebo_Ogundoyin.jpg',
 };
 
 /**

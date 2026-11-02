@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import PartyFlag, { getPartyColorHex } from '@/components/PartyFlag';
 import { getCandidatePhoto, getFallbackAvatar } from '@/lib/candidate-portraits';
 
+type RaceTier = 'presidential' | 'governorship' | 'senate' | 'reps' | 'assembly' | 'lga';
+
 interface VoteTotal {
   candidate_name: string;
   party: string;
@@ -16,10 +18,11 @@ interface RegionalBreakdown {
   vote_count: string | number;
 }
 
-interface GovVoteTotal {
+interface RaceVoteTotal {
   candidate_name: string;
   party: string;
   state: string;
+  district?: string;
   vote_count: string | number;
 }
 
@@ -30,11 +33,12 @@ interface Candidate {
   party_code?: string;
   running_mate?: string;
   state?: string;
+  district?: string;
   photo_url?: string;
 }
 
 export default function Race2027Page() {
-  const [activeTab, setActiveTab] = useState<'presidential' | 'governorship'>('presidential');
+  const [activeTab, setActiveTab] = useState<RaceTier>('presidential');
   
   // Presidential State
   const [totals, setTotals] = useState<VoteTotal[]>([]);
@@ -45,12 +49,38 @@ export default function Race2027Page() {
   const [votedPresName, setVotedPresName] = useState<string | null>(null);
   const [presidentialList, setPresidentialList] = useState<Candidate[]>([]);
 
-  // Governorship State
-  const [govTotals, setGovTotals] = useState<GovVoteTotal[]>([]);
-  const [selectedState, setSelectedState] = useState<string>('Lagos');
-  const [hasVotedGov, setHasVotedGov] = useState<Record<string, boolean>>({});
-  const [votedGovNames, setVotedGovNames] = useState<Record<string, string>>({});
-  const [governorshipList, setGovernorshipList] = useState<Candidate[]>([]);
+  // Other Races State (Governorship, Senate, Reps, Assembly, LGA)
+  const [candidatesByTier, setCandidatesByTier] = useState<Record<string, Candidate[]>>({
+    governorship: [],
+    senate: [],
+    reps: [],
+    assembly: [],
+    lga: [],
+  });
+
+  const [votesByTier, setVotesByTier] = useState<Record<string, RaceVoteTotal[]>>({
+    governorship: [],
+    senate: [],
+    reps: [],
+    assembly: [],
+    lga: [],
+  });
+
+  const [selectedFilterByTier, setSelectedFilterByTier] = useState<Record<string, string>>({
+    governorship: 'Lagos',
+    senate: 'Lagos West',
+    reps: 'Eti-Osa Federal Constituency',
+    assembly: 'Agege I Constituency',
+    lga: 'Ikeja Local Government',
+  });
+
+  const [userVotesByTier, setUserVotesByTier] = useState<Record<string, Record<string, string>>>({
+    governorship: {},
+    senate: {},
+    reps: {},
+    assembly: {},
+    lga: {},
+  });
 
   const [loading, setLoading] = useState(true);
   const [submittingVote, setSubmittingVote] = useState(false);
@@ -63,6 +93,7 @@ export default function Race2027Page() {
     partyCode?: string;
     photoUrl?: string;
     race: string;
+    district?: string;
     state?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -85,36 +116,51 @@ export default function Race2027Page() {
         setVotedPresName(savedPres);
         setHasVotedPres(true);
       }
-      const savedGov = localStorage.getItem('evote_voted_gov_2027');
-      if (savedGov) {
-        const parsed = JSON.parse(savedGov);
-        setVotedGovNames(parsed);
-        const votedMap: Record<string, boolean> = {};
-        Object.keys(parsed).forEach((st) => {
-          votedMap[st] = true;
-        });
-        setHasVotedGov(votedMap);
-      }
+
+      const tiers: RaceTier[] = ['governorship', 'senate', 'reps', 'assembly', 'lga'];
+      const loaded: Record<string, Record<string, string>> = {};
+      tiers.forEach((t) => {
+        const item = localStorage.getItem(`evote_voted_${t}_2027`);
+        if (item) {
+          try {
+            loaded[t] = JSON.parse(item);
+          } catch {
+            loaded[t] = {};
+          }
+        } else {
+          loaded[t] = {};
+        }
+      });
+      setUserVotesByTier((prev) => ({ ...prev, ...loaded }));
     } catch {
       // ignore storage access errors
     }
   }, []);
 
-  // Fetch candidates from the database
-  const fetchCandidates = async () => {
+  // Fetch candidates for current active race
+  const fetchCandidates = async (tier: RaceTier) => {
     try {
-      const presRes = await fetch('/api/election-candidates?year=2027&type=presidential');
-      const presData = await presRes.json();
-      setPresidentialList(presData.candidates || []);
-
-      const govRes = await fetch('/api/election-candidates?year=2027&type=governorship');
-      const govData = await govRes.json();
-      setGovernorshipList(govData.candidates || []);
+      const res = await fetch(`/api/election-candidates?year=2027&type=${tier}`);
+      const data = await res.json();
+      const list = data.candidates || [];
+      if (tier === 'presidential') {
+        setPresidentialList(list);
+      } else {
+        setCandidatesByTier((prev) => ({ ...prev, [tier]: list }));
+        // Auto-select first available district/state if current selection is empty
+        const keys = tier === 'governorship'
+          ? Array.from(new Set(list.map((c: Candidate) => c.state || ''))).filter(Boolean).sort()
+          : Array.from(new Set(list.map((c: Candidate) => c.district || c.state || ''))).filter(Boolean).sort();
+        if (keys.length > 0 && !keys.includes(selectedFilterByTier[tier])) {
+          setSelectedFilterByTier((prev) => ({ ...prev, [tier]: keys[0] }));
+        }
+      }
     } catch (err) {
-      console.error('Failed to load candidates:', err);
+      console.error(`Failed to load ${tier} candidates:`, err);
     }
   };
 
+  // Fetch votes for active tab
   const fetchVotes = () => {
     setLoading(true);
     if (activeTab === 'presidential') {
@@ -127,10 +173,10 @@ export default function Race2027Page() {
         .catch(console.error)
         .finally(() => setLoading(false));
     } else {
-      fetch('/api/elections/2027/governorship')
+      fetch(`/api/elections/2027/race?type=${activeTab}`)
         .then((res) => res.json())
         .then((data) => {
-          setGovTotals(data.totalVotes || []);
+          setVotesByTier((prev) => ({ ...prev, [activeTab]: data.totalVotes || [] }));
         })
         .catch(console.error)
         .finally(() => setLoading(false));
@@ -138,13 +184,11 @@ export default function Race2027Page() {
   };
 
   useEffect(() => {
-    fetchCandidates();
-  }, []);
-
-  useEffect(() => {
+    fetchCandidates(activeTab);
     fetchVotes();
   }, [activeTab]);
 
+  // Handle Presidential Vote Submit
   const handleVoteSubmit = async () => {
     if (!votingFor) return;
     setSubmittingVote(true);
@@ -174,7 +218,7 @@ export default function Race2027Page() {
           party: votingFor.party,
           partyCode: votingFor.partyCode,
           photoUrl: votingFor.photoUrl,
-          race: 'Presidential General',
+          race: 'Presidential General Election',
         });
         setTimeout(() => setToast(null), 6000);
         setVotingFor(null);
@@ -190,50 +234,67 @@ export default function Race2027Page() {
     }
   };
 
-  const handleGovVoteSubmit = async (cand: {
+  // Handle Non-Presidential Vote Submit (Governorship, Senate, Reps, Assembly, LGA)
+  const handleRaceVoteSubmit = async (cand: {
+    tier: RaceTier;
     name: string;
     party: string;
     state: string;
+    district?: string;
     partyCode?: string;
     photoUrl?: string;
   }) => {
     setSubmittingVote(true);
     try {
-      const res = await fetch('/api/elections/2027/governorship', {
+      const res = await fetch('/api/elections/2027/race', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: cand.tier,
           candidate_name: cand.name,
           party: cand.party,
-          state: cand.state
+          state: cand.state,
+          district: cand.district || cand.state,
         }),
       });
 
       if (res.ok) {
-        setHasVotedGov((prev) => ({ ...prev, [cand.state]: true }));
-        setVotedGovNames((prev) => {
-          const next = { ...prev, [cand.state]: cand.name };
+        const filterKey = cand.tier === 'governorship' ? cand.state : (cand.district || cand.state);
+        setUserVotesByTier((prev) => {
+          const nextTier = { ...prev[cand.tier], [filterKey]: cand.name };
           try {
-            localStorage.setItem('evote_voted_gov_2027', JSON.stringify(next));
+            localStorage.setItem(`evote_voted_${cand.tier}_2027`, JSON.stringify(nextTier));
           } catch {}
-          return next;
+          return { ...prev, [cand.tier]: nextTier };
         });
+
+        const raceLabels: Record<string, string> = {
+          governorship: `${cand.state} State Governorship`,
+          senate: `${cand.district || cand.state} Senatorial District`,
+          reps: `${cand.district || cand.state}`,
+          assembly: `${cand.district || cand.state} House of Assembly`,
+          lga: `${cand.district || cand.state} Council Chairmanship`,
+        };
+
         setToast({
-          message: `Your mock vote for ${cand.name} (${cand.party}) in ${cand.state} State has been counted!`,
+          message: `Your mock vote for ${cand.name} (${cand.party}) in ${raceLabels[cand.tier]} has been recorded!`,
           type: 'success'
         });
+
         setShareModal({
           name: cand.name,
           party: cand.party,
           partyCode: cand.partyCode,
           photoUrl: cand.photoUrl,
-          race: `${cand.state} State Governorship`,
+          race: raceLabels[cand.tier],
+          district: cand.district,
           state: cand.state,
         });
+
         setTimeout(() => setToast(null), 6000);
         fetchVotes();
       } else {
-        setToast({ message: 'Failed to record governorship vote. Please try again.', type: 'error' });
+        setToast({ message: 'Failed to record vote. Please try again.', type: 'error' });
       }
     } catch (err) {
       console.error(err);
@@ -243,36 +304,93 @@ export default function Race2027Page() {
     }
   };
 
-  const getCandidateDescription = (cand: Candidate, isGov: boolean) => {
-    if (isGov) {
+  const getCandidateDescription = (cand: Candidate, tier: RaceTier) => {
+    if (tier === 'presidential') {
       return cand.running_mate
-        ? `Contesting under the ${cand.party} with running mate ${cand.running_mate} in ${cand.state} State.`
-        : `Contesting under the ${cand.party} in ${cand.state} State.`;
+        ? `Presidential flagbearer for ${cand.party} running with Vice-Presidential candidate ${cand.running_mate}.`
+        : `Presidential flagbearer representing ${cand.party} in Nigeria's 2027 General Elections.`;
     }
-    return cand.running_mate
-      ? `Presidential candidate for ${cand.party} running with Vice-Presidential candidate ${cand.running_mate}.`
-      : `Presidential candidate representing the ${cand.party} in the 2027 General Elections.`;
+    if (tier === 'governorship') {
+      return cand.running_mate
+        ? `Contesting for Governor of ${cand.state} State with deputy running mate ${cand.running_mate}.`
+        : `Contesting for Governor of ${cand.state} State under the ${cand.party}.`;
+    }
+    if (tier === 'senate') {
+      return `Contesting for the Senate of the Federal Republic of Nigeria representing ${cand.district || cand.state}.`;
+    }
+    if (tier === 'reps') {
+      return `Contesting for the House of Representatives representing ${cand.district || cand.state}.`;
+    }
+    if (tier === 'assembly') {
+      return `Contesting for the State House of Assembly representing ${cand.district || cand.state}.`;
+    }
+    return `Contesting for Local Government Area Chairmanship in ${cand.district || cand.state}.`;
   };
 
-  // Derived state calculations
-  const statesWithRaces = Array.from(new Set(governorshipList.map((c) => c.state || ''))).filter(Boolean).sort();
+  // Calculations for current active tier
+  const currentList = activeTab === 'presidential' ? presidentialList : (candidatesByTier[activeTab] || []);
+  const currentVotes = activeTab === 'presidential' ? totals : (votesByTier[activeTab] || []);
 
-  const totalVoteCount = activeTab === 'presidential' 
-    ? totals.reduce((acc, t) => acc + Number(t.vote_count), 0)
-    : govTotals.reduce((acc, t) => acc + Number(t.vote_count), 0);
+  const availableFilters = activeTab === 'governorship'
+    ? Array.from(new Set(currentList.map((c) => c.state || ''))).filter(Boolean).sort()
+    : Array.from(new Set(currentList.map((c) => c.district || c.state || ''))).filter(Boolean).sort();
 
-  // Filter candidates for selected state
-  const activeGovCandidates = governorshipList.filter((c) => c.state === selectedState);
-  const stateTotalVotes = govTotals
-    .filter((t) => t.state === selectedState)
-    .reduce((acc, t) => acc + Number(t.vote_count), 0);
+  const activeFilter = selectedFilterByTier[activeTab] || availableFilters[0] || '';
 
-  // Dynamically set first state when state list updates
-  useEffect(() => {
-    if (statesWithRaces.length > 0 && !statesWithRaces.includes(selectedState)) {
-      setSelectedState(statesWithRaces[0]);
-    }
-  }, [statesWithRaces]);
+  const activeContestants = activeTab === 'presidential'
+    ? presidentialList
+    : currentList.filter((c) => (activeTab === 'governorship' ? c.state === activeFilter : (c.district || c.state) === activeFilter));
+
+  const totalTierVotes = currentVotes.reduce((acc, t) => acc + Number(t.vote_count), 0);
+
+  const activeDistrictVotes = activeTab === 'presidential'
+    ? totalTierVotes
+    : (votesByTier[activeTab] || [])
+        .filter((t) => (activeTab === 'governorship' ? t.state === activeFilter : (t.district || t.state) === activeFilter))
+        .reduce((acc, t) => acc + Number(t.vote_count), 0);
+
+  const userVotedCandidate = activeTab === 'presidential'
+    ? votedPresName
+    : userVotesByTier[activeTab]?.[activeFilter];
+
+  const raceTitles: Record<RaceTier, { label: string; icon: string; subtitle: string; filterLabel: string }> = {
+    presidential: {
+      label: 'Presidential Race',
+      icon: '🗳️',
+      subtitle: 'Cast your mock vote for certified presidential tickets & running mates across Nigeria.',
+      filterLabel: 'Geopolitical Zone',
+    },
+    governorship: {
+      label: 'Governorship Race',
+      icon: '🏛️',
+      subtitle: 'State governor mock ballots across all on-cycle states.',
+      filterLabel: 'Select State Race',
+    },
+    senate: {
+      label: 'Senate (109 Districts)',
+      icon: '📜',
+      subtitle: 'Senatorial mock ballots across the 109 Senatorial Districts of Nigeria.',
+      filterLabel: 'Select Senatorial District',
+    },
+    reps: {
+      label: 'House of Reps (360 Constituencies)',
+      icon: '👥',
+      subtitle: 'Federal Constituency mock ballots for the House of Representatives.',
+      filterLabel: 'Select Federal Constituency',
+    },
+    assembly: {
+      label: 'State House of Assembly',
+      icon: '🏢',
+      subtitle: 'State legislative assembly constituencies across Nigeria.',
+      filterLabel: 'Select State Constituency',
+    },
+    lga: {
+      label: 'LGA Chairmanship',
+      icon: '🏘️',
+      subtitle: 'Local government area chairmen and council leadership mock ballots.',
+      filterLabel: 'Select Local Government Area',
+    },
+  };
 
   return (
     <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
@@ -284,12 +402,12 @@ export default function Race2027Page() {
             <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#00b368]">Live Public Ballots</span>
             <h1 className="text-4xl font-extrabold font-display text-white mb-2 mt-1">2027 Mock Elections</h1>
             <p className="text-base text-[#6b7163] max-w-2xl">
-              Cast your vote for presidential tickets and state governorship contenders. View candidate profiles, party flags, and live regional breakdowns.
+              Cast your ballot for all election tiers: Presidential tickets, State Governors, Senators, House of Reps members, State Assembly, and LGA Chairmen.
             </p>
           </div>
           <div className="bg-[#1d211b] border border-[#2c312a] px-6 py-4 rounded-xl text-center shadow-xl flex-shrink-0">
-            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-400 block">Total Mock Votes</span>
-            <span className="text-3xl font-black text-white">{totalVoteCount.toLocaleString()}</span>
+            <span className="text-[9px] uppercase tracking-wider font-bold text-zinc-400 block">{raceTitles[activeTab].label} Votes</span>
+            <span className="text-3xl font-black text-white">{totalTierVotes.toLocaleString()}</span>
           </div>
         </div>
 
@@ -312,12 +430,12 @@ export default function Race2027Page() {
         <div className="mb-8 p-4 bg-gradient-to-r from-[#008751]/15 via-[#1d211b] to-[#1d211b] border border-[#008751]/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#008751]/20 border border-[#008751]/40 flex items-center justify-center text-xl flex-shrink-0">
-              🗳️
+              {raceTitles[activeTab].icon}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Public Mock Voting is Open!</h3>
+              <h3 className="text-sm font-bold text-white">{raceTitles[activeTab].label} Mock Ballots</h3>
               <p className="text-xs text-zinc-400">
-                Vote once per race with full party flags and pictures. You can switch your vote anytime. Real-time percentages update instantly.
+                {raceTitles[activeTab].subtitle} Vote once per constituency and switch anytime.
               </p>
             </div>
           </div>
@@ -329,30 +447,30 @@ export default function Race2027Page() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-[#2c312a] pb-3 mb-8 gap-6 text-sm font-bold justify-center sm:justify-start">
-          <button
-            onClick={() => setActiveTab('presidential')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'presidential' ? 'border-[#00b368] text-white' : 'border-transparent text-[#6b7163] hover:text-zinc-300'
-            }`}
-          >
-            <span>Presidential Race</span>
-            {hasVotedPres && (
-              <span className="w-2 h-2 rounded-full bg-[#00b368]" title="You have voted in this race"></span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('governorship')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'governorship' ? 'border-[#00b368] text-white' : 'border-transparent text-[#6b7163] hover:text-zinc-300'
-            }`}
-          >
-            <span>Governorship Race</span>
-            {hasVotedGov[selectedState] && (
-              <span className="w-2 h-2 rounded-full bg-[#00b368]" title="You have voted in selected state"></span>
-            )}
-          </button>
+        {/* Tab Navigation across all 6 race tiers */}
+        <div className="flex border-b border-[#2c312a] pb-3 mb-8 gap-2 sm:gap-4 text-xs sm:text-sm font-bold overflow-x-auto no-scrollbar">
+          {(['presidential', 'governorship', 'senate', 'reps', 'assembly', 'lga'] as RaceTier[]).map((tier) => {
+            const isActive = activeTab === tier;
+            const hasVotedAny = tier === 'presidential'
+              ? hasVotedPres
+              : Object.keys(userVotesByTier[tier] || {}).length > 0;
+
+            return (
+              <button
+                key={tier}
+                onClick={() => setActiveTab(tier)}
+                className={`pb-3 border-b-2 whitespace-nowrap transition-all flex items-center gap-1.5 px-2 ${
+                  isActive ? 'border-[#00b368] text-white' : 'border-transparent text-[#6b7163] hover:text-zinc-300'
+                }`}
+              >
+                <span>{raceTitles[tier].icon}</span>
+                <span>{raceTitles[tier].label}</span>
+                {hasVotedAny && (
+                  <span className="w-2 h-2 rounded-full bg-[#00b368]" title="You have cast ballots in this category"></span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Loading Indicator */}
@@ -369,7 +487,7 @@ export default function Race2027Page() {
                   Presidential Candidates ({presidentialList.length})
                 </h3>
                 <span className="text-[10px] text-zinc-400 font-semibold">
-                  {totalVoteCount} total mock {totalVoteCount === 1 ? 'ballot' : 'ballots'} cast
+                  {totalTierVotes} total mock {totalTierVotes === 1 ? 'ballot' : 'ballots'} cast
                 </span>
               </div>
 
@@ -393,9 +511,6 @@ export default function Race2027Page() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
                     >
-                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                      </svg>
                       <span>WhatsApp</span>
                     </a>
 
@@ -407,10 +522,7 @@ export default function Race2027Page() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black border border-zinc-700 hover:border-zinc-500 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
                     >
-                      <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 24.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
-                      <span>Post</span>
+                      <span>Post on X</span>
                     </a>
 
                     <button
@@ -443,7 +555,7 @@ export default function Race2027Page() {
                   {presidentialList.map((cand) => {
                     const totalMatch = totals.find((t) => t.candidate_name === cand.candidate_name);
                     const count = totalMatch ? Number(totalMatch.vote_count) : 0;
-                    const percentage = totalVoteCount > 0 ? ((count / totalVoteCount) * 100).toFixed(1) : '0';
+                    const percentage = totalTierVotes > 0 ? ((count / totalTierVotes) * 100).toFixed(1) : '0';
                     const isVoted = cand.candidate_name === votedPresName;
                     const photoSrc = getCandidatePhoto(cand.candidate_name, cand.photo_url, cand.party, cand.party_code);
                     const partyColor = getPartyColorHex(cand.party, cand.party_code);
@@ -469,8 +581,7 @@ export default function Race2027Page() {
                                 alt={cand.candidate_name}
                                 className="w-full h-full object-cover object-top"
                                 onError={(e) => {
-                                  const target = e.currentTarget;
-                                  target.src = getFallbackAvatar(cand.candidate_name, cand.party, cand.party_code);
+                                  e.currentTarget.src = getFallbackAvatar(cand.candidate_name, cand.party, cand.party_code);
                                 }}
                               />
                             </div>
@@ -505,7 +616,7 @@ export default function Race2027Page() {
                           </div>
                           
                           <p className="text-xs text-zinc-400 leading-relaxed">
-                            {getCandidateDescription(cand, false)}
+                            {getCandidateDescription(cand, 'presidential')}
                           </p>
 
                           {cand.running_mate && (
@@ -594,43 +705,43 @@ export default function Race2027Page() {
             </div>
           </div>
         ) : (
-          /* Grouped Governorship Race View */
+          /* District & Constituency Race View (Governorship, Senate, Reps, Assembly, LGA) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* Sidebar State Selector */}
+            {/* Sidebar District / State Selector */}
             <div className="lg:col-span-4 bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 shadow-2xl space-y-4 max-h-[650px] overflow-y-auto">
               <div className="border-b border-[#2c312a] pb-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#6b7163]">Select State Race</h3>
-                <span className="text-[10px] text-zinc-500">28 on-cycle governorship states</span>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#6b7163]">{raceTitles[activeTab].filterLabel}</h3>
+                <span className="text-[10px] text-zinc-500">{availableFilters.length} constituencies available</span>
               </div>
-              {statesWithRaces.length === 0 ? (
-                <div className="text-zinc-500 text-sm">No governorship races found.</div>
+              {availableFilters.length === 0 ? (
+                <div className="text-zinc-500 text-sm">No contestants found for this tier yet.</div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {statesWithRaces.map((st) => {
-                    const isActive = st === selectedState;
-                    const votesMatch = govTotals
-                        .filter((t) => t.state === st)
+                  {availableFilters.map((filterKey) => {
+                    const isActive = filterKey === activeFilter;
+                    const votesMatch = (votesByTier[activeTab] || [])
+                      .filter((t) => (activeTab === 'governorship' ? t.state === filterKey : (t.district || t.state) === filterKey))
                       .reduce((acc, t) => acc + Number(t.vote_count), 0);
-                    const hasVotedState = hasVotedGov[st];
+                    const hasVotedThisDistrict = !!userVotesByTier[activeTab]?.[filterKey];
 
                     return (
                       <button
-                        key={st}
-                        onClick={() => setSelectedState(st)}
+                        key={filterKey}
+                        onClick={() => setSelectedFilterByTier((prev) => ({ ...prev, [activeTab]: filterKey }))}
                         className={`w-full text-left p-3 rounded-xl border text-xs font-bold flex justify-between items-center transition-all ${
                           isActive
                             ? 'bg-[#008751]/15 border-[#008751]/40 text-white shadow-sm'
                             : 'bg-[#141714] border-[#2c312a] text-zinc-400 hover:text-white hover:border-zinc-700'
                         }`}
                       >
-                        <span className="flex items-center gap-2">
-                          <span>{st}</span>
-                          {hasVotedState && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00b368]" title="Voted in this state"></span>
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="truncate">{filterKey}</span>
+                          {hasVotedThisDistrict && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00b368] flex-shrink-0" title="Voted in this race"></span>
                           )}
                         </span>
-                        <span className="text-[10px] bg-zinc-900 border border-[#2c312a] px-2 py-0.5 rounded text-zinc-300 font-extrabold">
+                        <span className="text-[10px] bg-zinc-900 border border-[#2c312a] px-2 py-0.5 rounded text-zinc-300 font-extrabold flex-shrink-0 ml-2">
                           {votesMatch} {votesMatch === 1 ? 'vote' : 'votes'}
                         </span>
                       </button>
@@ -640,13 +751,13 @@ export default function Race2027Page() {
               )}
             </div>
 
-            {/* State Head-to-Head Comparison */}
+            {/* Contestants Grid */}
             <div className="lg:col-span-8 space-y-6">
               <div className="flex justify-between items-baseline border-b border-[#2c312a] pb-3">
                 <div>
-                  <h3 className="text-xl font-extrabold text-white">{selectedState} State Contestants</h3>
+                  <h3 className="text-xl font-extrabold text-white">{activeFilter || 'Select Constituency'} Contestants</h3>
                   <span className="text-xs text-zinc-500">
-                    {stateTotalVotes} total mock {stateTotalVotes === 1 ? 'ballot' : 'ballots'} recorded in {selectedState}
+                    {activeDistrictVotes} total mock {activeDistrictVotes === 1 ? 'ballot' : 'ballots'} recorded in {activeFilter}
                   </span>
                 </div>
                 <span className="text-[10px] uppercase font-bold text-[#00b368] bg-[#008751]/10 border border-[#008751]/20 px-2.5 py-1 rounded-md">
@@ -654,44 +765,38 @@ export default function Race2027Page() {
                 </span>
               </div>
 
-              {/* State Voted Status Callout + Viral Share Buttons */}
-              {hasVotedGov[selectedState] && (
+              {/* Voted Status Callout */}
+              {userVotedCandidate && (
                 <div className="p-4 bg-[#008751]/10 border border-[#008751]/30 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg mb-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs text-[#00b368] font-bold">
                       <span className="w-5 h-5 rounded-full bg-[#008751]/20 flex items-center justify-center text-xs">✓</span>
-                      <span>You voted for <strong>{votedGovNames[selectedState] || 'a candidate'}</strong> in {selectedState}.</span>
+                      <span>You voted for <strong>{userVotedCandidate}</strong> in {activeFilter}.</span>
                     </div>
-                    <p className="text-[11px] text-zinc-400">Share with voters in {selectedState} to boost their standing:</p>
+                    <p className="text-[11px] text-zinc-400">Share with voters in {activeFilter} to boost your candidate:</p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `🗳️ I just cast my mock vote for ${votedGovNames[selectedState]} in the 2027 ${selectedState} State Governorship election on evote.ng!\n\nSee who is leading the state race and vote your candidate: https://evote.ng/elections/2027`
+                        `🗳️ I just cast my mock vote for ${userVotedCandidate} in the 2027 ${activeFilter} ${raceTitles[activeTab].label} election on evote.ng!\n\nSee who is leading and vote your candidate: https://evote.ng/elections/2027`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
                     >
-                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                      </svg>
                       <span>WhatsApp</span>
                     </a>
 
                     <a
                       href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                        `🗳️ I just cast my mock vote for ${votedGovNames[selectedState]} in the 2027 ${selectedState} State Governorship election on evote.ng!\n\nSee who is leading the state race and vote your candidate: https://evote.ng/elections/2027 #Nigeria2027 #${selectedState.replace(/\s+/g, '')}State`
+                        `🗳️ I just cast my mock vote for ${userVotedCandidate} in the 2027 ${activeFilter} ${raceTitles[activeTab].label} election on evote.ng!\n\nSee who is leading: https://evote.ng/elections/2027 #Nigeria2027`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black border border-zinc-700 hover:border-zinc-500 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
                     >
-                      <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 24.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
-                      <span>Post</span>
+                      <span>Post on X</span>
                     </a>
 
                     <button
@@ -703,12 +808,13 @@ export default function Race2027Page() {
 
                     <button
                       onClick={() => {
-                        setHasVotedGov((prev) => ({ ...prev, [selectedState]: false }));
-                        setVotedGovNames((prev) => {
-                          const next = { ...prev };
-                          delete next[selectedState];
-                          try { localStorage.setItem('evote_voted_gov_2027', JSON.stringify(next)); } catch {}
-                          return next;
+                        setUserVotesByTier((prev) => {
+                          const nextTier = { ...prev[activeTab] };
+                          delete nextTier[activeFilter];
+                          try {
+                            localStorage.setItem(`evote_voted_${activeTab}_2027`, JSON.stringify(nextTier));
+                          } catch {}
+                          return { ...prev, [activeTab]: nextTier };
                         });
                       }}
                       className="text-xs text-zinc-500 hover:text-white underline font-semibold transition-colors ml-2"
@@ -719,17 +825,20 @@ export default function Race2027Page() {
                 </div>
               )}
 
-              {activeGovCandidates.length === 0 ? (
+              {activeContestants.length === 0 ? (
                 <div className="bg-[#1d211b] border border-[#2c312a] rounded-xl p-8 text-center text-zinc-500">
-                  Select a state to view contestants.
+                  Select a constituency from the sidebar to view contestants.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {activeGovCandidates.map((cand) => {
-                    const totalMatch = govTotals.find((t) => t.candidate_name === cand.candidate_name && t.state === cand.state);
+                  {activeContestants.map((cand) => {
+                    const totalMatch = (votesByTier[activeTab] || []).find((t) => 
+                      t.candidate_name === cand.candidate_name && 
+                      (activeTab === 'governorship' ? t.state === cand.state : (t.district || t.state) === (cand.district || cand.state))
+                    );
                     const count = totalMatch ? Number(totalMatch.vote_count) : 0;
-                    const percentage = stateTotalVotes > 0 ? ((count / stateTotalVotes) * 100).toFixed(1) : '0';
-                    const isVoted = cand.candidate_name === votedGovNames[selectedState];
+                    const percentage = activeDistrictVotes > 0 ? ((count / activeDistrictVotes) * 100).toFixed(1) : '0';
+                    const isVoted = cand.candidate_name === userVotedCandidate;
                     const photoSrc = getCandidatePhoto(cand.candidate_name, cand.photo_url, cand.party, cand.party_code);
                     const partyColor = getPartyColorHex(cand.party, cand.party_code);
 
@@ -754,8 +863,7 @@ export default function Race2027Page() {
                                 alt={cand.candidate_name}
                                 className="w-full h-full object-cover object-top"
                                 onError={(e) => {
-                                  const target = e.currentTarget;
-                                  target.src = getFallbackAvatar(cand.candidate_name, cand.party, cand.party_code);
+                                  e.currentTarget.src = getFallbackAvatar(cand.candidate_name, cand.party, cand.party_code);
                                 }}
                               />
                             </div>
@@ -764,6 +872,11 @@ export default function Race2027Page() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap mb-1">
                                 <PartyFlag party={cand.party} partyCode={cand.party_code} size="sm" />
+                                {cand.district && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-900 border border-[#2c312a] text-zinc-300 truncate max-w-[140px]">
+                                    {cand.district}
+                                  </span>
+                                )}
                                 {isVoted && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#00b368] text-black">
                                     Your Vote
@@ -790,7 +903,7 @@ export default function Race2027Page() {
                           </div>
 
                           <p className="text-xs text-zinc-400 leading-relaxed">
-                            {getCandidateDescription(cand, true)}
+                            {getCandidateDescription(cand, activeTab)}
                           </p>
 
                           {cand.running_mate && (
@@ -807,17 +920,19 @@ export default function Race2027Page() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => handleGovVoteSubmit({
+                            onClick={() => handleRaceVoteSubmit({
+                              tier: activeTab,
                               name: cand.candidate_name,
                               party: cand.party,
-                              state: cand.state!,
+                              state: cand.state || activeFilter,
+                              district: cand.district || activeFilter,
                               partyCode: cand.party_code,
-                              photoUrl: photoSrc
+                              photoUrl: photoSrc,
                             })}
                             disabled={submittingVote}
                             className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] disabled:bg-zinc-800 disabled:text-zinc-500 text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider shadow-sm active:translate-y-0.5"
                           >
-                            {hasVotedGov[selectedState] ? 'Switch Vote to This Candidate' : 'Vote Candidate'}
+                            {userVotedCandidate ? 'Switch Vote to This Candidate' : 'Vote Candidate'}
                           </button>
                         )}
                       </div>
@@ -830,12 +945,12 @@ export default function Race2027Page() {
           </div>
         )}
 
-        {/* Voting Modal */}
+        {/* Presidential Voting Region Modal */}
         {votingFor && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
             <div className="bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
               <div className="flex justify-between items-center border-b border-[#2c312a] pb-3">
-                <h3 className="text-base font-black text-white">Cast Mock Ballot</h3>
+                <h3 className="text-base font-black text-white">Cast Presidential Ballot</h3>
                 <button onClick={() => setVotingFor(null)} className="text-zinc-500 hover:text-white text-sm">✕</button>
               </div>
 
@@ -948,29 +1063,23 @@ export default function Race2027Page() {
               <div className="space-y-3">
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                    `🗳️ I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} Election on evote.ng!\n\nSee who is leading the polls and cast your vote here: https://evote.ng/elections/2027`
+                    `🗳️ I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 bg-[#25D366] hover:bg-[#20ba59] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg active:translate-y-0.5"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                  </svg>
                   <span>Share to WhatsApp</span>
                 </a>
 
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                    `🗳️ I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} Election on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027 #Nigeria2027 #evoteNG`
+                    `🗳️ I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027 #Nigeria2027 #evoteNG`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 bg-black border border-zinc-700 hover:border-zinc-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md active:translate-y-0.5"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 24.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
                   <span>Share on X (Twitter)</span>
                 </a>
 

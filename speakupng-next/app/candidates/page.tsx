@@ -5,12 +5,15 @@ import Link from 'next/link';
 import PartyFlag, { getPartyColorHex } from '@/components/PartyFlag';
 import { getCandidatePhoto, getFallbackAvatar } from '@/lib/candidate-portraits';
 
+type RaceTier = 'presidential' | 'governorship' | 'senate' | 'reps' | 'assembly' | 'lga';
+
 interface Candidate {
   id: string;
   candidate_name: string;
   party: string;
   party_code?: string;
   state?: string;
+  district?: string;
   running_mate?: string;
   status: 'confirmed' | 'expected';
   cleared_at?: string;
@@ -19,7 +22,7 @@ interface Candidate {
 }
 
 export default function CandidatesPage() {
-  const [tab, setTab] = useState<'presidential' | 'governorship'>('presidential');
+  const [tab, setTab] = useState<RaceTier>('presidential');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -36,8 +39,18 @@ export default function CandidatesPage() {
   const filtered = candidates.filter(c =>
     c.candidate_name.toLowerCase().includes(search.toLowerCase()) ||
     c.party.toLowerCase().includes(search.toLowerCase()) ||
-    c.state?.toLowerCase().includes(search.toLowerCase())
+    c.state?.toLowerCase().includes(search.toLowerCase()) ||
+    c.district?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const tierLabels: Record<RaceTier, { label: string; icon: string }> = {
+    presidential: { label: 'Presidential', icon: '🗳️' },
+    governorship: { label: 'Governorship', icon: '🏛️' },
+    senate: { label: 'Senate (109 Districts)', icon: '📜' },
+    reps: { label: 'House of Reps (360 Constituencies)', icon: '👥' },
+    assembly: { label: 'State Assembly', icon: '🏢' },
+    lga: { label: 'LGA Chairmanship', icon: '🏘️' },
+  };
 
   return (
     <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
@@ -45,7 +58,7 @@ export default function CandidatesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-4xl font-extrabold font-display text-white mb-2">2027 Candidate Directory</h1>
-            <p className="text-[#6b7163] text-sm">Official party flagbearers and declared contestants for the 2027 general elections.</p>
+            <p className="text-[#6b7163] text-sm">Official party flagbearers and declared contestants across all tiers of the 2027 general elections.</p>
           </div>
           <Link
             href="/elections/2027"
@@ -56,58 +69,46 @@ export default function CandidatesPage() {
           </Link>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setTab('presidential')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'presidential' ? 'bg-[#008751]/15 border-[#008751]/30 text-[#00b368]' : 'border-[#2c312a] text-[#6b7163]'}`}>
-            Presidential
-          </button>
-          <button onClick={() => setTab('governorship')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === 'governorship' ? 'bg-[#008751]/15 border-[#008751]/30 text-[#00b368]' : 'border-[#2c312a] text-[#6b7163]'}`}>
-            Governorship
-          </button>
+        {/* Race Tier Switcher */}
+        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
+          {(['presidential', 'governorship', 'senate', 'reps', 'assembly', 'lga'] as RaceTier[]).map((tierKey) => (
+            <button
+              key={tierKey}
+              onClick={() => setTab(tierKey)}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                tab === tierKey
+                  ? 'bg-[#008751]/15 border-[#008751]/30 text-[#00b368]'
+                  : 'border-[#2c312a] text-[#6b7163] hover:text-zinc-300'
+              }`}
+            >
+              <span>{tierLabels[tierKey].icon}</span>
+              <span>{tierLabels[tierKey].label}</span>
+            </button>
+          ))}
         </div>
 
-        {tab === 'presidential' ? (
-          <div className="mb-4 p-4 bg-[#008751]/10 border border-[#008751]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[#00b368] text-sm font-bold mb-0.5">🗳️ 2027 Presidential Mock Poll Active</p>
-              <p className="text-[#6b7163] text-xs leading-relaxed">
-                Ballots are open for certified presidential flagbearers and running mates. Cast your mock vote to view real-time regional trends.
-              </p>
-            </div>
-            <Link
-              href="/elections/2027"
-              className="px-4 py-1.5 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold rounded-lg flex-shrink-0 uppercase tracking-wider"
-            >
-              Vote Now &rarr;
-            </Link>
+        <div className="mb-4 p-4 bg-[#008751]/10 border border-[#008751]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-[#00b368] text-sm font-bold mb-0.5">🗳️ 2027 {tierLabels[tab].label} Mock Poll Active</p>
+            <p className="text-[#6b7163] text-xs leading-relaxed">
+              Cast your mock ballot for declared contestants and view real-time citizen rankings.
+            </p>
           </div>
-        ) : (
-          <div className="mb-4 p-4 bg-[#e8a020]/10 border border-[#e8a020]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <p className="text-[#e8a020] text-sm font-bold mb-0.5">🏛️ 2027 State Governorship Races</p>
-              <p className="text-[#6b7163] text-xs leading-relaxed">
-                Governorship elections are scheduled for 6 February 2027 across 28 on-cycle states. Cast your vote for declared contestants.
-              </p>
-            </div>
-            <Link
-              href="/elections/2027"
-              className="px-4 py-1.5 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold rounded-lg flex-shrink-0 uppercase tracking-wider"
-            >
-              Vote State &rarr;
-            </Link>
-          </div>
-        )}
+          <Link
+            href="/elections/2027"
+            className="px-4 py-1.5 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold rounded-lg flex-shrink-0 uppercase tracking-wider"
+          >
+            Vote Now &rarr;
+          </Link>
+        </div>
 
-        <p className="text-xs text-[#6b7163] mb-8">
-          {tab === 'presidential'
-            ? `${candidates.length} party flagbearers across 10 parties (PDP and Labour Party each have 2 rival faction candidates)`
-            : `${candidates.length} of 28 on-cycle states have a reported name · 8 states (Anambra, Bayelsa, Edo, Ekiti, Imo, Kogi, Ondo, Osun) are off-cycle and not included`}
+        <p className="text-xs text-[#6b7163] mb-6">
+          Showing {filtered.length} candidates in {tierLabels[tab].label}.
         </p>
 
         <input
           type="text"
-          placeholder={tab === 'presidential' ? 'Search by name or party...' : 'Search by name, party, or state...'}
+          placeholder="Search by candidate name, party, district, or state..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-md mb-8 px-4 py-3 border border-[#2c312a] rounded-lg bg-[#1d211b] text-[#f8f7f2] placeholder-[#6b7163] focus:outline-none focus:border-[#00b368] text-sm"
@@ -146,9 +147,9 @@ export default function CandidatesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap mb-1">
                           <PartyFlag party={c.party} partyCode={c.party_code} size="sm" />
-                          {c.state && (
-                            <span className="px-2 py-0.5 bg-zinc-900 border border-[#2c312a] text-zinc-300 rounded text-[9px] font-bold">
-                              {c.state} State
+                          {(c.district || c.state) && (
+                            <span className="px-2 py-0.5 bg-zinc-900 border border-[#2c312a] text-zinc-300 rounded text-[9px] font-bold truncate max-w-[150px]">
+                              {c.district || `${c.state} State`}
                             </span>
                           )}
                           {c.status === 'expected' && (
