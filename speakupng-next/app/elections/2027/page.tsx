@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import PartyFlag, { getPartyColorHex } from '@/components/PartyFlag';
+import { getCandidatePhoto, getFallbackAvatar } from '@/lib/candidate-portraits';
 
 interface VoteTotal {
   candidate_name: string;
@@ -28,6 +30,7 @@ interface Candidate {
   party_code?: string;
   running_mate?: string;
   state?: string;
+  photo_url?: string;
 }
 
 export default function Race2027Page() {
@@ -36,7 +39,7 @@ export default function Race2027Page() {
   // Presidential State
   const [totals, setTotals] = useState<VoteTotal[]>([]);
   const [regional, setRegional] = useState<RegionalBreakdown[]>([]);
-  const [votingFor, setVotingFor] = useState<{ name: string; party: string } | null>(null);
+  const [votingFor, setVotingFor] = useState<{ name: string; party: string; partyCode?: string; photoUrl?: string } | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string>('South West');
   const [hasVotedPres, setHasVotedPres] = useState(false);
   const [votedPresName, setVotedPresName] = useState<string | null>(null);
@@ -57,6 +60,8 @@ export default function Race2027Page() {
   const [shareModal, setShareModal] = useState<{
     name: string;
     party?: string;
+    partyCode?: string;
+    photoUrl?: string;
     race: string;
     state?: string;
   } | null>(null);
@@ -167,6 +172,8 @@ export default function Race2027Page() {
         setShareModal({
           name: votingFor.name,
           party: votingFor.party,
+          partyCode: votingFor.partyCode,
+          photoUrl: votingFor.photoUrl,
           race: 'Presidential General',
         });
         setTimeout(() => setToast(null), 6000);
@@ -183,7 +190,13 @@ export default function Race2027Page() {
     }
   };
 
-  const handleGovVoteSubmit = async (cand: { name: string; party: string; state: string }) => {
+  const handleGovVoteSubmit = async (cand: {
+    name: string;
+    party: string;
+    state: string;
+    partyCode?: string;
+    photoUrl?: string;
+  }) => {
     setSubmittingVote(true);
     try {
       const res = await fetch('/api/elections/2027/governorship', {
@@ -212,6 +225,8 @@ export default function Race2027Page() {
         setShareModal({
           name: cand.name,
           party: cand.party,
+          partyCode: cand.partyCode,
+          photoUrl: cand.photoUrl,
           race: `${cand.state} State Governorship`,
           state: cand.state,
         });
@@ -226,18 +241,6 @@ export default function Race2027Page() {
     } finally {
       setSubmittingVote(false);
     }
-  };
-
-  // UI Helpers
-  const getPartyColor = (party: string) => {
-    const p = party?.toUpperCase();
-    if (p === 'APC') return 'border-[#00b368]';
-    if (p === 'PDP') return 'border-[#e57368]';
-    if (p === 'LP') return 'border-[#e8a020]';
-    if (p === 'NDC') return 'border-[#e8a020]';
-    if (p === 'NNPP') return 'border-[#8e44ad]';
-    if (p === 'ADC') return 'border-[#f39c12]';
-    return 'border-zinc-700';
   };
 
   const getCandidateDescription = (cand: Candidate, isGov: boolean) => {
@@ -281,7 +284,7 @@ export default function Race2027Page() {
             <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#00b368]">Live Public Ballots</span>
             <h1 className="text-4xl font-extrabold font-display text-white mb-2 mt-1">2027 Mock Elections</h1>
             <p className="text-base text-[#6b7163] max-w-2xl">
-              Cast your vote for presidential tickets and state governorship contenders. See live voting breakdowns across all six geopolitical regions.
+              Cast your vote for presidential tickets and state governorship contenders. View candidate profiles, party flags, and live regional breakdowns.
             </p>
           </div>
           <div className="bg-[#1d211b] border border-[#2c312a] px-6 py-4 rounded-xl text-center shadow-xl flex-shrink-0">
@@ -314,7 +317,7 @@ export default function Race2027Page() {
             <div>
               <h3 className="text-sm font-bold text-white">Public Mock Voting is Open!</h3>
               <p className="text-xs text-zinc-400">
-                Vote once per race. You can switch your vote anytime. Real-time percentages and regional leaders update instantly.
+                Vote once per race with full party flags and pictures. You can switch your vote anytime. Real-time percentages update instantly.
               </p>
             </div>
           </div>
@@ -442,29 +445,55 @@ export default function Race2027Page() {
                     const count = totalMatch ? Number(totalMatch.vote_count) : 0;
                     const percentage = totalVoteCount > 0 ? ((count / totalVoteCount) * 100).toFixed(1) : '0';
                     const isVoted = cand.candidate_name === votedPresName;
+                    const photoSrc = getCandidatePhoto(cand.candidate_name, cand.photo_url, cand.party, cand.party_code);
+                    const partyColor = getPartyColorHex(cand.party, cand.party_code);
 
                     return (
                       <div
                         key={cand.id || cand.candidate_name}
-                        className={`bg-[#1d211b] border rounded-2xl p-5 shadow-2xl flex flex-col justify-between transition-all ${
+                        className={`bg-[#1d211b] border rounded-2xl p-5 shadow-2xl flex flex-col justify-between transition-all group ${
                           isVoted
                             ? 'border-[#00b368] ring-1 ring-[#00b368]/30 shadow-[#00b368]/10'
-                            : `${getPartyColor(cand.party)} hover:border-zinc-500`
+                            : 'border-[#2c312a] hover:border-zinc-600'
                         }`}
                       >
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-extrabold text-base text-white">{cand.candidate_name}</h4>
+                        <div className="space-y-4">
+                          <div className="flex gap-3.5 items-start">
+                            {/* Candidate Photo */}
+                            <div
+                              className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 flex-shrink-0 bg-zinc-900 shadow-md transition-transform group-hover:scale-105"
+                              style={{ borderColor: partyColor }}
+                            >
+                              <img
+                                src={photoSrc}
+                                alt={cand.candidate_name}
+                                className="w-full h-full object-cover object-top"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.src = getFallbackAvatar(cand.candidate_name, cand.party, cand.party_code);
+                                }}
+                              />
+                            </div>
+
+                            {/* Candidate Details & Party Flag */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                <PartyFlag party={cand.party} partyCode={cand.party_code} size="sm" />
                                 {isVoted && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#00b368] text-black">
                                     Your Vote
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-zinc-400 font-extrabold uppercase mt-0.5 inline-block">{cand.party}</span>
+                              <h4 className="font-extrabold text-base sm:text-lg text-white group-hover:text-[#00b368] transition-colors leading-tight">
+                                {cand.candidate_name}
+                              </h4>
+                              <span className="text-[11px] text-zinc-400 font-medium block truncate mt-0.5">
+                                {cand.party}
+                              </span>
                             </div>
+
+                            {/* Percentage / Vote Count */}
                             <div className="text-right flex-shrink-0">
                               <span className="px-2.5 py-1 bg-zinc-900 border border-[#2c312a] text-zinc-300 font-black text-xs rounded-lg inline-block">
                                 {percentage}%
@@ -493,7 +522,7 @@ export default function Race2027Page() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => setVotingFor({ name: cand.candidate_name, party: cand.party })}
+                            onClick={() => setVotingFor({ name: cand.candidate_name, party: cand.party, partyCode: cand.party_code, photoUrl: photoSrc })}
                             className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider shadow-sm active:translate-y-0.5"
                           >
                             {hasVotedPres ? 'Switch Vote to This Candidate' : 'Vote Candidate'}
@@ -526,18 +555,37 @@ export default function Race2027Page() {
                     }
                   });
 
+                  const leaderCand = presidentialList.find((c) => c.candidate_name === leader);
+
                   return (
                     <div key={reg} className="p-3 bg-[#141714] border border-[#2c312a] rounded-xl flex justify-between items-center text-xs">
-                      <div>
-                        <span className="font-bold text-zinc-400 block">{reg}</span>
-                        <span className="text-[11px] text-white font-semibold">{leader}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {maxVotes > 0 && leaderCand && (
+                          <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2c312a] flex-shrink-0 bg-zinc-900">
+                            <img
+                              src={getCandidatePhoto(leaderCand.candidate_name, leaderCand.photo_url, leaderCand.party, leaderCand.party_code)}
+                              alt={leaderCand.candidate_name}
+                              className="w-full h-full object-cover object-top"
+                              onError={(e) => {
+                                e.currentTarget.src = getFallbackAvatar(leaderCand.candidate_name, leaderCand.party, leaderCand.party_code);
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <span className="font-bold text-zinc-400 block text-[10px] uppercase">{reg}</span>
+                          <span className="text-[11px] text-white font-semibold flex items-center gap-1.5 truncate">
+                            <span className="truncate">{leader}</span>
+                            {leaderCand && <PartyFlag party={leaderCand.party} partyCode={leaderCand.party_code} size="sm" showCode={false} />}
+                          </span>
+                        </div>
                       </div>
                       {maxVotes > 0 ? (
-                        <span className="text-[10px] bg-[#008751]/10 text-[#00b368] font-black border border-[#008751]/20 px-2 py-0.5 rounded">
+                        <span className="text-[10px] bg-[#008751]/10 text-[#00b368] font-black border border-[#008751]/20 px-2 py-0.5 rounded flex-shrink-0 ml-2">
                           {maxVotes} {maxVotes === 1 ? 'vote' : 'votes'}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-zinc-600">No votes yet</span>
+                        <span className="text-[10px] text-zinc-600 flex-shrink-0">No votes yet</span>
                       )}
                     </div>
                   );
@@ -562,7 +610,7 @@ export default function Race2027Page() {
                   {statesWithRaces.map((st) => {
                     const isActive = st === selectedState;
                     const votesMatch = govTotals
-                      .filter((t) => t.state === st)
+                        .filter((t) => t.state === st)
                       .reduce((acc, t) => acc + Number(t.vote_count), 0);
                     const hasVotedState = hasVotedGov[st];
 
@@ -682,29 +730,55 @@ export default function Race2027Page() {
                     const count = totalMatch ? Number(totalMatch.vote_count) : 0;
                     const percentage = stateTotalVotes > 0 ? ((count / stateTotalVotes) * 100).toFixed(1) : '0';
                     const isVoted = cand.candidate_name === votedGovNames[selectedState];
+                    const photoSrc = getCandidatePhoto(cand.candidate_name, cand.photo_url, cand.party, cand.party_code);
+                    const partyColor = getPartyColorHex(cand.party, cand.party_code);
 
                     return (
                       <div
                         key={cand.id || cand.candidate_name}
-                        className={`bg-[#1d211b] border rounded-2xl p-5 shadow-2xl flex flex-col justify-between transition-all ${
+                        className={`bg-[#1d211b] border rounded-2xl p-5 shadow-2xl flex flex-col justify-between transition-all group ${
                           isVoted
                             ? 'border-[#00b368] ring-1 ring-[#00b368]/30 shadow-[#00b368]/10'
-                            : `${getPartyColor(cand.party)} hover:border-zinc-500`
+                            : 'border-[#2c312a] hover:border-zinc-600'
                         }`}
                       >
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-extrabold text-base text-white">{cand.candidate_name}</h4>
+                        <div className="space-y-4">
+                          <div className="flex gap-3.5 items-start">
+                            {/* Candidate Photo */}
+                            <div
+                              className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 flex-shrink-0 bg-zinc-900 shadow-md transition-transform group-hover:scale-105"
+                              style={{ borderColor: partyColor }}
+                            >
+                              <img
+                                src={photoSrc}
+                                alt={cand.candidate_name}
+                                className="w-full h-full object-cover object-top"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.src = getFallbackAvatar(cand.candidate_name, cand.party, cand.party_code);
+                                }}
+                              />
+                            </div>
+
+                            {/* Candidate Details & Party Flag */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                <PartyFlag party={cand.party} partyCode={cand.party_code} size="sm" />
                                 {isVoted && (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#00b368] text-black">
                                     Your Vote
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-zinc-400 font-extrabold uppercase mt-0.5 inline-block">{cand.party}</span>
+                              <h4 className="font-extrabold text-base sm:text-lg text-white group-hover:text-[#00b368] transition-colors leading-tight">
+                                {cand.candidate_name}
+                              </h4>
+                              <span className="text-[11px] text-zinc-400 font-medium block truncate mt-0.5">
+                                {cand.party}
+                              </span>
                             </div>
+
+                            {/* Percentage / Vote Count */}
                             <div className="text-right flex-shrink-0">
                               <span className="px-2.5 py-1 bg-zinc-900 border border-[#2c312a] text-zinc-300 font-black text-xs rounded-lg inline-block">
                                 {percentage}%
@@ -733,7 +807,13 @@ export default function Race2027Page() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => handleGovVoteSubmit({ name: cand.candidate_name, party: cand.party, state: cand.state! })}
+                            onClick={() => handleGovVoteSubmit({
+                              name: cand.candidate_name,
+                              party: cand.party,
+                              state: cand.state!,
+                              partyCode: cand.party_code,
+                              photoUrl: photoSrc
+                            })}
                             disabled={submittingVote}
                             className="w-full mt-6 bg-[#008751] hover:bg-[#00b368] disabled:bg-zinc-800 disabled:text-zinc-500 text-white text-xs font-bold py-3 rounded-lg transition-colors uppercase tracking-wider shadow-sm active:translate-y-0.5"
                           >
@@ -759,8 +839,31 @@ export default function Race2027Page() {
                 <button onClick={() => setVotingFor(null)} className="text-zinc-500 hover:text-white text-sm">✕</button>
               </div>
 
+              {/* Candidate Info with Photo and Party Flag */}
+              <div className="flex items-center gap-3 p-3 bg-[#141714] border border-[#2c312a] rounded-xl">
+                <div
+                  className="w-12 h-12 rounded-xl overflow-hidden border-2 flex-shrink-0 bg-zinc-900"
+                  style={{ borderColor: getPartyColorHex(votingFor.party, votingFor.partyCode) }}
+                >
+                  <img
+                    src={votingFor.photoUrl || getCandidatePhoto(votingFor.name, null, votingFor.party, votingFor.partyCode)}
+                    alt={votingFor.name}
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      e.currentTarget.src = getFallbackAvatar(votingFor.name, votingFor.party, votingFor.partyCode);
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-white text-sm truncate">{votingFor.name}</h4>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <PartyFlag party={votingFor.party} partyCode={votingFor.partyCode} size="sm" />
+                  </div>
+                </div>
+              </div>
+
               <p className="text-xs text-zinc-300 leading-relaxed">
-                You are voting for <strong className="text-white">{votingFor.name}</strong> ({votingFor.party}). Select your geopolitical zone to record this ballot on the regional scoreboard:
+                You are voting for <strong className="text-white">{votingFor.name}</strong>. Select your geopolitical zone to record this ballot on the regional scoreboard:
               </p>
 
               <div>
@@ -810,13 +913,26 @@ export default function Race2027Page() {
                 ✕
               </button>
 
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 mx-auto rounded-full bg-[#008751]/20 border border-[#008751]/50 flex items-center justify-center text-3xl shadow-lg">
-                  🗳️
+              <div className="text-center space-y-3">
+                <div
+                  className="w-20 h-20 mx-auto rounded-2xl overflow-hidden border-2 bg-zinc-900 shadow-xl"
+                  style={{ borderColor: getPartyColorHex(shareModal.party, shareModal.partyCode) }}
+                >
+                  <img
+                    src={shareModal.photoUrl || getCandidatePhoto(shareModal.name, null, shareModal.party, shareModal.partyCode)}
+                    alt={shareModal.name}
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      e.currentTarget.src = getFallbackAvatar(shareModal.name, shareModal.party, shareModal.partyCode);
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-center gap-1.5 mt-1">
+                  <PartyFlag party={shareModal.party} partyCode={shareModal.partyCode} size="sm" />
                 </div>
                 <h3 className="text-2xl font-black font-display text-white">Mock Vote Counted!</h3>
                 <p className="text-xs text-zinc-300 leading-relaxed">
-                  You voted for <strong className="text-[#00b368]">{shareModal.name}</strong> {shareModal.party && `(${shareModal.party})`} in the <strong>{shareModal.race}</strong> election.
+                  You voted for <strong className="text-[#00b368]">{shareModal.name}</strong> {shareModal.party && `(${shareModal.party})`} in the <strong>{shareModal.race}</strong>.
                 </p>
               </div>
 

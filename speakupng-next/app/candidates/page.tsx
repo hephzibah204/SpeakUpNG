@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import PartyFlag, { getPartyColorHex } from '@/components/PartyFlag';
+import { getCandidatePhoto, getFallbackAvatar } from '@/lib/candidate-portraits';
 
 interface Candidate {
   id: string;
@@ -13,6 +15,7 @@ interface Candidate {
   status: 'confirmed' | 'expected';
   cleared_at?: string;
   source_url: string;
+  photo_url?: string;
 }
 
 export default function CandidatesPage() {
@@ -116,35 +119,66 @@ export default function CandidatesPage() {
           <div className="text-center py-20 bg-[#1d211b] border border-[#2c312a] rounded-xl text-[#6b7163]">No candidates found.</div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
-            {filtered.map(c => (
-              <div key={c.id} className="bg-[#1d211b] border border-[#2c312a] rounded-xl p-5">
-                <div className="flex justify-between items-start gap-3 mb-2">
+            {filtered.map(c => {
+              const photoSrc = getCandidatePhoto(c.candidate_name, c.photo_url, c.party, c.party_code);
+              const partyColor = getPartyColorHex(c.party, c.party_code);
+
+              return (
+                <div key={c.id} className="bg-[#1d211b] border border-[#2c312a] hover:border-zinc-600 transition-colors rounded-2xl p-5 shadow-xl flex flex-col justify-between">
                   <div>
-                    <h3 className="font-bold text-white text-lg">{c.candidate_name}</h3>
-                    {c.state && <p className="text-xs text-[#6b7163]">{c.state} State</p>}
+                    <div className="flex gap-3.5 items-start mb-3">
+                      {/* Candidate Picture */}
+                      <div
+                        className="w-16 h-16 rounded-xl overflow-hidden border-2 flex-shrink-0 bg-zinc-900 shadow-md"
+                        style={{ borderColor: partyColor }}
+                      >
+                        <img
+                          src={photoSrc}
+                          alt={c.candidate_name}
+                          className="w-full h-full object-cover object-top"
+                          onError={(e) => {
+                            e.currentTarget.src = getFallbackAvatar(c.candidate_name, c.party, c.party_code);
+                          }}
+                        />
+                      </div>
+
+                      {/* Info & Party Flag */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          <PartyFlag party={c.party} partyCode={c.party_code} size="sm" />
+                          {c.state && (
+                            <span className="px-2 py-0.5 bg-zinc-900 border border-[#2c312a] text-zinc-300 rounded text-[9px] font-bold">
+                              {c.state} State
+                            </span>
+                          )}
+                          {c.status === 'expected' && (
+                            <span className="px-2 py-0.5 bg-[#e8a020]/10 text-[#e8a020] rounded text-[9px] font-bold uppercase">Expected</span>
+                          )}
+                        </div>
+                        <h3 className="font-extrabold text-white text-base leading-snug truncate">{c.candidate_name}</h3>
+                        <p className="text-xs text-zinc-400 truncate mt-0.5">{c.party}</p>
+                      </div>
+                    </div>
+
+                    {c.running_mate && (
+                      <p className="text-xs text-[#6b7163] bg-[#141714] border border-[#2c312a] p-2 rounded-lg mt-2">
+                        Running mate: <span className="text-zinc-200 font-semibold">{c.running_mate}</span>
+                      </p>
+                    )}
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    {c.party_code && (
-                      <span className="px-2 py-0.5 bg-[#008751]/10 text-[#00b368] rounded text-[10px] font-bold uppercase">{c.party_code}</span>
-                    )}
-                    {c.status === 'expected' && (
-                      <span className="px-2 py-0.5 bg-[#e8a020]/10 text-[#e8a020] rounded text-[9px] font-bold uppercase">Expected</span>
-                    )}
+
+                  <div className="mt-4 pt-3 border-t border-[#2c312a] flex justify-end">
+                    <Link
+                      href="/elections/2027"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#008751]/15 hover:bg-[#008751]/30 text-[#00b368] text-xs font-bold transition-colors"
+                    >
+                      <span>🗳️ Vote {c.candidate_name.split(' ')[0]}</span>
+                      <span aria-hidden="true">&rarr;</span>
+                    </Link>
                   </div>
                 </div>
-                <p className="text-sm text-zinc-400">{c.party}</p>
-                {c.running_mate && <p className="text-xs text-[#6b7163] mt-1">Running mate: <span className="text-zinc-300">{c.running_mate}</span></p>}
-                <div className="mt-4 pt-3 border-t border-[#2c312a] flex justify-end">
-                  <Link
-                    href="/elections/2027"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#008751]/15 hover:bg-[#008751]/30 text-[#00b368] text-xs font-bold transition-colors"
-                  >
-                    <span>🗳️ Vote {c.candidate_name.split(' ')[0]}</span>
-                    <span aria-hidden="true">&rarr;</span>
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
