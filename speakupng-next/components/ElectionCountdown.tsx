@@ -83,7 +83,7 @@ export function ElectionCountdown() {
           href="/elections/2027"
           className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-black uppercase tracking-wider rounded-lg transition-colors shadow-md active:translate-y-0.5"
         >
-          <span>🗳️ Cast Your Mock Vote</span>
+          <span>Cast your mock vote</span>
           <span aria-hidden="true">&rarr;</span>
         </Link>
       </div>

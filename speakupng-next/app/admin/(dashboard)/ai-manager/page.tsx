@@ -187,8 +187,8 @@ export default function AIManagerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold font-display text-white mb-2">🤖 AI Manager</h1>
-        <p className="text-[#6b7163] text-sm">Monitor changes, draft news, generate social content, and audit the system with AI.</p>
+        <h1 className="text-2xl font-serif font-bold text-white mb-2">Intelligence Engine</h1>
+        <p className="text-[#6b7163] text-sm">Monitor platform telemetry, draft civic releases, format updates, and run diagnostic queries.</p>
       </div>
 
       {/* Tabs */}
@@ -308,9 +308,9 @@ export default function AIManagerPage() {
               <label className="block text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-2">Tone & Style</label>
               <div className="flex gap-2">
                 {[
-                  { id: 'formal', label: '📰 Formal' },
-                  { id: 'accessible', label: '📱 Accessible' },
-                  { id: 'pidgin', label: '🇳🇬 Pidgin' },
+                  { id: 'formal', label: 'Formal' },
+                  { id: 'accessible', label: 'Accessible' },
+                  { id: 'pidgin', label: 'Pidgin' },
                 ].map(t => (
                   <button
                     key={t.id}
@@ -371,9 +371,9 @@ export default function AIManagerPage() {
               <label className="block text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-2">Target Network</label>
               <div className="flex gap-2">
                 {[
-                  { id: 'twitter', label: '🕩 Twitter/X' },
-                  { id: 'whatsapp', label: '📱 WhatsApp' },
-                  { id: 'facebook', label: '👥 Facebook' },
+                  { id: 'twitter', label: 'X / Twitter' },
+                  { id: 'whatsapp', label: 'WhatsApp' },
+                  { id: 'facebook', label: 'Facebook' },
                 ].map(p => (
                   <button
                     key={p.id}

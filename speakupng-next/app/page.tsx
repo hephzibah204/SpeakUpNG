@@ -175,7 +175,7 @@ export default function HomePage() {
               href="/elections/2027"
               className="px-8 py-3 bg-[#008751] hover:bg-[#00b368] text-white font-bold rounded-xl transition-colors text-sm focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 inline-flex items-center gap-2 shadow-sm"
             >
-              <span>🗳️ Mock Vote 2027</span>
+              <span>Mock vote 2027</span>
             </Link>
             <Link
               href="/leaderboard"

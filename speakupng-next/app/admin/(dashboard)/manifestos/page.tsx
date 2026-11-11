@@ -177,9 +177,9 @@ export default function AdminManifestosPage() {
 
                 <p className="text-xs text-zinc-400 leading-relaxed mb-3">{parseSummary(m)}</p>
 
-                <div className="flex gap-3 text-[10px] text-zinc-500">
-                  {sdgCount > 0 && <span>📌 {sdgCount} SDGs aligned</span>}
-                  {milestoneCount > 0 && <span>📋 {milestoneCount} milestones</span>}
+                <div className="flex gap-3 text-[10px] text-zinc-500 font-mono">
+                  {sdgCount > 0 && <span>{sdgCount} SDGs aligned</span>}
+                  {milestoneCount > 0 && <span>{milestoneCount} milestones</span>}
                   <span>{new Date(m.created_at).toLocaleDateString()}</span>
                 </div>
               </div>

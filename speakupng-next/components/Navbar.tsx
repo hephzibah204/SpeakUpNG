@@ -156,7 +156,7 @@ export function Navbar() {
             href="/elections/2027"
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider bg-[#008751] hover:bg-[#00b368] text-white transition-all shadow-sm active:translate-y-0.5"
           >
-            <span>🗳️ Mock Vote 2027</span>
+            <span>Mock vote 2027</span>
           </Link>
         </div>
 
@@ -182,7 +182,7 @@ export function Navbar() {
               href="/elections/2027"
               className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-[#008751] hover:bg-[#00b368] text-white font-bold text-xs uppercase tracking-wider shadow-sm"
             >
-              <span>🗳️ Cast 2027 Mock Vote</span>
+              <span>Cast 2027 mock vote</span>
             </Link>
           </div>
           {MENU.map((category) => {

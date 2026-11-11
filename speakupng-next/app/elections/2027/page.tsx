@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import PartyFlag, { getPartyColorHex } from '@/components/PartyFlag';
 import { getCandidatePhoto, getFallbackAvatar } from '@/lib/candidate-portraits';
+import { getDeviceFingerprint } from '@/lib/device-fingerprint';
 
 type RaceTier = 'presidential' | 'governorship' | 'senate' | 'reps' | 'assembly' | 'lga';
 
@@ -82,6 +83,8 @@ export default function Race2027Page() {
     lga: {},
   });
 
+  const [deviceHash, setDeviceHash] = useState<string>('');
+  const [deviceLoaded, setDeviceLoaded] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [submittingVote, setSubmittingVote] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -108,7 +111,7 @@ export default function Race2027Page() {
     }
   };
 
-  // Read saved votes from localStorage on mount
+  // Read saved votes from localStorage & sync cryptographically with device fingerprint
   useEffect(() => {
     try {
       const savedPres = localStorage.getItem('evote_voted_pres_2027');
@@ -135,6 +138,55 @@ export default function Race2027Page() {
     } catch {
       // ignore storage access errors
     }
+
+    // Cryptographic device fingerprinting: 1 Device = 1 Certified Ballot
+    getDeviceFingerprint().then(async (hash) => {
+      setDeviceHash(hash);
+      setDeviceLoaded(true);
+
+      try {
+        const res = await fetch(`/api/elections/2027/my-votes?device_hash=${encodeURIComponent(hash)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const serverVotes = data.votes || {};
+
+          if (serverVotes.presidential?.candidate_name) {
+            setVotedPresName(serverVotes.presidential.candidate_name);
+            setHasVotedPres(true);
+            try {
+              localStorage.setItem('evote_voted_pres_2027', serverVotes.presidential.candidate_name);
+            } catch {}
+          }
+
+          const newTiers: Record<string, Record<string, string>> = {};
+          const tiers: RaceTier[] = ['governorship', 'senate', 'reps', 'assembly', 'lga'];
+          for (const t of tiers) {
+            const map = serverVotes[t] || {};
+            newTiers[t] = {};
+            for (const [key, val] of Object.entries(map as Record<string, { candidate_name: string }>)) {
+              if (val?.candidate_name) {
+                newTiers[t][key] = val.candidate_name;
+              }
+            }
+            if (Object.keys(newTiers[t]).length > 0) {
+              try {
+                localStorage.setItem(`evote_voted_${t}_2027`, JSON.stringify(newTiers[t]));
+              } catch {}
+            }
+          }
+
+          setUserVotesByTier((prev) => {
+            const merged: Record<string, Record<string, string>> = { ...prev };
+            for (const t of tiers) {
+              merged[t] = { ...merged[t], ...newTiers[t] };
+            }
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to sync device votes from server:', err);
+      }
+    });
   }, []);
 
   // Fetch candidates for current active race
@@ -193,13 +245,15 @@ export default function Race2027Page() {
     if (!votingFor) return;
     setSubmittingVote(true);
     try {
+      const activeHash = deviceHash || await getDeviceFingerprint();
       const res = await fetch('/api/elections/2027', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           candidate_name: votingFor.name,
           party: votingFor.party,
-          voter_region: selectedRegion
+          voter_region: selectedRegion,
+          device_hash: activeHash,
         }),
       });
 
@@ -246,6 +300,7 @@ export default function Race2027Page() {
   }) => {
     setSubmittingVote(true);
     try {
+      const activeHash = deviceHash || await getDeviceFingerprint();
       const res = await fetch('/api/elections/2027/race', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,6 +310,7 @@ export default function Race2027Page() {
           party: cand.party,
           state: cand.state,
           district: cand.district || cand.state,
+          device_hash: activeHash,
         }),
       });
 
@@ -353,42 +409,36 @@ export default function Race2027Page() {
     ? votedPresName
     : userVotesByTier[activeTab]?.[activeFilter];
 
-  const raceTitles: Record<RaceTier, { label: string; icon: string; subtitle: string; filterLabel: string }> = {
+  const raceTitles: Record<RaceTier, { label: string; subtitle: string; filterLabel: string }> = {
     presidential: {
-      label: 'Presidential Race',
-      icon: '🗳️',
-      subtitle: 'Cast your mock vote for certified presidential tickets & running mates across Nigeria.',
-      filterLabel: 'Geopolitical Zone',
+      label: 'Presidential race',
+      subtitle: 'Cast your mock vote for certified presidential tickets and running mates across Nigeria.',
+      filterLabel: 'Geopolitical zone',
     },
     governorship: {
-      label: 'Governorship Race',
-      icon: '🏛️',
+      label: 'Governorship race',
       subtitle: 'State governor mock ballots across all on-cycle states.',
-      filterLabel: 'Select State Race',
+      filterLabel: 'Select state race',
     },
     senate: {
-      label: 'Senate (109 Districts)',
-      icon: '📜',
+      label: 'Senate (109 districts)',
       subtitle: 'Senatorial mock ballots across the 109 Senatorial Districts of Nigeria.',
-      filterLabel: 'Select Senatorial District',
+      filterLabel: 'Select senatorial district',
     },
     reps: {
-      label: 'House of Reps (360 Constituencies)',
-      icon: '👥',
-      subtitle: 'Federal Constituency mock ballots for the House of Representatives.',
-      filterLabel: 'Select Federal Constituency',
+      label: 'House of Representatives',
+      subtitle: 'Federal Constituency mock ballots for the 360 House of Representatives seats.',
+      filterLabel: 'Select federal constituency',
     },
     assembly: {
       label: 'State House of Assembly',
-      icon: '🏢',
       subtitle: 'State legislative assembly constituencies across Nigeria.',
-      filterLabel: 'Select State Constituency',
+      filterLabel: 'Select state constituency',
     },
     lga: {
       label: 'LGA Chairmanship',
-      icon: '🏘️',
       subtitle: 'Local government area chairmen and council leadership mock ballots.',
-      filterLabel: 'Select Local Government Area',
+      filterLabel: 'Select local government area',
     },
   };
 
@@ -439,7 +489,21 @@ export default function Race2027Page() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end flex-shrink-0">
+            <div 
+              title={deviceHash ? `SHA-256 Hardware Fingerprint: ${deviceHash}` : 'Authenticating device hardware...'}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide bg-emerald-950/70 text-emerald-300 border border-emerald-500/30 shadow-sm cursor-help"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>🔒 1 Device = 1 Ballot</span>
+              {deviceHash ? (
+                <span className="text-[9px] font-mono text-emerald-400/90 bg-emerald-900/50 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                  {deviceHash.slice(0, 6)}...{deviceHash.slice(-4)}
+                </span>
+              ) : (
+                <span className="text-[9px] text-zinc-400">verifying...</span>
+              )}
+            </div>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#00b368]/15 text-[#00b368] border border-[#00b368]/30">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00b368] animate-pulse"></span>
               Live Ballots

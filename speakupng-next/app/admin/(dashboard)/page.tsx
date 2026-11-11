@@ -4,13 +4,11 @@ import Link from 'next/link';
 export const revalidate = 0; // Disable cache to always get live metrics
 
 export default async function AdminDashboard() {
-  // Fetch summary counts
   const officialsCount = await queryFirst<{ count: string }>('SELECT COUNT(*) as count FROM officials');
   const politiciansCount = await queryFirst<{ count: string }>('SELECT COUNT(*) as count FROM politicians');
   const promisesCount = await queryFirst<{ count: string }>('SELECT COUNT(*) as count FROM official_promises');
   const reportsCount = await queryFirst<{ count: string }>('SELECT COUNT(*) as count FROM misconduct_reports');
 
-  // Fetch recent ratings/reviews
   const recentReviews = await queryAll<any>(`
     SELECT r.*, o.full_name as official_name, p.full_name as politician_name
     FROM (
@@ -23,7 +21,6 @@ export default async function AdminDashboard() {
     ORDER BY created_at DESC LIMIT 5
   `);
 
-  // Fetch recent misconduct reports
   const recentReports = await queryAll<any>(`
     SELECT r.*, o.full_name as official_name
     FROM misconduct_reports r
@@ -32,62 +29,59 @@ export default async function AdminDashboard() {
   `);
 
   const cards = [
-    { label: 'Total Officials', value: officialsCount?.count || '0', icon: '🏛️', href: '/admin/officials' },
-    { label: 'Total Politicians', value: politiciansCount?.count || '0', icon: '👨‍💼', href: '/admin/politicians' },
-    { label: 'Mandate Promises', value: promisesCount?.count || '0', icon: '📝', href: '/admin/mandate' },
-    { label: 'Misconduct Reports', value: reportsCount?.count || '0', icon: '🚨', href: '/admin/reports' },
+    { label: 'Total officials', value: officialsCount?.count || '0', href: '/admin/officials' },
+    { label: 'Total politicians', value: politiciansCount?.count || '0', href: '/admin/politicians' },
+    { label: 'Mandate promises', value: promisesCount?.count || '0', href: '/admin/mandate' },
+    { label: 'Misconduct reports', value: reportsCount?.count || '0', href: '/admin/reports' },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-7xl">
       <div>
-        <h1 className="text-3xl font-extrabold font-display text-white mb-2">Overview</h1>
-        <p className="text-[#6b7163] text-sm">Real-time civic intelligence insights and administration metrics.</p>
+        <h1 className="text-2xl font-serif font-bold text-ink mb-1">System overview</h1>
+        <p className="text-muted text-sm">Key indicators and recent activity across the registry.</p>
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card) => (
           <Link
             key={card.label}
             href={card.href}
-            className="p-6 bg-[#1d211b] border border-[#2c312a] hover:border-zinc-700 rounded-2xl transition-all flex items-center justify-between group"
+            className="p-5 bg-paper-2 border border-rule hover:border-ink/20 rounded transition-colors group"
           >
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#6b7163]">{card.label}</span>
-              <div className="text-3xl font-extrabold font-display text-white mt-1 group-hover:text-[#00b368] transition-colors">
-                {card.value}
-              </div>
+            <span className="text-xs text-muted block mb-2">{card.label}</span>
+            <div className="text-2xl font-bold font-serif text-ink group-hover:text-accent transition-colors">
+              {card.value}
             </div>
-            <span className="text-3xl bg-[#141714] p-3.5 rounded-xl border border-[#2c312a]">{card.icon}</span>
           </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Reviews */}
-        <div className="bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold font-display text-white">Recent Citizen Reviews</h2>
-            <Link href="/admin/ratings" className="text-xs font-bold text-[#00b368] hover:underline">
-              View All
+        <div className="bg-paper-2 border border-rule rounded p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-semibold text-ink">Recent citizen reviews</h2>
+            <Link href="/admin/ratings" className="text-xs text-accent hover:underline">
+              View all
             </Link>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {recentReviews.length === 0 ? (
-              <p className="text-xs text-[#6b7163] text-center py-8">No recent reviews submitted.</p>
+              <p className="text-xs text-muted text-center py-8">No recent reviews submitted.</p>
             ) : (
               recentReviews.map((rev) => (
-                <div key={rev.id} className="p-4 bg-[#141714] border border-[#2c312a] rounded-xl text-xs space-y-2">
+                <div key={rev.id} className="p-3.5 bg-paper-3 border border-rule rounded text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">
-                      {rev.official_name || rev.politician_name || 'Unknown Target'}
+                    <span className="font-semibold text-ink">
+                      {rev.official_name || rev.politician_name || 'Unknown record'}
                     </span>
-                    <span className="font-bold text-[#e8a020]">★ {Number(rev.overall).toFixed(1)}</span>
+                    <span className="font-mono text-gold">{Number(rev.overall).toFixed(1)} / 5.0</span>
                   </div>
-                  {rev.review_text && <p className="text-zinc-450 italic">"{rev.review_text}"</p>}
-                  <div className="text-[10px] text-[#6b7163] font-semibold">
+                  {rev.review_text && <p className="text-ink-2 italic">"{rev.review_text}"</p>}
+                  <div className="text-[11px] text-muted font-mono">
                     {new Date(rev.created_at).toLocaleString()}
                   </div>
                 </div>
@@ -97,29 +91,29 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Recent Misconduct Reports */}
-        <div className="bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold font-display text-white">Recent Misconduct Reports</h2>
-            <Link href="/admin/reports" className="text-xs font-bold text-[#00b368] hover:underline">
-              View All
+        <div className="bg-paper-2 border border-rule rounded p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-semibold text-ink">Recent misconduct reports</h2>
+            <Link href="/admin/reports" className="text-xs text-accent hover:underline">
+              View all
             </Link>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {recentReports.length === 0 ? (
-              <p className="text-xs text-[#6b7163] text-center py-8">No recent misconduct reports filed.</p>
+              <p className="text-xs text-muted text-center py-8">No reports filed.</p>
             ) : (
               recentReports.map((rep) => (
-                <div key={rep.id} className="p-4 bg-[#141714] border border-[#2c312a] rounded-xl text-xs space-y-2">
+                <div key={rep.id} className="p-3.5 bg-paper-3 border border-rule rounded text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">{rep.official_name || 'General Report'}</span>
-                    <span className="px-2 py-0.5 bg-red-950/20 text-red-400 border border-red-900/30 font-bold rounded">
+                    <span className="font-semibold text-ink">{rep.official_name || 'General Report'}</span>
+                    <span className="px-2 py-0.5 bg-error/10 text-error border border-error/20 text-[11px] font-mono rounded">
                       {rep.status || 'Pending'}
                     </span>
                   </div>
-                  <p className="text-zinc-300 font-medium">{rep.report_title}</p>
-                  <p className="text-zinc-450 line-clamp-2">{rep.report_detail}</p>
-                  <div className="text-[10px] text-[#6b7163] font-semibold">
+                  <p className="text-ink font-medium">{rep.report_title}</p>
+                  <p className="text-muted line-clamp-2">{rep.report_detail}</p>
+                  <div className="text-[11px] text-muted font-mono">
                     {new Date(rep.created_at).toLocaleString()}
                   </div>
                 </div>

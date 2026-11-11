@@ -19,7 +19,7 @@ export default function AskPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'ai',
-      text: 'Hello! I am the EVOTE.NG Civic AI Assistant. Ask me anything about Nigerian legislative bills, representative scorecards, political promises, or platform methodologies.',
+      text: 'Welcome. Inquire about Nigerian legislative bills, representative scorecards, tracked campaign promises, or platform evaluation methodologies.',
       timestamp: new Date()
     }
   ]);
@@ -50,13 +50,12 @@ export default function AskPage() {
           timestamp: new Date()
         }
       ]);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setMessages(prev => [
         ...prev,
         {
           sender: 'ai',
-          text: 'Error connecting to the AI helper. Please verify your connection.',
+          text: 'Unable to connect to the query service. Please verify your connection.',
           timestamp: new Date()
         }
       ]);
@@ -70,20 +69,20 @@ export default function AskPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-16">
+    <div className="min-h-screen bg-paper text-ink font-body pb-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col h-[85vh]">
         
         {/* Header */}
-        <div className="mb-6 text-center border-b border-[#2c312a] pb-4 flex-shrink-0">
-          <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#00b368]">Civic Intelligence</span>
-          <h1 className="text-3xl font-extrabold font-display text-white mt-1">Ask Civic AI</h1>
-          <p className="text-sm text-[#6b7163]">
-            Ask questions about bills, budgets, politicians, and electoral laws.
+        <div className="mb-6 text-center border-b border-rule pb-4 flex-shrink-0">
+          <span className="text-xs font-semibold text-accent-light">Civic intelligence query</span>
+          <h1 className="text-3xl font-extrabold font-display text-ink mt-1">Ask EVOTE.NG</h1>
+          <p className="text-sm text-muted mt-1">
+            Search legislative bills, state budgets, politician track records, and electoral laws.
           </p>
         </div>
 
         {/* Chat History Container */}
-        <div className="flex-1 bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 shadow-2xl overflow-y-auto space-y-4 flex flex-col min-h-0">
+        <div className="flex-1 bg-paper-2 border border-rule rounded-2xl p-6 shadow-card overflow-y-auto space-y-4 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {messages.map((m, idx) => (
               <div 
@@ -91,14 +90,14 @@ export default function AskPage() {
                 className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div 
-                  className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed shadow ${
+                  className={`max-w-[80%] rounded-2xl p-4 text-sm leading-relaxed ${
                     m.sender === 'user' 
-                      ? 'bg-[#008751] text-white rounded-br-none' 
-                      : 'bg-[#141714] text-zinc-300 border border-[#2c312a] rounded-bl-none'
+                      ? 'bg-accent text-accent-ink rounded-br-none' 
+                      : 'bg-paper text-ink border border-rule rounded-bl-none'
                   }`}
                 >
                   <p>{m.text}</p>
-                  <span className="text-[9px] text-zinc-500 block mt-1 text-right select-none">
+                  <span className="text-[10px] text-muted block mt-1 text-right select-none tabular-nums">
                     {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -106,11 +105,8 @@ export default function AskPage() {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-[#141714] border border-[#2c312a] rounded-2xl rounded-bl-none p-4 max-w-[80%] text-sm text-zinc-400 flex items-center gap-2">
-                  <span className="inline-block animate-bounce text-[#00b368]">●</span>
-                  <span className="inline-block animate-bounce text-[#00b368] delay-75">●</span>
-                  <span className="inline-block animate-bounce text-[#00b368] delay-150">●</span>
-                  <span className="text-xs">Thinking...</span>
+                <div className="bg-paper border border-rule rounded-2xl rounded-bl-none px-4 py-3 text-xs text-muted">
+                  Searching verified records…
                 </div>
               </div>
             )}
@@ -118,14 +114,14 @@ export default function AskPage() {
 
           {/* Quick suggestions if history is empty/short */}
           {messages.length === 1 && (
-            <div className="pt-4 border-t border-[#2c312a]/30">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#6b7163] block mb-2">Try asking:</span>
+            <div className="pt-4 border-t border-rule">
+              <span className="text-xs font-semibold text-muted block mb-2">Example queries:</span>
               <div className="flex flex-wrap gap-2">
                 {SAMPLE_QUESTIONS.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => askSampleQuestion(q)}
-                    className="text-left text-xs bg-[#141714] hover:bg-[#2c312a] border border-[#2c312a] text-zinc-300 px-3 py-2 rounded-xl transition-colors"
+                    className="text-left text-xs bg-paper hover:bg-paper-3 border border-rule text-ink-2 px-3 py-2 rounded-xl transition-colors focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5"
                   >
                     {q}
                   </button>
@@ -141,15 +137,15 @@ export default function AskPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your civic question here..."
-            className="flex-1 bg-[#1d211b] border border-[#2c312a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00b368] transition-colors"
+            placeholder="Type your civic inquiry here…"
+            className="flex-1 bg-paper-2 border border-rule rounded-xl px-4 py-3 text-sm text-ink placeholder-muted focus-visible:outline-2 focus-visible:outline-focus transition-colors"
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="bg-[#008751] hover:bg-[#00b368] disabled:opacity-50 text-white font-bold px-6 py-3 rounded-xl transition-all text-sm uppercase tracking-wider flex items-center justify-center"
+            className="bg-accent hover:bg-accent-light disabled:opacity-50 text-accent-ink font-bold px-6 py-3 rounded-xl transition-colors text-sm flex items-center justify-center focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5"
           >
-            Send
+            Submit
           </button>
         </form>
 

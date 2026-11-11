@@ -113,9 +113,8 @@ export default function OfficialPage() {
   return (
     <div className="min-h-screen bg-[#141714] text-[#f8f7f2] font-sans pb-20">
       
-      {/* Premium Hero Banner Background */}
-      <div className="h-48 w-full bg-gradient-to-r from-[#0B5D43]/40 via-[#1d211b] to-[#141714] border-b border-[#2c312a] relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,179,104,0.1),transparent)]"></div>
+      {/* Hero Banner Background */}
+      <div className="h-40 w-full bg-[#171a17] border-b border-rule relative overflow-hidden">
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-10">

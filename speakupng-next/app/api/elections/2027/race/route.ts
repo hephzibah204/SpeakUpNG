@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { type, candidate_name, party, state, district } = body;
+    const { type, candidate_name, party, state, district, device_hash } = body;
     const raceType = (type || 'senate').toLowerCase();
     const tableName = TABLE_MAP[raceType];
 
@@ -62,20 +62,48 @@ export async function POST(request: Request) {
     const id = randomUUID();
 
     if (raceType === 'governorship') {
-      await execute(
-        `INSERT INTO ${tableName} (id, candidate_name, party, state)
-         VALUES (?, ?, ?, ?)`,
-        [id, candidate_name, party, state]
-      );
+      if (device_hash) {
+        await execute(
+          `INSERT INTO ${tableName} (id, candidate_name, party, state, device_hash, updated_at)
+           VALUES (?, ?, ?, ?, ?, NOW())
+           ON CONFLICT (device_hash, state)
+           DO UPDATE SET
+             candidate_name = EXCLUDED.candidate_name,
+             party = EXCLUDED.party,
+             updated_at = NOW()`,
+          [id, candidate_name, party, state, device_hash]
+        );
+      } else {
+        await execute(
+          `INSERT INTO ${tableName} (id, candidate_name, party, state)
+           VALUES (?, ?, ?, ?)`,
+          [id, candidate_name, party, state]
+        );
+      }
     } else {
-      await execute(
-        `INSERT INTO ${tableName} (id, candidate_name, party, state, district)
-         VALUES (?, ?, ?, ?, ?)`,
-        [id, candidate_name, party, state, district || 'General']
-      );
+      const dist = district || 'General';
+      if (device_hash) {
+        await execute(
+          `INSERT INTO ${tableName} (id, candidate_name, party, state, district, device_hash, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())
+           ON CONFLICT (device_hash, district)
+           DO UPDATE SET
+             candidate_name = EXCLUDED.candidate_name,
+             party = EXCLUDED.party,
+             state = EXCLUDED.state,
+             updated_at = NOW()`,
+          [id, candidate_name, party, state, dist, device_hash]
+        );
+      } else {
+        await execute(
+          `INSERT INTO ${tableName} (id, candidate_name, party, state, district)
+           VALUES (?, ?, ?, ?, ?)`,
+          [id, candidate_name, party, state, dist]
+        );
+      }
     }
 
-    return NextResponse.json({ success: true, voteId: id });
+    return NextResponse.json({ success: true, voteId: id, verifiedDevice: Boolean(device_hash) });
   } catch (error: any) {
     console.error('Cast mock race vote error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });

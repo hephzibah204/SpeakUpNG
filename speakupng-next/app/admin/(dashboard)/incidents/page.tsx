@@ -92,7 +92,7 @@ export default function AdminIncidentsPage() {
               <p className="text-sm text-zinc-300 leading-relaxed">{i.description}</p>
               <div className="text-xs text-[#6b7163] space-y-0.5">
                 {(i.state || i.lga || i.polling_unit) && <p>{[i.polling_unit, i.lga, i.state].filter(Boolean).join(', ')}</p>}
-                {i.lat && i.lng && <p>📍 {i.lat.toFixed(4)}, {i.lng.toFixed(4)}</p>}
+                {i.lat && i.lng && <p>Coordinates: {i.lat.toFixed(4)}, {i.lng.toFixed(4)}</p>}
                 {i.reporter_name && <p>Reporter: {i.reporter_name} {i.reporter_contact ? `(${i.reporter_contact})` : ''}</p>}
                 <p>{new Date(i.created_at).toLocaleString()}</p>
               </div>

@@ -80,8 +80,12 @@ export function ReportModal({ targetId, targetType, targetName, onClose, onSubmi
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400, textAlign: 'center' }}>
           <div className="modal-body" style={{ padding: '3rem 2rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚨</div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Report Submitted</h2>
+            <div className="w-12 h-12 rounded-full bg-error/10 border border-error/20 text-error flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Report submitted</h2>
             <p style={{ color: 'var(--muted)' }}>Thank you for submitting this report for {targetName}. It will be moderated anonymously.</p>
           </div>
         </div>
@@ -93,7 +97,7 @@ export function ReportModal({ targetId, targetType, targetName, onClose, onSubmi
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>🚨 Report Misconduct</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Report Misconduct</h2>
           <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
         </div>
 

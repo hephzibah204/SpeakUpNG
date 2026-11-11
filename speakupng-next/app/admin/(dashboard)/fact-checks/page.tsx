@@ -104,7 +104,7 @@ export default function AdminFactChecksPage() {
                   <span className="text-[#e8a020] font-bold uppercase text-[10px]">AI: </span>{c.ai_assessment}
                 </div>
               )}
-              <div className="text-xs text-[#6b7163] mb-3">👍 {c.credible_votes || 0} credible · 👎 {c.not_credible_votes || 0} not credible</div>
+              <div className="text-xs text-[#6b7163] mb-3">{c.credible_votes || 0} deemed credible · {c.not_credible_votes || 0} contested</div>
 
               {editingId === c.id ? (
                 <div className="space-y-3 border-t border-[#2c312a] pt-3">
