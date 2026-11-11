@@ -154,7 +154,7 @@ export function Navbar() {
         <div className="hidden sm:flex items-center gap-3 ml-4">
           <Link
             href="/elections/2027"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider bg-[#008751] hover:bg-[#00b368] text-white transition-all shadow-sm active:translate-y-0.5"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-accent hover:brightness-110 text-paper transition-colors"
           >
             <span>Mock vote 2027</span>
           </Link>
@@ -180,7 +180,7 @@ export function Navbar() {
           <div className="pb-2">
             <Link
               href="/elections/2027"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-[#008751] hover:bg-[#00b368] text-white font-bold text-xs uppercase tracking-wider shadow-sm"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded bg-accent hover:brightness-110 text-paper font-semibold text-xs transition-colors"
             >
               <span>Cast 2027 mock vote</span>
             </Link>

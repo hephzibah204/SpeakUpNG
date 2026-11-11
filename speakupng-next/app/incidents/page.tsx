@@ -15,15 +15,15 @@ interface IncidentReport {
 }
 
 const INCIDENT_CATEGORIES = [
-  { key: 'vote_buying', label: '💸 Vote Buying / Inducement' },
-  { key: 'violence', label: '⚠️ Violence / Clashes' },
-  { key: 'ballot_snatching', label: '🗳️ Ballot Box Snatching' },
-  { key: 'missing_materials', label: '📦 Missing / Insufficient Materials' },
-  { key: 'delayed_officials', label: '⏳ Delayed INEC Officials' },
-  { key: 'card_reader_failure', label: '📱 BVAS / Card Reader Failure' },
-  { key: 'intimidation', label: '🛑 Voter Intimidation / Harassment' },
-  { key: 'fake_polling_unit', label: '🏠 Fake Polling Unit' },
-  { key: 'other', label: '❓ Other' },
+  { key: 'vote_buying', label: 'Vote Buying / Inducement' },
+  { key: 'violence', label: 'Violence / Clashes' },
+  { key: 'ballot_snatching', label: 'Ballot Box Snatching' },
+  { key: 'missing_materials', label: 'Missing / Insufficient Materials' },
+  { key: 'delayed_officials', label: 'Delayed INEC Officials' },
+  { key: 'card_reader_failure', label: 'BVAS / Card Reader Failure' },
+  { key: 'intimidation', label: 'Voter Intimidation / Harassment' },
+  { key: 'fake_polling_unit', label: 'Fake Polling Unit' },
+  { key: 'other', label: 'Other Irregularity' },
 ];
 
 const STATES = [
@@ -181,7 +181,7 @@ export default function IncidentsPage() {
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-2">GPS Location (Optional)</label>
                 <button type="button" onClick={captureLocation} disabled={locating}
                   className="px-4 py-2 border border-[#2c312a] hover:border-zinc-600 text-[#00b368] text-xs font-bold rounded-lg transition-colors disabled:opacity-50">
-                  {locating ? 'Getting location…' : coords ? `📍 ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : '📍 Capture GPS Location'}
+                  {locating ? 'Getting location…' : coords ? `Coordinates: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : 'Capture GPS location'}
                 </button>
               </div>
 
@@ -200,7 +200,7 @@ export default function IncidentsPage() {
 
               <button type="submit" disabled={submitting}
                 className="w-full py-3.5 bg-[#008751] hover:bg-[#00b368] disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-colors mt-4 shadow-lg">
-                {submitting ? 'Submitting Report...' : 'Submit Report 🔒'}
+                {submitting ? 'Submitting Report...' : 'Submit Report'}
               </button>
               <p className="text-[10px] text-[#6b7163] text-center">Reports are submitted anonymously by device, with no personal data required.</p>
             </form>
@@ -235,7 +235,7 @@ export default function IncidentsPage() {
                       <p className="text-sm text-zinc-300 leading-relaxed mb-4">{report.description}</p>
 
                       <div className="flex flex-wrap justify-between items-center gap-3 pt-3.5 border-t border-[#2c312a]/45 text-xs text-[#6b7163] font-bold">
-                        <span>📍 {report.state} {report.lga ? `· ${report.lga}` : ''} {report.polling_unit ? `· ${report.polling_unit}` : ''}</span>
+                        <span>{report.state} {report.lga ? `· ${report.lga}` : ''} {report.polling_unit ? `· ${report.polling_unit}` : ''}</span>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-[10px] uppercase border ${
                             report.status === 'verified' ? 'border-[#008751]/30 bg-[#008751]/10 text-[#00b368]' :
@@ -247,7 +247,7 @@ export default function IncidentsPage() {
                           </span>
                           {report.photo_url && (
                             <a href={report.photo_url} target="_blank" rel="noopener noreferrer" className="text-[#00b368] hover:underline">
-                              Evidence 🔗
+                              Evidence &rarr;
                             </a>
                           )}
                         </div>

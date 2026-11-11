@@ -124,7 +124,7 @@ export default function DefectionsPage() {
                   {ev.source_url && (
                     <div className="text-[10px] pt-2 border-t border-[#2c312a]/30">
                       <a href={ev.source_url} target="_blank" rel="noopener noreferrer" className="text-[#e57368] hover:underline font-bold">
-                        Source Verification 🔗
+                        Source verification &rarr;
                       </a>
                     </div>
                   )}

@@ -298,7 +298,7 @@ export default function TrackerPage() {
                                   <div className="flex gap-2">
                                     {p.evidence_url && (
                                       <a href={p.evidence_url} target="_blank" rel="noopener noreferrer" className="text-[#00b368] hover:underline">
-                                        Evidence 🔗
+                                        Evidence &rarr;
                                       </a>
                                     )}
                                     <button

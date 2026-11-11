@@ -142,7 +142,7 @@ export default function BudgetsPage() {
                       </div>
                       <div className="w-full bg-[#141714] h-2.5 rounded-full overflow-hidden border border-[#2c312a]">
                         <div
-                          className="bg-[#00b368] h-full shadow-[0_0_8px_rgba(0,179,104,0.4)]"
+                          className="bg-[#00b368] h-full"
                           style={{ width: `${rate}%` }}
                         ></div>
                       </div>

@@ -55,12 +55,12 @@ interface Category {
 }
 
 const CATEGORIES: Category[] = [
-  { key: 'governors', label: 'Most Trusted Governor', icon: '🏛️', color: '#00b368', description: 'Governors ranked by citizen approval ratings' },
-  { key: 'senators', label: 'Most Trusted Senator', icon: '⚖️', color: '#3b82f6', description: 'Senators ranked by citizen trust scores' },
-  { key: 'reps', label: 'Best Performing Rep', icon: '🎖️', color: '#8b5cf6', description: 'House of Representatives members with highest ratings' },
-  { key: 'rising', label: 'Rising Politician', icon: '🚀', color: '#e8a020', description: 'Officials gaining the most traction this week' },
-  { key: 'searched', label: 'Most Searched', icon: '🔥', color: '#e03030', description: 'Officials with the most citizen engagement activity' },
-  { key: 'approved', label: 'Most Approved', icon: '✅', color: '#00b368', description: 'Overall highest approval ratings across all tiers' },
+  { key: 'governors', label: 'Most Trusted Governor', icon: '', color: '#00b368', description: 'Governors ranked by citizen approval ratings' },
+  { key: 'senators', label: 'Most Trusted Senator', icon: '', color: '#3b82f6', description: 'Senators ranked by citizen trust scores' },
+  { key: 'reps', label: 'Best Performing Rep', icon: '', color: '#8b5cf6', description: 'House of Representatives members with highest ratings' },
+  { key: 'rising', label: 'Rising Politician', icon: '', color: '#e8a020', description: 'Officials gaining the most traction this week' },
+  { key: 'searched', label: 'Most Searched', icon: '', color: '#e03030', description: 'Officials with the most citizen engagement activity' },
+  { key: 'approved', label: 'Most Approved', icon: '', color: '#00b368', description: 'Overall highest approval ratings across all tiers' },
 ];
 
 /* ──────────── Trend arrow ──────────── */
@@ -85,25 +85,25 @@ function TrendArrow({ index }: { index: number }) {
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1)
     return (
-      <div className="w-8 h-8 rounded-full bg-[#e8a020]/20 border border-[#e8a020]/50 flex items-center justify-center flex-shrink-0">
-        <span className="text-sm">🥇</span>
+      <div className="w-7 h-7 rounded bg-gold/15 border border-gold/30 flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-mono font-bold text-gold">1</span>
       </div>
     );
   if (rank === 2)
     return (
-      <div className="w-8 h-8 rounded-full bg-[#9ca88f]/20 border border-[#9ca88f]/50 flex items-center justify-center flex-shrink-0">
-        <span className="text-sm">🥈</span>
+      <div className="w-7 h-7 rounded bg-paper-3 border border-rule flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-mono font-bold text-ink">2</span>
       </div>
     );
   if (rank === 3)
     return (
-      <div className="w-8 h-8 rounded-full bg-[#cd7f32]/20 border border-[#cd7f32]/50 flex items-center justify-center flex-shrink-0">
-        <span className="text-sm">🥉</span>
+      <div className="w-7 h-7 rounded bg-paper-3 border border-rule flex items-center justify-center flex-shrink-0">
+        <span className="text-xs font-mono font-bold text-ink-2">3</span>
       </div>
     );
   return (
-    <div className="w-8 h-8 rounded-full bg-[#1d211b] border border-[#2c312a] flex items-center justify-center flex-shrink-0">
-      <span className="text-xs font-extrabold text-[#6b7163]">#{rank}</span>
+    <div className="w-7 h-7 rounded bg-paper-3 border border-rule flex items-center justify-center flex-shrink-0">
+      <span className="text-xs font-mono text-muted">#{rank}</span>
     </div>
   );
 }
@@ -236,57 +236,46 @@ export default function InfluencePage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">📊</span>
-                <h1 className="text-4xl font-extrabold text-white">Political Influence Index</h1>
+                <h1 className="text-3xl font-serif font-bold text-ink">Political influence index</h1>
               </div>
-              <p className="text-[#6b7163] text-base max-w-2xl">
-                Weekly rankings powered by citizen ratings and engagement data.
+              <p className="text-muted text-sm max-w-2xl">
+                Weekly rankings synthesized from citizen ratings and verified engagement signals.
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#00b368]/10 border border-[#00b368]/30 text-[#00b368]">
-                📅 This Week
+              <span className="px-2.5 py-0.5 rounded text-xs font-mono bg-paper-3 border border-rule text-ink">
+                Current edition
               </span>
-              <span className="text-[10px] text-[#4a5244]">Updated {updatedAt}</span>
+              <span className="text-[11px] font-mono text-muted">Updated {updatedAt}</span>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-1.5 mb-8">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.key}
               onClick={() => setActiveTab(cat.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded text-xs font-medium border transition-colors ${
                 activeTab === cat.key
-                  ? 'border-transparent text-white shadow-lg'
-                  : 'border-[#2c312a] text-[#6b7163] hover:border-[#4a5244] hover:text-[#f8f7f2] bg-[#1d211b]'
+                  ? 'border-rule text-ink bg-paper-3 font-semibold'
+                  : 'border-transparent text-muted hover:text-ink bg-transparent'
               }`}
-              style={
-                activeTab === cat.key
-                  ? { backgroundColor: cat.color + '22', borderColor: cat.color + '66', color: cat.color }
-                  : {}
-              }
             >
-              <span>{cat.icon}</span>
-              <span className="hidden sm:inline">{cat.label}</span>
+              <span>{cat.label}</span>
             </button>
           ))}
         </div>
 
         {/* Active category header */}
-        <div className="flex items-center gap-3 mb-5">
-          <span className="text-2xl">{activeCat.icon}</span>
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-rule">
           <div>
-            <h2 className="text-xl font-extrabold text-white">{activeCat.label}</h2>
-            <p className="text-xs text-[#6b7163]">{activeCat.description}</p>
+            <h2 className="text-base font-semibold text-ink">{activeCat.label}</h2>
+            <p className="text-xs text-muted">{activeCat.description}</p>
           </div>
           <div className="ml-auto flex-shrink-0">
-            <span
-              className="px-3 py-1 rounded-full text-xs font-bold border"
-              style={{ borderColor: activeCat.color + '66', color: activeCat.color, backgroundColor: activeCat.color + '11' }}
-            >
+            <span className="px-2.5 py-0.5 rounded text-xs font-mono border border-rule bg-paper-3 text-muted">
               Top 10
             </span>
           </div>
@@ -295,14 +284,13 @@ export default function InfluencePage() {
         {/* Ranked list */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-12 h-12 rounded-full border-b-2 border-[#00b368] animate-spin" />
-            <p className="text-[#6b7163] text-sm">Loading influence rankings…</p>
+            <div className="w-6 h-6 rounded-full border-2 border-rule border-t-accent animate-spin" />
+            <p className="text-muted text-xs">Loading influence rankings…</p>
           </div>
         ) : ranked.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 bg-[#1d211b] border border-[#2c312a] rounded-2xl">
-            <span className="text-4xl">📭</span>
-            <p className="text-[#6b7163] text-sm text-center max-w-xs">
-              No officials found for this category yet. Check back as more data comes in.
+          <div className="flex flex-col items-center justify-center py-16 gap-3 bg-paper-2 border border-rule rounded">
+            <p className="text-muted text-xs text-center max-w-xs">
+              No officials found for this category yet. Check back as more data is recorded.
             </p>
           </div>
         ) : (

@@ -102,7 +102,7 @@ export default function BillsPage() {
                             <div key={stage.key} className="flex flex-col items-center text-center space-y-1">
                               <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
                                 isCompleted 
-                                  ? 'bg-[#00b368] border-[#00b368] text-white shadow-[0_0_8px_rgba(0,179,104,0.4)]'
+                                  ? 'bg-[#00b368] border-[#00b368] text-white'
                                   : 'bg-transparent border-[#2c312a]'
                               }`}>
                                 {isCompleted && (

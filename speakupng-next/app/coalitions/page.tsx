@@ -102,8 +102,8 @@ export default function CoalitionsPage() {
       <div className="border-b border-[#2c312a] bg-[#1a1e19]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center gap-3 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#00b368]/15 text-[#00b368] border border-[#00b368]/25">
-              🗳 Political Intelligence
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono bg-paper-3 text-ink-2 border border-rule">
+              Political intelligence
             </span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-3 tracking-tight">
@@ -207,7 +207,7 @@ export default function CoalitionsPage() {
                       </div>
 
                       {/* Card */}
-                      <div className="bg-[#1d211b] border border-[#2c312a] rounded-2xl p-5 hover:border-[#00b368]/30 hover:shadow-[0_0_24px_rgba(0,179,104,0.06)] transition-all duration-300">
+                      <div className="bg-[#1d211b] border border-[#2c312a] rounded-2xl p-5 hover:border-[#00b368]/30 transition-all duration-300">
                         {/* Top row */}
                         <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                           <div className="flex flex-wrap items-center gap-2">

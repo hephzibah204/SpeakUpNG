@@ -42,18 +42,18 @@ interface DnaScore {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const DIMENSIONS = [
-  { key: 'leadership',              label: 'Leadership',          icon: '👑' },
-  { key: 'integrity',               label: 'Integrity',           icon: '⚖️' },
-  { key: 'transparency',            label: 'Transparency',        icon: '🔍' },
-  { key: 'accountability',          label: 'Accountability',      icon: '📋' },
-  { key: 'accessibility',           label: 'Accessibility',       icon: '🤝' },
-  { key: 'youth_support',           label: 'Youth Support',       icon: '🌱' },
-  { key: 'economic_performance',    label: 'Economy',             icon: '📈' },
-  { key: 'education_performance',   label: 'Education',           icon: '📚' },
-  { key: 'healthcare_performance',  label: 'Healthcare',          icon: '🏥' },
-  { key: 'innovation',              label: 'Innovation',          icon: '💡' },
-  { key: 'national_acceptance',     label: 'Nat. Acceptance',     icon: '🇳🇬' },
-  { key: 'legislative_productivity',label: 'Legislative',         icon: '🏛️' },
+  { key: 'leadership',              label: 'Leadership' },
+  { key: 'integrity',               label: 'Integrity' },
+  { key: 'transparency',            label: 'Transparency' },
+  { key: 'accountability',          label: 'Accountability' },
+  { key: 'accessibility',           label: 'Accessibility' },
+  { key: 'youth_support',           label: 'Youth Support' },
+  { key: 'economic_performance',    label: 'Economy' },
+  { key: 'education_performance',   label: 'Education' },
+  { key: 'healthcare_performance',  label: 'Healthcare' },
+  { key: 'innovation',              label: 'Innovation' },
+  { key: 'national_acceptance',     label: 'National Acceptance' },
+  { key: 'legislative_productivity',label: 'Legislative Productivity' },
 ] as const;
 
 type DimKey = (typeof DIMENSIONS)[number]['key'];
@@ -220,19 +220,18 @@ function RadarChart({ dna, size = 340 }: { dna: DnaScore; size?: number }) {
 
 // ─── Bar metric row ───────────────────────────────────────────────────────────
 
-function MetricBar({ label, icon, value }: { label: string; icon: string; value: number }) {
+function MetricBar({ label, value }: { label: string; value: number }) {
   const color = scoreColor(value);
   return (
     <div className="flex items-center gap-3 py-1.5">
-      <span className="text-base w-6 flex-shrink-0">{icon}</span>
-      <span className="text-xs text-[#a0a89a] w-32 flex-shrink-0 font-medium">{label}</span>
+      <span className="text-xs text-[#a0a89a] w-36 flex-shrink-0 font-medium">{label}</span>
       <div className="flex-1 bg-[#1d211b] rounded-full h-2 overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
           style={{ width: `${value}%`, backgroundColor: color }}
         />
       </div>
-      <span className="text-xs font-bold w-8 text-right flex-shrink-0" style={{ color }}>
+      <span className="text-xs font-mono font-bold w-8 text-right flex-shrink-0" style={{ color }}>
         {value}
       </span>
     </div>
@@ -295,8 +294,7 @@ export default function DnaScorePage() {
       <div className="border-b border-[#2c312a] bg-[#0e110e]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">🧬</span>
-            <h1 className="text-3xl font-bold tracking-tight text-[#f8f7f2]">
+            <h1 className="text-3xl font-serif font-bold tracking-tight text-ink">
               Political DNA Score
             </h1>
           </div>
@@ -327,7 +325,7 @@ export default function DnaScorePage() {
               <div className="space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto pr-1 scrollbar-thin">
                 {loadingOfficials ? (
                   Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="animate-pulse h-14 rounded-xl bg-[#1d211b]" />
+                    <div key={i} className="h-14 rounded bg-paper-2 border border-rule" />
                   ))
                 ) : filteredOfficials.length === 0 ? (
                   <p className="text-[#4a5244] text-sm text-center py-8">No officials found</p>
@@ -351,8 +349,8 @@ export default function DnaScorePage() {
                             className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-[#2c312a]"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-lg bg-[#2c312a] flex items-center justify-center flex-shrink-0 text-lg">
-                            👤
+                          <div className="w-9 h-9 rounded-lg bg-[#2c312a] flex items-center justify-center flex-shrink-0 text-[10px] font-mono text-muted">
+                            Off.
                           </div>
                         )}
                         <div className="min-w-0">
@@ -379,32 +377,30 @@ export default function DnaScorePage() {
           <main className="flex-1 min-w-0">
             {!selectedId ? (
               /* Empty state */
-              <div className="h-full flex flex-col items-center justify-center text-center gap-4 py-24">
-                <div className="text-6xl opacity-30">🧬</div>
-                <h2 className="text-xl font-semibold text-[#4a5244]">Select an Official</h2>
-                <p className="text-sm text-[#3a403a] max-w-xs">
-                  Choose a political leader from the sidebar to view their Political DNA Score
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-24">
+                <h2 className="text-base font-semibold text-muted">Select an official</h2>
+                <p className="text-xs text-muted max-w-xs">
+                  Choose a political leader from the directory to review their Political DNA Score
                   across 12 performance dimensions.
                 </p>
               </div>
             ) : loadingDna ? (
               /* Loading skeleton */
-              <div className="animate-pulse space-y-6">
-                <div className="h-24 rounded-2xl bg-[#1d211b]" />
-                <div className="h-80 rounded-2xl bg-[#1d211b]" />
+              <div className="space-y-6">
+                <div className="h-24 rounded bg-paper-2 border border-rule" />
+                <div className="h-80 rounded bg-paper-2 border border-rule" />
                 <div className="space-y-3">
                   {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="h-8 rounded-lg bg-[#1d211b]" />
+                    <div key={i} className="h-8 rounded bg-paper-2 border border-rule" />
                   ))}
                 </div>
               </div>
             ) : !dna ? (
               /* No DNA data found */
-              <div className="h-full flex flex-col items-center justify-center text-center gap-4 py-24">
-                <div className="text-5xl opacity-30">📊</div>
-                <h2 className="text-xl font-semibold text-[#4a5244]">No DNA Data Yet</h2>
-                <p className="text-sm text-[#3a403a] max-w-xs">
-                  DNA score data has not been recorded for this official yet.
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-24">
+                <h2 className="text-base font-semibold text-muted">No DNA score available</h2>
+                <p className="text-xs text-muted max-w-xs">
+                  DNA score metrics have not been recorded for this official yet.
                 </p>
               </div>
             ) : (
@@ -419,8 +415,8 @@ export default function DnaScorePage() {
                       className="w-16 h-16 rounded-xl object-cover bg-[#2c312a]"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-xl bg-[#2c312a] flex items-center justify-center text-2xl">
-                      👤
+                    <div className="w-16 h-16 rounded-xl bg-[#2c312a] flex items-center justify-center text-xs font-mono text-muted">
+                      Photo
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -487,7 +483,6 @@ export default function DnaScorePage() {
                         <MetricBar
                           key={dim.key}
                           label={dim.label}
-                          icon={dim.icon}
                           value={(dna[dim.key as DimKey] as number) ?? 0}
                         />
                       ))}

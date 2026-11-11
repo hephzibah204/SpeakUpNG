@@ -211,7 +211,7 @@ export default function FactCheckPage() {
                         voted[c.id] === 'credible' ? 'bg-[#008751]/15 border-[#008751]/30 text-[#00b368]' : 'border-[#2c312a] text-zinc-400 hover:border-zinc-600'
                       }`}
                     >
-                      👍 Credible ({c.credible_votes || 0})
+                      Credible ({c.credible_votes || 0})
                     </button>
                     <button
                       onClick={() => handleVote(c.id, 'not_credible')}
@@ -220,7 +220,7 @@ export default function FactCheckPage() {
                         voted[c.id] === 'not_credible' ? 'bg-[#c0392b]/15 border-[#c0392b]/30 text-[#e57368]' : 'border-[#2c312a] text-zinc-400 hover:border-zinc-600'
                       }`}
                     >
-                      👎 Not Credible ({c.not_credible_votes || 0})
+                      Contested ({c.not_credible_votes || 0})
                     </button>
                   </div>
                   <span className="text-[10px] text-[#6b7163]">{new Date(c.created_at).toLocaleDateString()}</span>

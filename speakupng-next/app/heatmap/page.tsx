@@ -81,7 +81,7 @@ export default function HeatMapPage() {
           <div className="lg:col-span-7 bg-[#1d211b] border border-[#2c312a] rounded-2xl p-6 shadow-2xl flex flex-col items-center">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#6b7163] mb-6 self-start">Interactive Geopolitical Map</h3>
 
-            <svg viewBox="0 0 500 400" className="w-full max-w-md h-auto cursor-pointer drop-shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+            <svg viewBox="0 0 500 400" className="w-full max-w-md h-auto cursor-pointer">
               <polygon points="80,50 200,30 240,120 180,180 80,150" fill={strengthColor(zones.nw.strength)}
                 stroke={selectedZone === 'nw' ? '#fff' : '#2c312a'} strokeWidth={selectedZone === 'nw' ? 3 : 1.5}
                 onClick={() => setSelectedZone('nw')} className="transition-all duration-300 hover:brightness-125" />

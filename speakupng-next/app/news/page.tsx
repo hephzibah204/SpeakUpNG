@@ -91,9 +91,9 @@ export default function NewsHubPage() {
       <div className="border-b border-[#2c312a] bg-[#1a1e19]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center gap-3 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/25">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
-              Live Updates
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono bg-paper-3 text-ink-2 border border-rule">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+              Live updates
             </span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-3 tracking-tight">
@@ -195,7 +195,7 @@ function FeaturedCard({ article, large }: { article: NewsArticle; large: boolean
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group block bg-[#1d211b] border border-[#2c312a] rounded-2xl overflow-hidden hover:border-[#00b368]/50 hover:shadow-[0_0_30px_rgba(0,179,104,0.08)] transition-all duration-300 ${large ? 'md:row-span-1' : ''}`}
+      className={`group block bg-[#1d211b] border border-[#2c312a] rounded-2xl overflow-hidden hover:border-[#00b368]/50 transition-all duration-300 ${large ? 'md:row-span-1' : ''}`}
     >
       <div className="p-6">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -235,7 +235,7 @@ function ArticleCard({ article }: { article: NewsArticle }) {
       href={article.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block bg-[#1d211b] border border-[#2c312a] rounded-2xl overflow-hidden hover:border-[#00b368]/50 hover:shadow-[0_0_30px_rgba(0,179,104,0.08)] transition-all duration-300"
+      className="group block bg-[#1d211b] border border-[#2c312a] rounded-2xl overflow-hidden hover:border-[#00b368]/50 transition-all duration-300"
     >
       <div className="p-5">
         <div className="flex items-start justify-between gap-2 mb-3">

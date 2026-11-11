@@ -74,17 +74,17 @@ export default function LearnPage() {
       const newXp = userXp + xpReward;
       setUserXp(newXp);
       localStorage.setItem('evote_civic_xp', String(newXp));
-      alert(`🎉 Correct! You earned +${xpReward} XP!`);
+      alert(`Correct! You earned +${xpReward} XP.`);
     } else {
-      alert('❌ Incorrect answer. Keep learning and try again!');
+      alert('Incorrect answer. Keep learning and try again.');
     }
   };
 
   const getRankBadge = (xp: number) => {
-    if (xp >= 200) return '👑 Civic Champion';
-    if (xp >= 100) return '🛡️ Policy Analyst';
-    if (xp >= 50) return '🎓 Active Citizen';
-    return '🌱 Civic Novice';
+    if (xp >= 200) return 'Civic Champion';
+    if (xp >= 100) return 'Policy Analyst';
+    if (xp >= 50) return 'Active Citizen';
+    return 'Civic Novice';
   };
 
   return (
@@ -229,8 +229,8 @@ export default function LearnPage() {
                                   : 'bg-[#c0392b]/10 border-[#c0392b]/20 text-[#e57368]'
                               }`}>
                                 {isCorrect 
-                                  ? '🎉 Brilliant! You answered correctly!' 
-                                  : `❌ That was incorrect. The correct answer was: "${q.options[q.correct_option_index]}"`
+                                  ? 'Brilliant! You answered correctly.' 
+                                  : `That was incorrect. The correct answer was: "${q.options[q.correct_option_index]}"`
                                 }
                               </div>
                             )}

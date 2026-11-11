@@ -161,7 +161,7 @@ export default function PollsPage() {
                   <div className="mt-6 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-[#6b7163] pt-4 border-t border-[#2c312a]">
                     <span>{poll.total_votes.toLocaleString()} vote{poll.total_votes !== 1 ? 's' : ''}</span>
                     <span className="flex items-center gap-1 text-[#00b368]">
-                      🔒 Secure & Anonymous
+                      Secure and anonymous
                     </span>
                   </div>
                 </div>

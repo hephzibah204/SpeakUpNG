@@ -91,7 +91,7 @@ export default function ElectionsArchivePage() {
                   <div key={i}>
                     <div className="flex justify-between items-baseline mb-1">
                       <span className={`text-sm font-bold ${c.is_winner ? 'text-[#00b368]' : 'text-white'}`}>
-                        {c.candidate_name} {c.is_winner && '👑'}
+                        {c.candidate_name} {c.is_winner && <span className="ml-1 text-gold text-xs font-mono">(Elected)</span>}
                         <span className="text-[#6b7163] font-normal ml-2">{c.party}</span>
                       </span>
                       <span className="text-sm font-bold text-zinc-300">{c.votes.toLocaleString()}</span>

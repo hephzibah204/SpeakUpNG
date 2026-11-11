@@ -173,7 +173,7 @@ export default function HomePage() {
             </button>
             <Link
               href="/elections/2027"
-              className="px-8 py-3 bg-[#008751] hover:bg-[#00b368] text-white font-bold rounded-xl transition-colors text-sm focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 inline-flex items-center gap-2 shadow-sm"
+              className="px-8 py-3 bg-paper-3 hover:bg-paper-2 border border-rule text-accent font-semibold rounded-xl transition-colors text-sm focus-visible:outline-2 focus-visible:outline-focus active:translate-y-0.5 inline-flex items-center gap-2"
             >
               <span>Mock vote 2027</span>
             </Link>

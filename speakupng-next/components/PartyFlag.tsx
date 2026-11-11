@@ -81,7 +81,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'APC':
       // APC: Green, White, Sky Blue vertical stripes with red emblem band & Broom symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="All Progressives Congress (APC)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="12" height="24" fill="#008751" />
           <rect x="12" width="12" height="24" fill="#ffffff" />
           <rect x="24" width="12" height="24" fill="#0077c8" />
@@ -96,7 +96,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'PDP':
       // PDP: Green, White, Red horizontal stripes with the Umbrella symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Peoples Democratic Party (PDP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="8" fill="#008751" />
           <rect y="8" width="36" height="8" fill="#ffffff" />
           <rect y="16" width="36" height="8" fill="#d63031" />
@@ -111,7 +111,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'LP':
       // LP: Green, White, Orange with Papa, Mama, Pikin (Family) symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Labour Party (LP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="12" height="24" fill="#008751" />
           <rect x="12" width="12" height="24" fill="#ffffff" />
           <rect x="24" width="12" height="24" fill="#f39c12" />
@@ -128,7 +128,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'NNPP':
       // NNPP: Red, White, Royal Blue with Basket of fruit symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="New Nigeria Peoples Party (NNPP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="8" fill="#c0392b" />
           <rect y="8" width="36" height="8" fill="#ffffff" />
           <rect y="16" width="36" height="8" fill="#1e3799" />
@@ -143,7 +143,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'ADC':
       // ADC: Navy Blue and Vibrant Orange with Handshake symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="African Democratic Congress (ADC)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="18" height="24" fill="#0a3d62" />
           <rect x="18" width="18" height="24" fill="#e67e22" />
           {/* Handshake symbol in center circle */}
@@ -156,7 +156,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'SDP':
       // SDP: Green and White with Horse symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Social Democratic Party (SDP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="24" fill="#008751" />
           <rect x="8" width="20" height="24" fill="#ffffff" />
           {/* Galloping Horse silhouette */}
@@ -168,7 +168,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'APGA':
       // APGA: Green and Yellow with Rooster
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="All Progressives Grand Alliance (APGA)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="18" height="24" fill="#008751" />
           <rect x="18" width="18" height="24" fill="#f1c40f" />
           <circle cx="18" cy="12" r="5" fill="#ffffff" />
@@ -181,7 +181,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'AAC':
       // AAC: Orange and Black with Star/Fist
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="African Action Congress (AAC)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="24" fill="#e65100" />
           <polygon points="18,5 20,10 25,10 21,13 23,18 18,15 13,18 15,13 11,10 16,10" fill="#111111" />
         </svg>
@@ -190,7 +190,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'PRP':
       // PRP: Crimson Red with Key symbol
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Peoples Redemption Party (PRP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="24" fill="#b71540" />
           {/* Key symbol in gold */}
           <circle cx="15" cy="12" r="3" fill="none" stroke="#f1c40f" strokeWidth="1.5" />
@@ -203,7 +203,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'YPP':
       // YPP: Forest Green and Gold with Leaf
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Young Progressives Party (YPP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="12" fill="#1e824c" />
           <rect y="12" width="36" height="12" fill="#f1c40f" />
           <circle cx="18" cy="12" r="5" fill="#ffffff" />
@@ -216,7 +216,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'NDC':
       // NDC: Royal Purple and Gold with Torch
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Nigeria Democratic Congress (NDC)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="18" height="24" fill="#574b90" />
           <rect x="18" width="18" height="24" fill="#f5cd79" />
           <circle cx="18" cy="12" r="5" fill="#2d3436" />
@@ -229,7 +229,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'APM':
       // APM: Green, White, Blue
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Allied Peoples Movement (APM)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="36" height="8" fill="#008751" />
           <rect y="8" width="36" height="8" fill="#ffffff" />
           <rect y="16" width="36" height="8" fill="#2980b9" />
@@ -239,7 +239,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     case 'YP':
       // Youth Party: Navy & Emerald
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Youth Party (YP)">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="18" height="24" fill="#0c2461" />
           <rect x="18" width="18" height="24" fill="#008751" />
           <polygon points="15,12 21,9 21,15" fill="#ffffff" />
@@ -249,7 +249,7 @@ export function PartyFlagSvg({ partyCode, className = 'w-6 h-4' }: { partyCode: 
     default:
       // Default / Independent / Other: Nigerian Green-White-Green Tricolor
       return (
-        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`} title="Federal Republic of Nigeria">
+        <svg viewBox="0 0 36 24" className={`${className} rounded-sm overflow-hidden border border-white/20 shadow-sm flex-shrink-0`}>
           <rect width="12" height="24" fill="#008751" />
           <rect x="12" width="12" height="24" fill="#ffffff" />
           <rect x="24" width="12" height="24" fill="#008751" />

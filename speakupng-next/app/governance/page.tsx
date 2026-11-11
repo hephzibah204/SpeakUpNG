@@ -130,7 +130,7 @@ export default function GovernancePage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center gap-3 mb-3">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#00b368]/15 text-[#00b368] border border-[#00b368]/25">
-              🏛 Long-term Governance
+              Long-term Governance
             </span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-3 tracking-tight">

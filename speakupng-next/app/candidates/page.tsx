@@ -43,13 +43,13 @@ export default function CandidatesPage() {
     c.district?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const tierLabels: Record<RaceTier, { label: string; icon: string }> = {
-    presidential: { label: 'Presidential', icon: '🗳️' },
-    governorship: { label: 'Governorship', icon: '🏛️' },
-    senate: { label: 'Senate (109 Districts)', icon: '📜' },
-    reps: { label: 'House of Reps (360 Constituencies)', icon: '👥' },
-    assembly: { label: 'State Assembly', icon: '🏢' },
-    lga: { label: 'LGA Chairmanship', icon: '🏘️' },
+  const tierLabels: Record<RaceTier, { label: string }> = {
+    presidential: { label: 'Presidential' },
+    governorship: { label: 'Governorship' },
+    senate: { label: 'Senate (109 Districts)' },
+    reps: { label: 'House of Reps (360 Constituencies)' },
+    assembly: { label: 'State Assembly' },
+    lga: { label: 'LGA Chairmanship' },
   };
 
   return (
@@ -62,9 +62,9 @@ export default function CandidatesPage() {
           </div>
           <Link
             href="/elections/2027"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#008751] hover:bg-[#00b368] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-accent hover:brightness-110 text-paper font-semibold text-xs rounded transition-colors self-start sm:self-auto"
           >
-            <span>🗳️ Cast Mock Vote</span>
+            <span>Cast mock vote</span>
             <span aria-hidden="true">&rarr;</span>
           </Link>
         </div>
@@ -75,30 +75,29 @@ export default function CandidatesPage() {
             <button
               key={tierKey}
               onClick={() => setTab(tierKey)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors whitespace-nowrap ${
                 tab === tierKey
-                  ? 'bg-[#008751]/15 border-[#008751]/30 text-[#00b368]'
-                  : 'border-[#2c312a] text-[#6b7163] hover:text-zinc-300'
+                  ? 'bg-paper-3 border-rule text-ink'
+                  : 'border-transparent text-muted hover:text-ink'
               }`}
             >
-              <span>{tierLabels[tierKey].icon}</span>
               <span>{tierLabels[tierKey].label}</span>
             </button>
           ))}
         </div>
 
-        <div className="mb-4 p-4 bg-[#008751]/10 border border-[#008751]/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="mb-4 p-4 bg-paper-2 border border-rule rounded flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <p className="text-[#00b368] text-sm font-bold mb-0.5">🗳️ 2027 {tierLabels[tab].label} Mock Poll Active</p>
-            <p className="text-[#6b7163] text-xs leading-relaxed">
+            <p className="text-ink text-sm font-semibold mb-0.5">2027 {tierLabels[tab].label} mock poll active</p>
+            <p className="text-muted text-xs leading-relaxed">
               Cast your mock ballot for declared contestants and view real-time citizen rankings.
             </p>
           </div>
           <Link
             href="/elections/2027"
-            className="px-4 py-1.5 bg-[#008751] hover:bg-[#00b368] text-white text-xs font-bold rounded-lg flex-shrink-0 uppercase tracking-wider"
+            className="px-4 py-1.5 bg-accent hover:brightness-110 text-paper text-xs font-semibold rounded flex-shrink-0"
           >
-            Vote Now &rarr;
+            Vote now &rarr;
           </Link>
         </div>
 
@@ -171,9 +170,9 @@ export default function CandidatesPage() {
                   <div className="mt-4 pt-3 border-t border-[#2c312a] flex justify-end">
                     <Link
                       href="/elections/2027"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#008751]/15 hover:bg-[#008751]/30 text-[#00b368] text-xs font-bold transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-paper-3 hover:bg-paper-2 text-accent border border-rule text-xs font-medium transition-colors"
                     >
-                      <span>🗳️ Vote {c.candidate_name.split(' ')[0]}</span>
+                      <span>Vote {c.candidate_name.split(' ')[0]}</span>
                       <span aria-hidden="true">&rarr;</span>
                     </Link>
                   </div>

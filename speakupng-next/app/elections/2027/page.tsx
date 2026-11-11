@@ -204,7 +204,7 @@ export default function Race2027Page() {
           ? Array.from(new Set(list.map((c: Candidate) => c.state || ''))).filter(Boolean).sort()
           : Array.from(new Set(list.map((c: Candidate) => c.district || c.state || ''))).filter(Boolean).sort();
         if (keys.length > 0 && !keys.includes(selectedFilterByTier[tier])) {
-          setSelectedFilterByTier((prev) => ({ ...prev, [tier]: keys[0] }));
+          setSelectedFilterByTier((prev) => ({ ...prev, [tier]: String(keys[0]) }));
         }
       }
     } catch (err) {
@@ -476,15 +476,15 @@ export default function Race2027Page() {
           </div>
         )}
 
-        {/* Interactive Banner */}
-        <div className="mb-8 p-4 bg-gradient-to-r from-[#008751]/15 via-[#1d211b] to-[#1d211b] border border-[#008751]/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Interactive Header Banner */}
+        <div className="mb-8 p-4 bg-paper-2 border border-rule rounded flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#008751]/20 border border-[#008751]/40 flex items-center justify-center text-xl flex-shrink-0">
-              {raceTitles[activeTab].icon}
+            <div className="w-9 h-9 rounded bg-paper-3 border border-rule flex items-center justify-center flex-shrink-0 text-accent font-serif font-bold text-sm">
+              NG
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">{raceTitles[activeTab].label} Mock Ballots</h3>
-              <p className="text-xs text-zinc-400">
+              <h3 className="text-sm font-semibold text-ink">{raceTitles[activeTab].label} mock ballots</h3>
+              <p className="text-xs text-muted">
                 {raceTitles[activeTab].subtitle} Vote once per constituency and switch anytime.
               </p>
             </div>
@@ -492,21 +492,21 @@ export default function Race2027Page() {
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end flex-shrink-0">
             <div 
               title={deviceHash ? `SHA-256 Hardware Fingerprint: ${deviceHash}` : 'Authenticating device hardware...'}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide bg-emerald-950/70 text-emerald-300 border border-emerald-500/30 shadow-sm cursor-help"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono bg-paper-3 text-ink-2 border border-rule cursor-help"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>🔒 1 Device = 1 Ballot</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+              <span>1 device = 1 ballot</span>
               {deviceHash ? (
-                <span className="text-[9px] font-mono text-emerald-400/90 bg-emerald-900/50 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] font-mono text-muted bg-paper px-1.5 py-0.5 rounded border border-rule">
                   {deviceHash.slice(0, 6)}...{deviceHash.slice(-4)}
                 </span>
               ) : (
-                <span className="text-[9px] text-zinc-400">verifying...</span>
+                <span className="text-[10px] text-muted">verifying</span>
               )}
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#00b368]/15 text-[#00b368] border border-[#00b368]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00b368] animate-pulse"></span>
-              Live Ballots
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono bg-paper-3 text-accent border border-rule">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+              Active tally
             </span>
           </div>
         </div>
@@ -523,14 +523,13 @@ export default function Race2027Page() {
               <button
                 key={tier}
                 onClick={() => setActiveTab(tier)}
-                className={`pb-3 border-b-2 whitespace-nowrap transition-all flex items-center gap-1.5 px-2 ${
-                  isActive ? 'border-[#00b368] text-white' : 'border-transparent text-[#6b7163] hover:text-zinc-300'
+                className={`pb-3 border-b-2 whitespace-nowrap transition-colors flex items-center gap-1.5 px-2 ${
+                  isActive ? 'border-accent text-ink font-semibold' : 'border-transparent text-muted hover:text-ink'
                 }`}
               >
-                <span>{raceTitles[tier].icon}</span>
                 <span>{raceTitles[tier].label}</span>
                 {hasVotedAny && (
-                  <span className="w-2 h-2 rounded-full bg-[#00b368]" title="You have cast ballots in this category"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent" title="You have cast ballots in this category"></span>
                 )}
               </button>
             );
@@ -569,7 +568,7 @@ export default function Race2027Page() {
                   <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `🗳️ I just cast my mock vote for ${votedPresName} in Nigeria's 2027 Presidential General Election on evote.ng!\n\nSee who is currently leading the national polls and cast your ballot here: https://evote.ng/elections/2027`
+                        `I just cast my mock vote for ${votedPresName} in Nigeria's 2027 Presidential General Election on evote.ng!\n\nSee who is currently leading the national polls and cast your ballot here: https://evote.ng/elections/2027`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -580,7 +579,7 @@ export default function Race2027Page() {
 
                     <a
                       href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                        `🗳️ I just cast my mock vote for ${votedPresName} in Nigeria's 2027 Presidential General Election on evote.ng!\n\nSee who is leading the national polls and vote your candidate: https://evote.ng/elections/2027 #Nigeria2027 #evoteNG`
+                        `I just cast my mock vote for ${votedPresName} in Nigeria's 2027 Presidential General Election on evote.ng!\n\nSee who is leading the national polls and vote your candidate: https://evote.ng/elections/2027 #Nigeria2027 #evoteNG`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -593,7 +592,7 @@ export default function Race2027Page() {
                       onClick={() => handleCopyLink('https://evote.ng/elections/2027')}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-[#2c312a] text-zinc-300 text-xs font-bold rounded-lg transition-colors"
                     >
-                      <span>{copied ? '✓ Copied' : '🔗 Copy'}</span>
+                      <span>{copied ? 'Copied' : 'Copy link'}</span>
                     </button>
 
                     <button
@@ -843,7 +842,7 @@ export default function Race2027Page() {
                   <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `🗳️ I just cast my mock vote for ${userVotedCandidate} in the 2027 ${activeFilter} ${raceTitles[activeTab].label} election on evote.ng!\n\nSee who is leading and vote your candidate: https://evote.ng/elections/2027`
+                        `I just cast my mock vote for ${userVotedCandidate} in the 2027 ${activeFilter} ${raceTitles[activeTab].label} election on evote.ng!\n\nSee who is leading and vote your candidate: https://evote.ng/elections/2027`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -854,7 +853,7 @@ export default function Race2027Page() {
 
                     <a
                       href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                        `🗳️ I just cast my mock vote for ${userVotedCandidate} in the 2027 ${activeFilter} ${raceTitles[activeTab].label} election on evote.ng!\n\nSee who is leading: https://evote.ng/elections/2027 #Nigeria2027`
+                        `I just cast my mock vote for ${userVotedCandidate} in the 2027 ${activeFilter} ${raceTitles[activeTab].label} election on evote.ng!\n\nSee who is leading: https://evote.ng/elections/2027 #Nigeria2027`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -867,7 +866,7 @@ export default function Race2027Page() {
                       onClick={() => handleCopyLink('https://evote.ng/elections/2027')}
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-[#2c312a] text-zinc-300 text-xs font-bold rounded-lg transition-colors"
                     >
-                      <span>{copied ? '✓ Copied' : '🔗 Copy'}</span>
+                      <span>{copied ? 'Copied' : 'Copy link'}</span>
                     </button>
 
                     <button
@@ -1127,7 +1126,7 @@ export default function Race2027Page() {
               <div className="space-y-3">
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                    `🗳️ I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027`
+                    `I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1138,7 +1137,7 @@ export default function Race2027Page() {
 
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                    `🗳️ I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027 #Nigeria2027 #evoteNG`
+                    `I just cast my mock vote for ${shareModal.name}${shareModal.party ? ` (${shareModal.party})` : ''} in Nigeria's 2027 ${shareModal.race} on evote.ng!\n\nSee who is leading the polls and cast your vote: https://evote.ng/elections/2027 #Nigeria2027 #evoteNG`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1151,7 +1150,7 @@ export default function Race2027Page() {
                   onClick={() => handleCopyLink('https://evote.ng/elections/2027')}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#141714] border border-[#2c312a] hover:border-zinc-500 text-zinc-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
                 >
-                  <span>{copied ? '✓ Link Copied to Clipboard!' : '🔗 Copy Share Link'}</span>
+                  <span>{copied ? 'Link copied' : 'Copy share link'}</span>
                 </button>
               </div>
 
